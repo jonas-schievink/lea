@@ -1,0 +1,14 @@
+[package]
+
+name = "liblea"
+version = "0.0.1"
+authors = ["jonas-schievink <jonas@schievink.net>"]
+
+[dependencies]
+parser-combinators = "*"
+phf = "*"
+phf_macros = "*"
+
+[dependencies.rustlex]
+path = "../rustlex"
+
