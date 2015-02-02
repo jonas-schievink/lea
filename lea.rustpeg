@@ -1,0 +1,98 @@
+use std::num::from_str_radix;
+
+use ast::{UnOp, BinOp};
+use lexer::Literal;
+use lexer::Literal::*;
+
+whitespace -> ()
+    = [ \t] {}
+
+#[pub]
+ident -> &'input str
+    = [_a-zA-Z][_a-zA-Z0-9]* { match_str }
+
+decstr -> &'input str
+    = [0-9]+ { match_str }
+
+hexstr -> &'input str
+    = [0-9a-fA-F]+ { match_str }
+
+octstr -> &'input str
+    = [0-7]+ { match_str }
+
+int_dec -> i64
+    = "-"? decstr { match_str.parse().unwrap() }
+
+int_hex -> i64
+    = minus:"-"? "0x" hex:hexstr {
+        let num = from_str_radix(hex, 16).unwrap();
+        match minus {
+            None => num,
+            Some(_) => -num,
+        }
+    }
+
+int_oct -> i64
+    = minus:"-"? "0o" oct:octstr {
+        let num = from_str_radix(oct, 8).unwrap();
+        match minus {
+            None => num,
+            Some(_) => -num,
+        }
+    }
+
+#[pub]
+integer -> i64
+    = int_hex
+    / int_oct
+    / int_dec
+
+/// C-like float
+cfloat -> &'input str
+    = [0-9]* "." decstr { match_str }
+    / decstr "."        { match_str }
+
+/// Float in exponential notation
+efloat -> &'input str
+    = ( cfloat / decstr ) "e" [+-]? decstr { match_str }
+
+#[pub]
+float -> f64
+    = "-"? ( efloat / cfloat ) { match_str.parse().unwrap() }
+
+stringchr -> char
+    = "\\n" { '\n' }
+    / "\\r" { '\r' }
+    / "\\t" { '\t' }
+    / "\\\\" { '\\' }
+    / [^\\"]    { match_str.char_at(0) }    //" to make this work with simple highlighters
+
+stringcontent -> String
+    = chrs:stringchr* { chrs.into_iter().collect() }
+
+#[pub]
+string -> String
+    = '"' content:stringcontent '"' { content }
+
+boolean -> bool
+    = "true" { true }
+    / "false" { false }
+
+#[pub]
+literal -> Literal
+    = f:float   { TFloat(f) }
+    / i:integer { TInt(i) }
+    / s:string  { TStr(s) }
+    / b:boolean { TBool(b) }
+    / "nil"     { TNil }
+
+#[pub]
+binop -> BinOp
+    = "+" {BinOp::Add} / "-" {BinOp::Sub} / "*" {BinOp::Mul} / "/" {BinOp::Div} / "%" {BinOp::Mod}
+    / "==" {BinOp::Eq} / "!=" {BinOp::NEq} / ">=" {BinOp::GEq} / "<=" {BinOp::LEq}
+    / "<" {BinOp::Less} / ">" {BinOp::Greater} / "&&" {BinOp::LAnd} / "||" {BinOp::LOr}
+    / "&" {BinOp::BAnd} / "|" {BinOp::BOr} / "^" {BinOp::BXor}
+
+#[pub]
+unop -> UnOp
+    = "-" {UnOp::Negate} / "!" {UnOp::LNot} / "~" {UnOp::BNot} / "#" {UnOp::Len}

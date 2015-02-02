@@ -13,6 +13,15 @@ extern crate rustlex;
 extern crate phf_macros;
 extern crate phf;
 
+extern crate "parser-combinators" as parser_combinators;
+
+#[plugin]
+extern crate peg_syntax_ext;
+
 pub mod lexer;
-pub mod parser;
 pub mod ast;
+
+peg_file! parser("../lea.rustpeg");
+
+#[cfg(test)]
+mod parsetest;
