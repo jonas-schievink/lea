@@ -1,11 +1,10 @@
 use std::num::from_str_radix;
 
-use ast::{UnOp, BinOp, Expr, Stmt};
+use ast::{Literal, UnOp, BinOp, Expr, Stmt};
 use ast::Expr::*;
 use ast::UnOp::*;
 use ast::BinOp::*;
-use lexer::Literal;
-use lexer::Literal::*;
+use ast::Literal::*;
 
 whitespace -> ()
     = [ \t] {}
@@ -190,3 +189,6 @@ expr_rel -> Expr
 #[pub]
 expression -> Expr
     = expr_rel
+
+//statement -> Stmt
+//    = "if" whitespace+ cond:expression whitespace+ "then"

@@ -58,7 +58,7 @@ fn strings() {
 
 #[test]
 fn literals() {
-    use lexer::Literal::*;
+    use ast::Literal::*;
 
     assert_eq!(literal("nil"), Ok(TNil));
     assert_eq!(literal("false"), Ok(TBool(false)));
@@ -71,7 +71,7 @@ fn literals() {
 
 #[test]
 fn expr_simple() {
-    use lexer::Literal::*;
+    use ast::Literal::*;
     use ast::Expr::*;
     use ast::BinOp;
 
@@ -90,7 +90,7 @@ fn expr_simple() {
 
 #[test]
 fn expr_prec() {
-    use lexer::Literal::*;
+    use ast::Literal::*;
     use ast::Expr::*;
     use ast::BinOp;
 
@@ -149,7 +149,7 @@ fn expr_prec() {
 
 #[test]
 fn expr_complex() {
-    use lexer::Literal::*;
+    use ast::Literal::*;
     use ast::Expr::*;
     use ast::{BinOp, UnOp};
 

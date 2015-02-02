@@ -3,9 +3,19 @@ pub use self::Stmt::*;
 pub use self::Expr::*;
 pub use self::Node::*;
 
-use lexer::Literal;
+use self::Literal::*;
 use self::UnOp::*;
 use self::BinOp::*;
+
+/// Literal constants
+#[derive(Debug, PartialEq, Clone)]
+pub enum Literal {
+    TInt(i64),
+    TFloat(f64),
+    TStr(String),
+    TBool(bool),
+    TNil,
+}
 
 /// Unary operators
 #[derive(Copy, Clone, PartialEq, Debug)]
