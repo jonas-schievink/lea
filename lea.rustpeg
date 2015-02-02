@@ -1,11 +1,18 @@
 use std::num::from_str_radix;
 
-use ast::{UnOp, BinOp};
+use ast::{UnOp, BinOp, Expr, Stmt};
+use ast::Expr::*;
+use ast::UnOp::*;
+use ast::BinOp::*;
 use lexer::Literal;
 use lexer::Literal::*;
 
 whitespace -> ()
     = [ \t] {}
+
+/// Consumes whitespace and the end of the current line (skips forward until next line)
+lineend -> ()
+    = whitespace* "\n" {}
 
 #[pub]
 ident -> &'input str
@@ -86,13 +93,100 @@ literal -> Literal
     / b:boolean { TBool(b) }
     / "nil"     { TNil }
 
+binop_mul -> BinOp
+    = "*" {BinOp::Mul} / "/" {BinOp::Div} / "%" {BinOp::Mod}
+
+binop_add -> BinOp
+    = "+" {BinOp::Add} / "-" {BinOp::Sub}
+
+binop_shift -> BinOp
+    = ">>" {BinOp::ShiftR} / "<<" {BinOp::ShiftL}
+
+binop_bor -> BinOp
+    = "|" {BinOp::BOr}
+
+binop_xor -> BinOp
+    = "^" {BinOp::BXor}
+
+binop_band -> BinOp
+    = "&" {BinOp::BAnd}
+
+binop_logic -> BinOp
+    = "&&" {BinOp::LAnd} / "||" {BinOp::LOr}
+
+binop_rel -> BinOp
+    = "==" {BinOp::Eq} / "!=" {BinOp::NEq} / ">=" {BinOp::GEq} / "<=" {BinOp::LEq}
+    / "<" {BinOp::Less} / ">" {BinOp::Greater}
+
 #[pub]
 binop -> BinOp
-    = "+" {BinOp::Add} / "-" {BinOp::Sub} / "*" {BinOp::Mul} / "/" {BinOp::Div} / "%" {BinOp::Mod}
-    / "==" {BinOp::Eq} / "!=" {BinOp::NEq} / ">=" {BinOp::GEq} / "<=" {BinOp::LEq}
-    / "<" {BinOp::Less} / ">" {BinOp::Greater} / "&&" {BinOp::LAnd} / "||" {BinOp::LOr}
-    / "&" {BinOp::BAnd} / "|" {BinOp::BOr} / "^" {BinOp::BXor}
+    = binop_add / binop_mul / binop_shift / binop_rel / binop_logic / binop_band / binop_bor
+    / binop_xor
 
 #[pub]
 unop -> UnOp
     = "-" {UnOp::Negate} / "!" {UnOp::LNot} / "~" {UnOp::BNot} / "#" {UnOp::Len}
+
+// Atomic expression. Either a literal, a unary operator applied to another atom or a full expr
+// inside parentheses. Can not be decomposed any further.
+atom -> Expr
+    = whitespace* "(" expr:expression ")"   whitespace* { expr }
+    / whitespace* lit:literal               whitespace* { ELit(lit) }
+    / whitespace* op:unop a:atom            whitespace* { EUnOp(op, Box::new(a)) }
+
+// The rules below define the operator precedence of all binary operators. The first expr_* rules
+// have the highest precedence.
+
+/*
+
+# Precedence levels (in ascending order)
+
+Eq | NEq | LEq | GEq | Less | Greater
+
+LOr | LAnd
+
+BAnd
+BXor
+BOr
+ShiftL | ShiftR
+
+Add | Sub
+Mul | Div | Mod
+
+*/
+
+expr_mul -> Expr
+    = lhs:atom op:binop_mul rhs:atom { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
+    / a:atom { a }
+
+expr_add -> Expr
+    = lhs:expr_mul op:binop_add rhs:expr_mul { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
+    / a:expr_mul { a }
+
+expr_shift -> Expr
+    = lhs:expr_add op:binop_shift rhs:expr_add { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
+    / a:expr_add { a }
+
+expr_bor -> Expr
+    = lhs:expr_shift op:binop_bor rhs:expr_shift { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
+    / a:expr_shift { a }
+
+expr_xor -> Expr
+    = lhs:expr_bor op:binop_xor rhs:expr_bor { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
+    / a:expr_bor { a }
+
+expr_band -> Expr
+    = lhs:expr_xor op:binop_band rhs:expr_xor { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
+    / a:expr_xor { a }
+
+expr_logic -> Expr
+    = lhs:expr_band op:binop_logic rhs:expr_band { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
+    / a:expr_band { a }
+
+expr_rel -> Expr
+    = lhs:expr_logic op:binop_rel rhs:expr_logic { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
+    / a:expr_logic { a }
+
+#[pub]
+expression -> Expr
+    = expr_rel

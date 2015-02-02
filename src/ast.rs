@@ -7,12 +7,8 @@ use lexer::Literal;
 use self::UnOp::*;
 use self::BinOp::*;
 
-trait Precedence {
-    fn get_precedence(&self) -> u8;
-}
-
 /// Unary operators
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum UnOp {
     Negate, // -
     LNot,   // !
@@ -21,7 +17,7 @@ pub enum UnOp {
 }
 
 /// Binary operators
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum BinOp {
     Add,
     Sub,
@@ -45,39 +41,21 @@ pub enum BinOp {
     ShiftR,
 }
 
-impl Precedence for BinOp {
-    fn get_precedence(&self) -> u8 {
-        match *self {
-            Eq | NEq | LEq | GEq | Less | Greater => 0,
-
-            LOr | LAnd => 10,
-
-            BAnd => 20,
-            BXor => 21,
-            BOr => 22,
-            ShiftL | ShiftR => 23,
-
-            Add | Sub => 30,
-            Mul | Div | Mod => 31,
-        }
-    }
-}
-
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Local {
     name: String,
 }
 
 /// A block containing any number of statements. All blocks carry a scope in which local variables
 /// can be declared.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Block {
     stmts: Vec<Stmt>,
     locals: Vec<Local>,
 }
 
 /// Something that can be assigned to a value
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Variable {
     /// References a named variable; later resolved to local or global
     VNamed(String),
@@ -93,7 +71,7 @@ pub enum Variable {
 }
 
 /// Statement nodes
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Stmt {
     /// Declare a list of locals and assign initial values.
     ///
@@ -132,7 +110,7 @@ pub enum Stmt {
 }
 
 /// Expression nodes
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Expr {
     ELit(Literal),
     EBinOp(Box<Expr>, BinOp, Box<Expr>),

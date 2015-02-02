@@ -18,10 +18,11 @@ extern crate "parser-combinators" as parser_combinators;
 #[plugin]
 extern crate peg_syntax_ext;
 
+peg_file! parser("../lea.rustpeg");
+
 pub mod lexer;
 pub mod ast;
 
-peg_file! parser("../lea.rustpeg");
 
 #[cfg(test)]
 mod parsetest;
