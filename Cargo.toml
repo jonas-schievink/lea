@@ -6,11 +6,3 @@ authors = ["jonas-schievink <jonas@schievink.net>"]
 
 [dependencies]
 peg = "*"
-
-parser-combinators = "*"
-phf = "*"
-phf_macros = "*"
-
-[dependencies.rustlex]
-git = "https://github.com/LeoTestard/rustlex.git"
-
