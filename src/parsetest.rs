@@ -3,6 +3,7 @@ use parser::{ident, integer, float, string, literal, expression, statement};
 use ast::Stmt::*;
 use ast::Expr::*;
 use ast::Literal::*;
+use ast::Variable::*;
 use ast::{Block, BinOp, UnOp};
 
 
@@ -172,6 +173,25 @@ fn expr_complex() {
 }
 
 #[test]
+fn expr_idx() {
+    assert_eq!(expression("t"), Ok(EVar(VNamed("t".to_string()))));
+    assert_eq!(expression("t.i"), Ok(EVar(VIndex(
+        Box::new(VNamed("t".to_string())), Box::new(ELit(TStr("i".to_string()))),
+    ))));
+    assert_eq!(expression("t.i"), expression("t[\"i\"]"));
+    assert_eq!(expression("t[i]"), Ok(EVar(VIndex(
+        Box::new(VNamed("t".to_string())), Box::new(EVar(VNamed("i".to_string()))),
+    ))));
+
+    assert_eq!(expression("t.i.j"), Ok(EVar(VIndex(
+        Box::new(VIndex(
+            Box::new(VNamed("t".to_string())), Box::new(ELit(TStr("i".to_string()))),
+        )), Box::new(ELit(TStr("j".to_string()))),
+    ))));
+    assert_eq!(expression("t.i.j"), expression("t[\"i\"][\"j\"]"));
+}
+
+#[test]
 fn stmt_simple() {
     assert_eq!(statement("break"), Ok(SBreak));
     assert_eq!(statement("do end"), Ok(SDo(Block::new(vec![]))));
@@ -187,6 +207,9 @@ fn stmt_return() {
     assert_eq!(statement("return"), Ok(SReturn(vec![])));
     assert_eq!(statement("return 1"), Ok(SReturn(vec![ELit(TInt(1))])));
     assert_eq!(statement("return 1, 2"), Ok(SReturn(vec![ELit(TInt(1)), ELit(TInt(2))])));
+    assert_eq!(statement("return \t\n1 \n,  \t2"), Ok(SReturn(vec![
+        ELit(TInt(1)), ELit(TInt(2))
+    ])));
 }
 
 #[test]
@@ -211,5 +234,50 @@ fn stmt_if() {
             body: Block::new(vec![SBreak, SBreak]),
             el: Block::new(vec![SBreak, SBreak, SBreak]),
         }]),
+    }));
+}
+
+#[test]
+fn stmt_while() {
+    assert_eq!(statement("while 1 do break end"), Ok(SWhile {
+        cond: ELit(TInt(1)),
+        body: Block::new(vec![SBreak]),
+    }));
+    assert_eq!(statement("while 1 do end"), statement(" while   1  do  end  "));
+    assert_eq!(statement("while 1 do break end"), statement(" while   \n1\n do  break\t\n end  "));
+}
+
+#[test]
+fn stmt_repeat() {
+    // TODO
+}
+
+#[test]
+fn stmt_for() {
+    assert_eq!(statement("for i = 1, #t do do end break end"), Ok(SFor {
+        var: "i".to_string(),
+        start: ELit(TInt(1)),
+        end: EUnOp(UnOp::Len, Box::new(EVar(VNamed("t".to_string())))),
+        step: ELit(TInt(1)),
+        body: Block::new(vec![
+            SDo(Block::new(vec![])),
+            SBreak,
+        ]),
+    }));
+    assert_eq!(statement("for \n\t_\n=\n2,3,4\ndo\nend"), Ok(SFor {
+        var: "_".to_string(),
+        start: ELit(TInt(2)),
+        end: ELit(TInt(3)),
+        step: ELit(TInt(4)),
+        body: Block::new(vec![]),
+    }));
+}
+
+#[test]
+fn stmt_for_in() {
+    assert_eq!(statement("for i in j do end"), Ok(SForIn {
+        vars: vec!["i".to_string()],
+        iter: vec![EVar(VNamed("j".to_string()))],
+        body: Block::new(vec![]),
     }));
 }

@@ -86,7 +86,7 @@ pub enum Variable {
     VGlobal(String),
 
     /// References an indexed variable (a field)
-    VIndex(Box<Variable>, String),
+    VIndex(Box<Variable>, Box<Expr>),
 }
 
 /// Statement nodes
@@ -103,21 +103,37 @@ pub enum Stmt {
     /// values are considered for assignment to the leftover variables.
     SAssign(Vec<Variable>, Vec<Expr>),
 
+    /// Execute a block in a new scope
     SDo(Block),
 
+    /// Abort the current loop
     SBreak,
 
+    /// Return a possibly empty list of values to the caller
     SReturn(Vec<Expr>),
 
+    /// Executes `body` if `cond` is true and `el` if not
     SIf {
         cond: Expr,
         body: Block,
         el: Block,
     },
 
+    /// Loops a block while `cond` is true
+    SWhile {
+        cond: Expr,
+        body: Block,
+    },
+
+    /// Loops a block until `abort_on` is true
+    SRepeat {
+        abort_on: Expr,
+        body: Block,
+    },
+
     /// Numeric for loop
     SFor {
-        var: Local,
+        var: String,    // named local
         start: Expr,
         step: Expr,
         end: Expr,
@@ -127,8 +143,8 @@ pub enum Stmt {
     /// Generic for loop
     SForIn {
         /// The loop variables, returned by iterator
-        vars: Vec<Local>,
-        /// Expression list: Iterator function, invariant state, start value, [ignored]
+        vars: Vec<String>,
+        /// Expression list: Iterator function, invariant state, start value, [ignored ...]
         iter: Vec<Expr>,
         body: Block,
     }

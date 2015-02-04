@@ -4,12 +4,13 @@
 
 use std::num::from_str_radix;
 
-use ast::{Literal, UnOp, BinOp, Block, Expr, Stmt};
+use ast::{Literal, Variable, UnOp, BinOp, Block, Expr, Stmt};
 use ast::Expr::*;
 use ast::Stmt::*;
 use ast::UnOp::*;
 use ast::BinOp::*;
 use ast::Literal::*;
+use ast::Variable::*;
 
 #[pub]
 whitespace -> ()
@@ -130,12 +131,29 @@ binop -> BinOp
 unop -> UnOp
     = "-" {UnOp::Negate} / "!" {UnOp::LNot} / "~" {UnOp::BNot} / "#" {UnOp::Len}
 
+/// Returns the expression with which something is indexed
+index -> Expr
+    = "." id:ident          { ELit(TStr(id.to_string())) }
+    / "[" e:expression "]"  { e }
+
+variable -> Variable
+    = i:ident idxs:index+    {
+        let mut v = VNamed(i.to_string());
+        for idx in idxs {
+            v = VIndex(Box::new(v), Box::new(idx));
+        }
+
+        v
+    }
+    / i:ident { VNamed(i.to_string()) }
+
 // Atomic expression. Either a literal, a unary operator applied to another atom or a full expr
 // inside parentheses. Can not be decomposed any further.
 atom -> Expr
     = whitespace* "(" expr:expression ")"   whitespace* { expr }
     / whitespace* lit:literal               whitespace* { ELit(lit) }
     / whitespace* op:unop a:atom            whitespace* { EUnOp(op, Box::new(a)) }
+    / whitespace* v:variable                whitespace* { EVar(v) }
 
 // The rules below define the operator precedence of all binary operators. The first expr_* rules
 // have the highest precedence.
@@ -234,8 +252,59 @@ stmt_if -> Stmt
         }
     }
 
+stmt_while -> Stmt
+    = "while" cond:expression "do" whitespace+ body:block "end" {
+        SWhile { cond: cond, body: body }
+    }
+
+stmt_repeat -> Stmt
+    = "repeat" whitespace+ body:block "until" cond:expression {
+        SRepeat { abort_on: cond, body: body }
+    }
+
+_forexp -> Expr
+    = "," expression
+
+stmt_for -> Stmt
+    = "for" whitespace+ var:ident whitespace* "=" start:expression "," end:expression step:_forexp? "do" whitespace+ body:block "end" {
+        SFor {
+            var: var.to_string(),
+            start: start,
+            end: end,
+            step: match step {
+                None => ELit(TInt(1)),
+                Some(e) => e,
+            },
+            body: body,
+        }
+    }
+
+_listsep -> ()
+    = whitespace* "," whitespace*
+_for_in_ident -> &'input str
+    = i:ident!"in" { i }
+identlist -> Vec<String>
+    = ids:_for_in_ident ++ _listsep {
+        let mut v = Vec::with_capacity(ids.len());
+        for id in ids { v.push(id.to_string()); }
+        v
+    }
+
+stmt_for_in -> Stmt
+    = "for" whitespace+ vars:identlist "in" it:expression_list "do" whitespace+ body:block "end" {
+        SForIn {
+            vars: vars,
+            iter: it,
+            body: body,
+        }
+    }
+
 stmt_inner -> Stmt
     = stmt_if
+    / stmt_while
+    / stmt_repeat
+    / stmt_for_in
+    / stmt_for
     / "do" whitespace+ b:block "end" { SDo(b) }
     / "break" { SBreak }
     / "return" vals:expression_list { SReturn(vals) }
