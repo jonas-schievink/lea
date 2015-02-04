@@ -192,6 +192,31 @@ fn expr_idx() {
 }
 
 #[test]
+fn expr_special() {
+    assert_eq!(expression("[]"), Ok(EArray(vec![])));
+    assert_eq!(expression("[1]"), Ok(EArray(vec![ELit(TInt(1))])));
+    assert_eq!(expression("[1,]"), Ok(EArray(vec![ELit(TInt(1))])));
+    assert_eq!(expression("[1,2]"), Ok(EArray(vec![ELit(TInt(1)), ELit(TInt(2))])));
+    assert_eq!(expression("[1,2,]"), Ok(EArray(vec![ELit(TInt(1)), ELit(TInt(2))])));
+
+    assert_eq!(expression("{}"), Ok(ETable(vec![])));
+    assert_eq!(expression("{k=1}"), Ok(ETable(vec![
+        (ELit(TStr("k".to_string())), ELit(TInt(1)))
+    ])));
+    assert_eq!(expression("{k=1}"), expression("{ k = 1 }"));
+    assert_eq!(expression("{i=0,}"), Ok(ETable(vec![
+        (ELit(TStr("i".to_string())), ELit(TInt(0)))
+    ])));
+    assert_eq!(expression("{k=1}"), expression("{ [\"k\"] = 1 }"));
+
+    assert_eq!(expression("[{k=[1,2,]}]"), Ok(EArray(vec![
+        ETable(vec![(ELit(TStr("k".to_string())), EArray(vec![
+            ELit(TInt(1)), ELit(TInt(2)),
+        ]))])
+    ])));
+}
+
+#[test]
 fn call() {
     assert_eq!(expression("f(1)"), Ok(ECall(Call(VNamed("f".to_string()), vec![ELit(TInt(1))]))));
     assert_eq!(expression("f(1,2)"), Ok(ECall(Call(VNamed("f".to_string()), vec![

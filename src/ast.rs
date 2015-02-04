@@ -174,5 +174,11 @@ pub enum Expr {
 
     EVar(Variable),
     ECall(Call),
+    /// Instantiates a function/closure
     EFunc(Function),
+
+    /// Table constructor, takes key-value pairs
+    ETable(Vec<(Expr, Expr)>),
+    /// Array constructor, takes a list of initial values
+    EArray(Vec<Expr>),
 }

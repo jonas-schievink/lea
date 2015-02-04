@@ -152,14 +152,20 @@ variable -> Variable
 call -> Call
     = what:variable whitespace* "(" args:expression_list ")" { Call(what, args) }
 
+listsep -> ()
+    = whitespace* "," whitespace*
+
+atom_inner -> Expr
+    = "(" expr:expression ")" { expr }
+    / lit:literal { ELit(lit) }
+    / op:unop a:atom { EUnOp(op, Box::new(a)) }
+    / c:call { ECall(c) }
+    / v:variable { EVar(v) }
+
 // Atomic expression. Either a literal, a unary operator applied to another atom or a full expr
 // inside parentheses. Can not be decomposed any further.
 atom -> Expr
-    = whitespace* "(" expr:expression ")"   whitespace* { expr }
-    / whitespace* lit:literal               whitespace* { ELit(lit) }
-    / whitespace* op:unop a:atom            whitespace* { EUnOp(op, Box::new(a)) }
-    / whitespace* c:call                    whitespace* { ECall(c) }
-    / whitespace* v:variable                whitespace* { EVar(v) }
+    = whitespace* a:atom_inner whitespace* { a }
 
 // The rules below define the operator precedence of all binary operators. The first expr_* rules
 // have the highest precedence.
@@ -214,13 +220,33 @@ expr_rel -> Expr
     = lhs:expr_logic op:binop_rel rhs:expr_logic { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
     / a:expr_logic { a }
 
+
+
+kvpair_inner -> (Expr, Expr)
+    = "[" key:expression "]" whitespace* "=" whitespace* val:expression { (key, val) }
+    / id:ident whitespace* "=" whitespace* val:expression { (ELit(TStr(id.to_string())), val) }
+
+kvpair -> (Expr, Expr)
+    = whitespace* kv:kvpair_inner whitespace* { kv }
+
+tablecons -> Vec<(Expr, Expr)>
+    = "{" pairs:kvpair ++ listsep listsep? "}" { pairs }
+    / "{" whitespace* "}" { Vec::new() }
+
+arraycons -> Vec<Expr>
+    = "[" vals:expression_list listsep? "]" { vals }
+    / "[" whitespace* "]" { Vec::new() }
+
+
 #[pub]
 expression -> Expr
     = expr_rel
+    / t:tablecons { ETable(t) }
+    / a:arraycons { EArray(a) }
 
 // Comma-separated list of expressions (at least one expression is required)
 expression_list -> Vec<Expr>
-    = e:expression ++ "," { e }
+    = e:expression ++ listsep { e }
 
 block -> Block
     = s:statement* { Block::new(s) }
@@ -284,26 +310,23 @@ stmt_for -> Stmt
             body: body,
         }
     }
-
-_listsep -> ()
-    = whitespace* "," whitespace*
 // List of comma-separated identifiers with at least one element
 identlist -> Vec<String>
-    = ids:ident ++ _listsep {
+    = ids:ident ++ listsep {
         let mut v = Vec::with_capacity(ids.len());
         for id in ids { v.push(id.to_string()); }
         v
     }
 // Possibly empty identifier list
 eidentlist -> Vec<String>
-    = ids:ident ** _listsep {
+    = ids:ident ** listsep {
         let mut v = Vec::with_capacity(ids.len());
         for id in ids { v.push(id.to_string()); }
         v
     }
 
 varlist -> Vec<Variable>
-    = vars:variable ++ _listsep { vars }
+    = vars:variable ++ listsep { vars }
 
 stmt_for_in -> Stmt
     = "for" whitespace+ vars:identlist whitespace+ "in" it:expression_list "do" whitespace+ body:block "end" {
