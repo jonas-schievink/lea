@@ -1,17 +1,21 @@
+//! Parsing Expression Grammar for Lea
+//!
+//! Rust PEG generates a parser from this definition at compile time
+
 use std::num::from_str_radix;
 
-use ast::{Literal, UnOp, BinOp, Expr, Stmt};
+use ast::{Literal, UnOp, BinOp, Block, Expr, Stmt};
 use ast::Expr::*;
+use ast::Stmt::*;
 use ast::UnOp::*;
 use ast::BinOp::*;
 use ast::Literal::*;
 
+#[pub]
 whitespace -> ()
-    = [ \t] {}
-
-/// Consumes whitespace and the end of the current line (skips forward until next line)
-lineend -> ()
-    = whitespace* "\n" {}
+    = " " {}
+    / "\t" {}
+    / "\n" {}
 
 #[pub]
 ident -> &'input str
@@ -53,7 +57,7 @@ integer -> i64
     / int_oct
     / int_dec
 
-/// C-like float
+/// C-like float (only one part before/after the decimal point is required)
 cfloat -> &'input str
     = [0-9]* "." decstr { match_str }
     / decstr "."        { match_str }
@@ -190,5 +194,53 @@ expr_rel -> Expr
 expression -> Expr
     = expr_rel
 
-//statement -> Stmt
-//    = "if" whitespace+ cond:expression whitespace+ "then"
+// Comma-separated list of expressions (at least one expression is required)
+expression_list -> Vec<Expr>
+    = e:expression ++ "," { e }
+
+block -> Block
+    = s:statement* { Block::new(s) }
+
+if_else -> Block
+    = "else" whitespace+ bl:block { bl }
+
+elseif -> (Expr, Block)
+    = "elseif" e:expression "then" whitespace+ body:block { (e, body) }
+
+stmt_if -> Stmt
+    = "if" cond:expression "then" whitespace+ body:block elifs:elseif* el:if_else? "end" {
+        // Build else block for this if statement
+
+        // Start with "pure" else at the end
+        let mut myelse = match el {
+            None => Block::new(vec![]),
+            Some(block) => block,
+        };
+
+        for (cond, body) in elifs {
+            myelse = Block::new(vec![
+                SIf {
+                    cond: cond,
+                    body: body,
+                    el: myelse, // Old else block here
+                }
+            ]);
+        }
+
+        SIf {
+            cond: cond,
+            body: body,
+            el: myelse,
+        }
+    }
+
+stmt_inner -> Stmt
+    = stmt_if
+    / "do" whitespace+ b:block "end" { SDo(b) }
+    / "break" { SBreak }
+    / "return" vals:expression_list { SReturn(vals) }
+    / "return" { SReturn(vec![]) }
+
+#[pub]
+statement -> Stmt
+    = whitespace* s:stmt_inner whitespace* { s }

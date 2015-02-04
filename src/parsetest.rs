@@ -1,4 +1,10 @@
-use parser::{ident, integer, float, string, literal, expression};
+use parser::{ident, integer, float, string, literal, expression, statement};
+
+use ast::Stmt::*;
+use ast::Expr::*;
+use ast::Literal::*;
+use ast::{Block, BinOp, UnOp};
+
 
 #[test]
 fn integers() {
@@ -58,8 +64,6 @@ fn strings() {
 
 #[test]
 fn literals() {
-    use ast::Literal::*;
-
     assert_eq!(literal("nil"), Ok(TNil));
     assert_eq!(literal("false"), Ok(TBool(false)));
     assert_eq!(literal("true"), Ok(TBool(true)));
@@ -71,12 +75,9 @@ fn literals() {
 
 #[test]
 fn expr_simple() {
-    use ast::Literal::*;
-    use ast::Expr::*;
-    use ast::BinOp;
-
     // Test simple expressions
 
+    assert_eq!(expression("3"), Ok(ELit(TInt(3))));
     assert_eq!(expression("4+2"), Ok(EBinOp(Box::new(ELit(TInt(4))), BinOp::Add, Box::new(ELit(TInt(2))))));
     assert_eq!(expression("4 +2"), Ok(EBinOp(Box::new(ELit(TInt(4))), BinOp::Add, Box::new(ELit(TInt(2))))));
     assert_eq!(expression("4 <<2"), Ok(EBinOp(Box::new(ELit(TInt(4))), BinOp::ShiftL, Box::new(ELit(TInt(2))))));
@@ -90,10 +91,6 @@ fn expr_simple() {
 
 #[test]
 fn expr_prec() {
-    use ast::Literal::*;
-    use ast::Expr::*;
-    use ast::BinOp;
-
     // Test operator precedences
 
     assert_eq!(expression("4+1*2"), Ok(
@@ -149,10 +146,6 @@ fn expr_prec() {
 
 #[test]
 fn expr_complex() {
-    use ast::Literal::*;
-    use ast::Expr::*;
-    use ast::{BinOp, UnOp};
-
     // Test more complex expressions involving parentheses, unary operators, different literals
 
     assert_eq!(expression("-(5)"), Ok(EUnOp(UnOp::Negate, Box::new(ELit(TInt(5))))));
@@ -176,4 +169,47 @@ fn expr_complex() {
             ))
         ))
     ));
+}
+
+#[test]
+fn stmt_simple() {
+    assert_eq!(statement("break"), Ok(SBreak));
+    assert_eq!(statement("do end"), Ok(SDo(Block::new(vec![]))));
+    assert_eq!(statement("do break end"), Ok(SDo(Block::new(vec![SBreak]))));
+    assert_eq!(statement("do do end break end"), Ok(SDo(Block::new(vec![
+        SDo(Block::new(vec![])),
+        SBreak,
+    ]))));
+}
+
+#[test]
+fn stmt_return() {
+    assert_eq!(statement("return"), Ok(SReturn(vec![])));
+    assert_eq!(statement("return 1"), Ok(SReturn(vec![ELit(TInt(1))])));
+    assert_eq!(statement("return 1, 2"), Ok(SReturn(vec![ELit(TInt(1)), ELit(TInt(2))])));
+}
+
+#[test]
+fn stmt_if() {
+    assert_eq!(statement("if 5 then end"), Ok(SIf {
+        cond: ELit(TInt(5)),
+        body: Block::new(vec![]),
+        el: Block::new(vec![]),
+    }));
+    assert_eq!(statement("if 5 then end"), statement("if 5 then else end"));
+    assert_eq!(statement("if 5 then end"), statement("if 5 then\nelse\nend"));
+    assert_eq!(statement("if 5 then end"), statement("if  5  then  else  end"));
+    assert_eq!(statement("if 5 then end"), statement("if\t5\tthen\telse\tend"));
+    assert_eq!(statement("if 5 then end"), statement("if 5 then else\n end"));
+
+    assert_eq!(statement("if 1 then break elseif 2 then break break else break break break end"),
+    Ok(SIf {
+        cond: ELit(TInt(1)),
+        body: Block::new(vec![SBreak]),
+        el: Block::new(vec![SIf {
+            cond: ELit(TInt(2)),
+            body: Block::new(vec![SBreak, SBreak]),
+            el: Block::new(vec![SBreak, SBreak, SBreak]),
+        }]),
+    }));
 }

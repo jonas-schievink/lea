@@ -58,10 +58,19 @@ pub struct Local {
 
 /// A block containing any number of statements. All blocks carry a scope in which local variables
 /// can be declared.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Block {
     stmts: Vec<Stmt>,
     locals: Vec<Local>,
+}
+
+impl Block {
+    pub fn new(stmts: Vec<Stmt>) -> Block {
+        Block {
+            stmts: stmts,
+            locals: vec![],
+        }
+    }
 }
 
 /// Something that can be assigned to a value
@@ -81,7 +90,7 @@ pub enum Variable {
 }
 
 /// Statement nodes
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Stmt {
     /// Declare a list of locals and assign initial values.
     ///
@@ -94,10 +103,16 @@ pub enum Stmt {
     /// values are considered for assignment to the leftover variables.
     SAssign(Vec<Variable>, Vec<Expr>),
 
+    SDo(Block),
+
+    SBreak,
+
+    SReturn(Vec<Expr>),
+
     SIf {
         cond: Expr,
-        thenblock: Block,
-        elseblock: Block,
+        body: Block,
+        el: Block,
     },
 
     /// Numeric for loop
