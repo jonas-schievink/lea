@@ -1,4 +1,4 @@
-use parser::{ident, integer, float, string, literal, expression, statement};
+use parser::{ident, integer, float, string, literal, expression, statement, block};
 
 use ast::Stmt::*;
 use ast::Expr::*;
@@ -405,4 +405,22 @@ fn comments() {
     assert_eq!(statement("do break /*aeurebv// */break end"), Ok(SDo(Block::new(vec![
         SBreak, SBreak
     ]))));
+}
+
+#[test]
+fn parse_block() {
+    assert_eq!(block(r#"
+// Test program
+t = 1
+local r, s = 4, 2, 1
+function f(g, ...) do end end
+"#), Ok(Block::new(vec![
+        SAssign(vec![VNamed("t".to_string())], vec![ELit(TInt(1))]),
+        SDecl(vec!["r".to_string(), "s".to_string()], vec![ELit(TInt(4)), ELit(TInt(2)), ELit(TInt(1))]),
+        SFunc(VNamed("f".to_string()), Function {
+            params: vec!["g".to_string()],
+            varargs: true,
+            body: Block::new(vec![SDo(Block::new(vec![]))]),
+        }),
+    ])));
 }

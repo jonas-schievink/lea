@@ -1,8 +1,8 @@
 pub use self::Variable::*;
 pub use self::Stmt::*;
 pub use self::Expr::*;
+pub use self::Literal::*;
 
-use self::Literal::*;
 use self::UnOp::*;
 use self::BinOp::*;
 

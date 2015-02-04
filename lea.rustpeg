@@ -250,9 +250,6 @@ expression -> Expr
 expression_list -> Vec<Expr>
     = e:expression ++ listsep { e }
 
-block -> Block
-    = s:statement* { Block::new(s) }
-
 if_else -> Block
     = "else" whitespace+ bl:block { bl }
 
@@ -377,3 +374,7 @@ stmt_inner -> Stmt
 #[pub]
 statement -> Stmt
     = whitespace* s:stmt_inner whitespace* { s }
+
+#[pub]
+block -> Block
+    = s:statement* { Block::new(s) }
