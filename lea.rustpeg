@@ -347,7 +347,7 @@ varargs_def -> ()
 funcbody -> Function
     = whitespace* "(" whitespace* params:eidentlist va:varargs_def? ")" whitespace* body:block "end" {
         Function {
-            args: params,
+            params: params,
             varargs: match va { None => false, Some(..) => true },
             body: body,
         }

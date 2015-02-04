@@ -74,7 +74,8 @@ pub struct Call(pub Variable, pub Vec<Expr>);
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Function {
-    pub args: Vec<String>,
+    // Parameters this function takes. Each one declares a similarly named local in the body block.
+    pub params: Vec<String>,
     pub varargs: bool,
     pub body: Block,
 }

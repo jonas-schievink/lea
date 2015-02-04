@@ -219,12 +219,12 @@ fn expr_special() {
 #[test]
 fn expr_func() {
     assert_eq!(expression("function()end"), Ok(EFunc(Function {
-        args: vec![],
+        params: vec![],
         varargs: false,
         body: Block::new(vec![]),
     })));
     assert_eq!(expression("function(i, j, ...) break end"), Ok(EFunc(Function {
-        args: vec!["i".to_string(), "j".to_string()],
+        params: vec!["i".to_string(), "j".to_string()],
         varargs: true,
         body: Block::new(vec![SBreak]),
     })));
@@ -371,20 +371,20 @@ fn stmt() {
 
     assert_eq!(statement("local\nfunction\nt()\nend"), Ok(SLFunc("t".to_string(),
         Function {
-            args: vec![],
+            params: vec![],
             varargs: false,
             body: Block::new(vec![]),
         })));
 
     assert_eq!(statement("function f(i,j) end"), Ok(SFunc(VNamed("f".to_string()),
         Function {
-            args: vec!["i".to_string(), "j".to_string()],
+            params: vec!["i".to_string(), "j".to_string()],
             varargs: false,
             body: Block::new(vec![]),
         })));
     assert_eq!(statement("function g() end"),  Ok(SFunc(VNamed("g".to_string()),
         Function {
-            args: vec![],
+            params: vec![],
             varargs: false,
             body: Block::new(vec![]),
         })));
