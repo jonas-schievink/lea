@@ -1,7 +1,6 @@
 pub use self::Variable::*;
 pub use self::Stmt::*;
 pub use self::Expr::*;
-pub use self::Node::*;
 
 use self::Literal::*;
 use self::UnOp::*;
@@ -176,11 +175,4 @@ pub enum Expr {
     EVar(Variable),
     ECall(Call),
     EFunc(Function),
-}
-
-/// AST nodes
-#[derive(Clone)]
-pub enum Node {
-    ExprNode(Expr),
-    StmtNode(Stmt),
 }
