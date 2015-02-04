@@ -337,3 +337,16 @@ fn stmt() {
     assert!(statement("function f(,i) end").is_err());
     assert!(statement("function f(i,,j) end").is_err());
 }
+
+#[test]
+fn comments() {
+    assert_eq!(statement("break //"), Ok(SBreak));
+    assert_eq!(statement("break // "), Ok(SBreak));
+    assert_eq!(statement("break //////"), Ok(SBreak));
+    assert_eq!(statement("break // test\\\\aaa"), Ok(SBreak));
+    assert_eq!(statement("break /* test */"), Ok(SBreak));
+    assert_eq!(statement("break /**///"), Ok(SBreak));
+    assert_eq!(statement("do break /*aeurebv// */break end"), Ok(SDo(Block::new(vec![
+        SBreak, SBreak
+    ]))));
+}

@@ -14,9 +14,11 @@ use ast::Variable::*;
 
 #[pub]
 whitespace -> ()
-    = " " {}
-    / "\t" {}
-    / "\n" {}
+    = " "
+    / "\t"
+    / "\n"
+    / "//" [^\n]*
+    / "/*" ( [^*] / [*][^/] )* "*/"
 
 #[pub]
 ident -> &'input str
