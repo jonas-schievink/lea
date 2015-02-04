@@ -4,7 +4,7 @@ use ast::Stmt::*;
 use ast::Expr::*;
 use ast::Literal::*;
 use ast::Variable::*;
-use ast::{Block, BinOp, UnOp};
+use ast::{BinOp, UnOp, Block, Call, Function};
 
 
 #[test]
@@ -192,6 +192,21 @@ fn expr_idx() {
 }
 
 #[test]
+fn call() {
+    assert_eq!(expression("f(1)"), Ok(ECall(Call(VNamed("f".to_string()), vec![ELit(TInt(1))]))));
+    assert_eq!(expression("f(1,2)"), Ok(ECall(Call(VNamed("f".to_string()), vec![
+        ELit(TInt(1)), ELit(TInt(2)),
+    ]))));
+    assert_eq!(statement("f(1,2)"), Ok(SCall(Call(VNamed("f".to_string()), vec![
+        ELit(TInt(1)), ELit(TInt(2)),
+    ]))));
+    assert_eq!(expression("f(1,2)"), expression("f   (  1   ,   2   )"));
+
+    assert!(expression("f(1,2,)").is_err());
+    assert!(expression("f(,1)").is_err());
+}
+
+#[test]
 fn stmt_simple() {
     assert_eq!(statement("break"), Ok(SBreak));
     assert_eq!(statement("do end"), Ok(SDo(Block::new(vec![]))));
@@ -210,6 +225,8 @@ fn stmt_return() {
     assert_eq!(statement("return \t\n1 \n,  \t2"), Ok(SReturn(vec![
         ELit(TInt(1)), ELit(TInt(2))
     ])));
+
+    assert!(statement("return 1,").is_err());
 }
 
 #[test]
@@ -280,4 +297,43 @@ fn stmt_for_in() {
         iter: vec![EVar(VNamed("j".to_string()))],
         body: Block::new(vec![]),
     }));
+    assert_eq!(statement("  for  i,j,  k  , l in 1, 2,3   ,  4 do break end"), Ok(SForIn {
+        vars: vec!["i".to_string(), "j".to_string(), "k".to_string(), "l".to_string()],
+        iter: vec![ELit(TInt(1)), ELit(TInt(2)), ELit(TInt(3)), ELit(TInt(4))],
+        body: Block::new(vec![SBreak]),
+    }));
+}
+
+#[test]
+fn stmt_decl() {
+    assert_eq!(statement("local i"), Ok(SDecl(vec!["i".to_string()], vec![])));
+    assert_eq!(statement("local j,k"), Ok(SDecl(vec!["j".to_string(), "k".to_string()], vec![])));
+    assert_eq!(statement("local i = nil"), Ok(SDecl(vec!["i".to_string()], vec![ELit(TNil)])));
+    assert_eq!(statement("local i = 0, 2"), Ok(SDecl(vec!["i".to_string()], vec![
+        ELit(TInt(0)), ELit(TInt(2)),
+    ])));
+}
+
+#[test]
+fn stmt() {
+    assert_eq!(statement("i, j = k, l"), Ok(SAssign(vec![
+        VNamed("i".to_string()), VNamed("j".to_string()),
+    ], vec![
+        EVar(VNamed("k".to_string())), EVar(VNamed("l".to_string())),
+    ])));
+    assert_eq!(statement("i, j = 1, 2, 3"), Ok(SAssign(vec![
+        VNamed("i".to_string()), VNamed("j".to_string()),
+    ], vec![
+        ELit(TInt(1)), ELit(TInt(2)), ELit(TInt(3)),
+    ])));
+
+    assert_eq!(statement("local\nfunction\nt()\nend"), Ok(SLFunc("t".to_string(),
+        Function(vec![], Block::new(vec![])))));
+
+    assert_eq!(statement("function f(i,j) end"), Ok(SFunc(VNamed("f".to_string()),
+        Function(vec!["i".to_string(), "j".to_string()], Block::new(vec![])))));
+
+    assert!(statement("function f(i,) end").is_err());
+    assert!(statement("function f(,i) end").is_err());
+    assert!(statement("function f(i,,j) end").is_err());
 }

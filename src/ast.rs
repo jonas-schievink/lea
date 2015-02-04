@@ -51,17 +51,14 @@ pub enum BinOp {
     ShiftR,
 }
 
-#[derive(Clone, PartialEq, Debug)]
-pub struct Local {
-    name: String,
-}
-
 /// A block containing any number of statements. All blocks carry a scope in which local variables
 /// can be declared.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Block {
     stmts: Vec<Stmt>,
-    locals: Vec<Local>,
+
+    /// List of locals. Collected when resolving.
+    locals: Vec<String>,
 }
 
 impl Block {
@@ -72,6 +69,12 @@ impl Block {
         }
     }
 }
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct Call(pub Variable, pub Vec<Expr>);
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct Function(pub Vec<String>, pub Block);
 
 /// Something that can be assigned to a value
 #[derive(Clone, PartialEq, Debug)]
@@ -94,13 +97,17 @@ pub enum Variable {
 pub enum Stmt {
     /// Declare a list of locals and assign initial values.
     ///
-    /// Initial values are optional and default to `nil`.
+    /// Initial values are optional and default to `nil` (the second vector can have less elements
+    /// than the first).
     SDecl(Vec<String>, Vec<Expr>),
 
     /// Assigns a list of expressions to a list of variables.
     ///
-    /// Conatins at least one pair. If the last expression is a function or varargs, all return
+    /// Contains at least one pair. If the last expression is a function or varargs, all return
     /// values are considered for assignment to the leftover variables.
+    ///
+    /// Might contain less variables than expressions or less expressions than variables. In the
+    /// latter case, the leftover variables are assigned to nil.
     SAssign(Vec<Variable>, Vec<Expr>),
 
     /// Execute a block in a new scope
@@ -111,6 +118,15 @@ pub enum Stmt {
 
     /// Return a possibly empty list of values to the caller
     SReturn(Vec<Expr>),
+
+    /// Function call as statement
+    SCall(Call),
+
+    /// Assign function to named variable (`function XY(...) ... end`)
+    SFunc(Variable, Function),
+
+    /// Assign function to named local (`local function XY(...) ... end`)
+    SLFunc(String, Function),
 
     /// Executes `body` if `cond` is true and `el` if not
     SIf {
@@ -158,6 +174,8 @@ pub enum Expr {
     EUnOp(UnOp, Box<Expr>),
 
     EVar(Variable),
+    ECall(Call),
+    EFunc(Function),
 }
 
 /// AST nodes

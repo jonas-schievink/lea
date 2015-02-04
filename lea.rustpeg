@@ -4,7 +4,7 @@
 
 use std::num::from_str_radix;
 
-use ast::{Literal, Variable, UnOp, BinOp, Block, Expr, Stmt};
+use ast::{Literal, Variable, Call, Function, UnOp, BinOp, Block, Expr, Stmt};
 use ast::Expr::*;
 use ast::Stmt::*;
 use ast::UnOp::*;
@@ -147,12 +147,16 @@ variable -> Variable
     }
     / i:ident { VNamed(i.to_string()) }
 
+call -> Call
+    = what:variable whitespace* "(" args:expression_list ")" { Call(what, args) }
+
 // Atomic expression. Either a literal, a unary operator applied to another atom or a full expr
 // inside parentheses. Can not be decomposed any further.
 atom -> Expr
     = whitespace* "(" expr:expression ")"   whitespace* { expr }
     / whitespace* lit:literal               whitespace* { ELit(lit) }
     / whitespace* op:unop a:atom            whitespace* { EUnOp(op, Box::new(a)) }
+    / whitespace* c:call                    whitespace* { ECall(c) }
     / whitespace* v:variable                whitespace* { EVar(v) }
 
 // The rules below define the operator precedence of all binary operators. The first expr_* rules
@@ -281,22 +285,36 @@ stmt_for -> Stmt
 
 _listsep -> ()
     = whitespace* "," whitespace*
-_for_in_ident -> &'input str
-    = i:ident!"in" { i }
+// List of comma-separated identifiers with at least one element
 identlist -> Vec<String>
-    = ids:_for_in_ident ++ _listsep {
+    = ids:ident ++ _listsep {
+        let mut v = Vec::with_capacity(ids.len());
+        for id in ids { v.push(id.to_string()); }
+        v
+    }
+// Possibly empty identifier list
+eidentlist -> Vec<String>
+    = ids:ident ** _listsep {
         let mut v = Vec::with_capacity(ids.len());
         for id in ids { v.push(id.to_string()); }
         v
     }
 
+varlist -> Vec<Variable>
+    = vars:variable ++ _listsep { vars }
+
 stmt_for_in -> Stmt
-    = "for" whitespace+ vars:identlist "in" it:expression_list "do" whitespace+ body:block "end" {
+    = "for" whitespace+ vars:identlist whitespace+ "in" it:expression_list "do" whitespace+ body:block "end" {
         SForIn {
             vars: vars,
             iter: it,
             body: body,
         }
+    }
+
+funcbody -> Function
+    = whitespace* "(" whitespace* params:eidentlist whitespace* ")" whitespace* body:block "end" {
+        Function(params, body)
     }
 
 stmt_inner -> Stmt
@@ -309,6 +327,16 @@ stmt_inner -> Stmt
     / "break" { SBreak }
     / "return" vals:expression_list { SReturn(vals) }
     / "return" { SReturn(vec![]) }
+    / c:call { SCall(c) }
+    / "function" whitespace+ name:ident f:funcbody { SFunc(VNamed(name.to_string()), f) }
+    / "local" whitespace+ "function" whitespace+ name:ident body:funcbody {
+        SLFunc(name.to_string(), body)
+    }
+    / "local" whitespace+ locals:identlist whitespace* "=" exprs:expression_list {
+        SDecl(locals, exprs)
+    }
+    / "local" whitespace+ locals:identlist { SDecl(locals, vec![]) }
+    / vars:varlist whitespace* "=" vals:expression_list { SAssign(vars, vals) }
 
 #[pub]
 statement -> Stmt
