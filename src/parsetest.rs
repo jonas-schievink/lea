@@ -217,6 +217,20 @@ fn expr_special() {
 }
 
 #[test]
+fn expr_func() {
+    assert_eq!(expression("function()end"), Ok(EFunc(Function {
+        args: vec![],
+        varargs: false,
+        body: Block::new(vec![]),
+    })));
+    assert_eq!(expression("function(i, j, ...) break end"), Ok(EFunc(Function {
+        args: vec!["i".to_string(), "j".to_string()],
+        varargs: true,
+        body: Block::new(vec![SBreak]),
+    })));
+}
+
+#[test]
 fn call() {
     assert_eq!(expression("f(1)"), Ok(ECall(Call(VNamed("f".to_string()), vec![ELit(TInt(1))]))));
     assert_eq!(expression("f(1,2)"), Ok(ECall(Call(VNamed("f".to_string()), vec![
@@ -356,10 +370,24 @@ fn stmt() {
     ])));
 
     assert_eq!(statement("local\nfunction\nt()\nend"), Ok(SLFunc("t".to_string(),
-        Function(vec![], Block::new(vec![])))));
+        Function {
+            args: vec![],
+            varargs: false,
+            body: Block::new(vec![]),
+        })));
 
     assert_eq!(statement("function f(i,j) end"), Ok(SFunc(VNamed("f".to_string()),
-        Function(vec!["i".to_string(), "j".to_string()], Block::new(vec![])))));
+        Function {
+            args: vec!["i".to_string(), "j".to_string()],
+            varargs: false,
+            body: Block::new(vec![]),
+        })));
+    assert_eq!(statement("function g() end"),  Ok(SFunc(VNamed("g".to_string()),
+        Function {
+            args: vec![],
+            varargs: false,
+            body: Block::new(vec![]),
+        })));
 
     assert!(statement("function f(i,) end").is_err());
     assert!(statement("function f(,i) end").is_err());

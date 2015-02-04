@@ -68,4 +68,3 @@ Lua was designed to be a very small language with a minimal runtime. This comes 
 Lea will provide a larger runtime library (mainly wrappers around the Rust stdlib):
 * **FFI** - A Foreign Function Interface for loading and calling C code at runtime makes Lua-typical wrapper modules written in C obsolete. Lua provides an FFI via third-party modules.
 * **Filesystem** - Lua's filesystem API is limited to simple operations, as more complex scenarios are not portable and rely on OS-specific features. Lea will provide a more complete API, including support for iterating over directories, changing the current directory, locking files, checking file permissions, etc.
-

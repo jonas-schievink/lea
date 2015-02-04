@@ -73,7 +73,11 @@ impl Block {
 pub struct Call(pub Variable, pub Vec<Expr>);
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct Function(pub Vec<String>, pub Block);
+pub struct Function {
+    pub args: Vec<String>,
+    pub varargs: bool,
+    pub body: Block,
+}
 
 /// Something that can be assigned to a value
 #[derive(Clone, PartialEq, Debug)]
@@ -181,4 +185,6 @@ pub enum Expr {
     ETable(Vec<(Expr, Expr)>),
     /// Array constructor, takes a list of initial values
     EArray(Vec<Expr>),
+    /// "..."; expands to var args. only valid if used inside varargs functions
+    EVarArgs,
 }

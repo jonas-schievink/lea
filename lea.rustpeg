@@ -157,6 +157,7 @@ listsep -> ()
 
 atom_inner -> Expr
     = "(" expr:expression ")" { expr }
+    / "..." { EVarArgs }
     / lit:literal { ELit(lit) }
     / op:unop a:atom { EUnOp(op, Box::new(a)) }
     / c:call { ECall(c) }
@@ -220,8 +221,6 @@ expr_rel -> Expr
     = lhs:expr_logic op:binop_rel rhs:expr_logic { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
     / a:expr_logic { a }
 
-
-
 kvpair_inner -> (Expr, Expr)
     = "[" key:expression "]" whitespace* "=" whitespace* val:expression { (key, val) }
     / id:ident whitespace* "=" whitespace* val:expression { (ELit(TStr(id.to_string())), val) }
@@ -237,12 +236,15 @@ arraycons -> Vec<Expr>
     = "[" vals:expression_list listsep? "]" { vals }
     / "[" whitespace* "]" { Vec::new() }
 
+expr_special -> Expr
+    = t:tablecons { ETable(t) }
+    / a:arraycons { EArray(a) }
+    / "function" f:funcbody { EFunc(f) }
 
 #[pub]
 expression -> Expr
-    = expr_rel
-    / t:tablecons { ETable(t) }
-    / a:arraycons { EArray(a) }
+    = whitespace* e:expr_special whitespace* { e }
+    / expr_rel
 
 // Comma-separated list of expressions (at least one expression is required)
 expression_list -> Vec<Expr>
@@ -294,6 +296,25 @@ stmt_repeat -> Stmt
         SRepeat { abort_on: cond, body: body }
     }
 
+// List of comma-separated identifiers with at least one element
+identlist -> Vec<String>
+    = ids:ident ++ listsep {
+        let mut v = Vec::with_capacity(ids.len());
+        for id in ids { v.push(id.to_string()); }
+        v
+    }
+
+// Possibly empty identifier list
+eidentlist -> Vec<String>
+    = ids:ident ** listsep {
+        let mut v = Vec::with_capacity(ids.len());
+        for id in ids { v.push(id.to_string()); }
+        v
+    }
+
+varlist -> Vec<Variable>
+    = vars:variable ++ listsep { vars }
+
 _forexp -> Expr
     = "," expression
 
@@ -310,23 +331,6 @@ stmt_for -> Stmt
             body: body,
         }
     }
-// List of comma-separated identifiers with at least one element
-identlist -> Vec<String>
-    = ids:ident ++ listsep {
-        let mut v = Vec::with_capacity(ids.len());
-        for id in ids { v.push(id.to_string()); }
-        v
-    }
-// Possibly empty identifier list
-eidentlist -> Vec<String>
-    = ids:ident ** listsep {
-        let mut v = Vec::with_capacity(ids.len());
-        for id in ids { v.push(id.to_string()); }
-        v
-    }
-
-varlist -> Vec<Variable>
-    = vars:variable ++ listsep { vars }
 
 stmt_for_in -> Stmt
     = "for" whitespace+ vars:identlist whitespace+ "in" it:expression_list "do" whitespace+ body:block "end" {
@@ -337,9 +341,16 @@ stmt_for_in -> Stmt
         }
     }
 
+varargs_def -> ()
+    = whitespace* listsep whitespace* "..."
+
 funcbody -> Function
-    = whitespace* "(" whitespace* params:eidentlist whitespace* ")" whitespace* body:block "end" {
-        Function(params, body)
+    = whitespace* "(" whitespace* params:eidentlist va:varargs_def? ")" whitespace* body:block "end" {
+        Function {
+            args: params,
+            varargs: match va { None => false, Some(..) => true },
+            body: body,
+        }
     }
 
 stmt_inner -> Stmt
