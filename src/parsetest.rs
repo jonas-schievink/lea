@@ -291,7 +291,10 @@ fn stmt_while() {
 
 #[test]
 fn stmt_repeat() {
-    // TODO
+    assert_eq!(statement("repeat break until 1"), Ok(SRepeat {
+        abort_on: ELit(TInt(1)),
+        body: Block::new(vec![SBreak]),
+    }));
 }
 
 #[test]
