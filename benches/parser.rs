@@ -12,6 +12,7 @@ fn parse_simple(b: &mut Bencher) {
     b.iter(|| {
         block(r#"
 local i, j, k = 0, 1, 2+3
+i, j = j, i*2
 "#).unwrap();
     });
 }

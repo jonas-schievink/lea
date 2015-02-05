@@ -5,8 +5,8 @@ version = "0.0.1"
 authors = ["jonas-schievink <jonas@schievink.net>"]
 
 [dependencies]
-#peg = "*"
+peg = "*"
 
-[dependencies.peg]
-path = "../rust-peg"
+#[dependencies.peg]
+#path = "../rust-peg"
 
