@@ -1,6 +1,6 @@
 //! Parsing Expression Grammar for Lea
 //!
-//! Rust PEG generates a parser from this definition at compile time
+//! rust-peg generates a parser from this definition at compile time
 
 use std::num::from_str_radix;
 
