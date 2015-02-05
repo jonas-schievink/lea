@@ -1,5 +1,6 @@
 #![feature(plugin)]
 #![feature(core)]
+#![feature(io)]
 
 // FIXME
 #![allow(unused_features)]
@@ -8,10 +9,10 @@
 #[plugin]
 extern crate peg_syntax_ext;
 
-peg_file! parser("../lea.rustpeg");
-
+pub mod parser;
 pub mod ast;
-
+pub mod visit;
+pub mod prettyprint;
 
 #[cfg(test)]
 mod parsetest;

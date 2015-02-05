@@ -3,6 +3,8 @@ pub use self::Stmt::*;
 pub use self::Expr::*;
 pub use self::Literal::*;
 
+use std::fmt;
+
 use self::UnOp::*;
 use self::BinOp::*;
 
@@ -50,14 +52,70 @@ pub enum BinOp {
     ShiftR,
 }
 
+impl fmt::Display for UnOp {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        fmt.write_str(match *self {
+            Negate => "-",
+            LNot => "!",
+            BNot => "~",
+            Len => "#",
+        })
+    }
+}
+
+impl fmt::Display for BinOp {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        fmt.write_str(match *self {
+            Add => "+",
+            Sub => "-",
+            Mul => "*",
+            Div => "/",
+            Mod => "%",
+
+            Eq => "==",
+            NEq => "!=",
+            LEq => "<=",
+            GEq => ">=",
+            Less => "<",
+            Greater => ">",
+
+            LAnd => "&&",
+            LOr => "||",
+            BAnd => "&",
+            BOr => "|",
+            BXor => "^",
+            ShiftL => "<<",
+            ShiftR => ">>",
+        })
+    }
+}
+
+impl BinOp {
+    pub fn get_precedence(&self) -> u8 {
+        // FIXME The grammar implements these rules aswell. Fix this redundancy somehow.
+
+        match *self {
+            Eq | NEq | LEq | GEq | Less | Greater => 0,
+            LOr | LAnd => 1,
+            BAnd => 2,
+            BXor => 3,
+            BOr => 4,
+            ShiftL => 5,
+            ShiftR => 6,
+            Add | Sub => 7,
+            Mul | Div | Mod => 8,
+        }
+    }
+}
+
 /// A block containing any number of statements. All blocks carry a scope in which local variables
 /// can be declared.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Block {
-    stmts: Vec<Stmt>,
+    pub stmts: Vec<Stmt>,
 
     /// List of locals. Collected when resolving.
-    locals: Vec<String>,
+    pub locals: Vec<String>,
 }
 
 impl Block {
@@ -70,7 +128,7 @@ impl Block {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct Call(pub Variable, pub Vec<Expr>);
+pub struct Call(pub Box<Expr>, pub Vec<Expr>);
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Function {
@@ -94,6 +152,9 @@ pub enum Variable {
 
     /// References an indexed variable (a field)
     VIndex(Box<Variable>, Box<Expr>),
+
+    /// References a variable indexed with dot notation
+    VDotIndex(Box<Variable>, String),
 }
 
 /// Statement nodes
@@ -167,7 +228,7 @@ pub enum Stmt {
         /// Expression list: Iterator function, invariant state, start value, [ignored ...]
         iter: Vec<Expr>,
         body: Block,
-    }
+    },
 }
 
 /// Expression nodes

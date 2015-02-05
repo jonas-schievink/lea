@@ -12,7 +12,6 @@ use ast::BinOp::*;
 use ast::Literal::*;
 use ast::Variable::*;
 
-#[pub]
 whitespace -> ()
     = " "
     / "\t"
@@ -54,7 +53,6 @@ int_oct -> i64
         }
     }
 
-#[pub]
 integer -> i64
     = int_hex
     / int_oct
@@ -69,7 +67,6 @@ cfloat -> &'input str
 efloat -> &'input str
     = ( cfloat / decstr ) "e" [+-]? decstr { match_str }
 
-#[pub]
 float -> f64
     = "-"? ( efloat / cfloat ) { match_str.parse().unwrap() }
 
@@ -83,7 +80,6 @@ stringchr -> char
 stringcontent -> String
     = chrs:stringchr* { chrs.into_iter().collect() }
 
-#[pub]
 string -> String
     = '"' content:stringcontent '"' { content }
 
@@ -124,14 +120,15 @@ binop_rel -> BinOp
     = "==" {BinOp::Eq} / "!=" {BinOp::NEq} / ">=" {BinOp::GEq} / "<=" {BinOp::LEq}
     / "<" {BinOp::Less} / ">" {BinOp::Greater}
 
-#[pub]
 binop -> BinOp
     = binop_add / binop_mul / binop_shift / binop_rel / binop_logic / binop_band / binop_bor
     / binop_xor
 
-#[pub]
 unop -> UnOp
     = "-" {UnOp::Negate} / "!" {UnOp::LNot} / "~" {UnOp::BNot} / "#" {UnOp::Len}
+
+listsep -> ()
+    = whitespace* "," whitespace*
 
 /// Returns the expression with which something is indexed
 index -> Expr
@@ -149,11 +146,20 @@ variable -> Variable
     }
     / i:ident { VNamed(i.to_string()) }
 
-call -> Call
-    = what:variable whitespace* "(" args:expression_list ")" { Call(what, args) }
+callargs -> Vec<Expr>
+    = whitespace* "(" args:expression ** listsep whitespace* ")" { args }
 
-listsep -> ()
-    = whitespace* "," whitespace*
+call -> Call
+    = v:variable args:callargs+ {
+        let mut it = args.into_iter();
+        let mut what = Call(Box::new(EVar(v)), it.next().unwrap());
+
+        for list in it {
+            what = Call(Box::new(ECall(what)), list);
+        }
+
+        what
+    }
 
 atom_inner -> Expr
     = "(" expr:expression ")" { expr }
@@ -341,11 +347,20 @@ stmt_for_in -> Stmt
 varargs_def -> ()
     = whitespace* listsep whitespace* "..."
 
+// Returns the parameter list and a boolean indicating whether the function takes variable args
+funcparams -> (Vec<String>, bool)
+    = "(" whitespace* params:identlist va:varargs_def? whitespace* ")" {
+        (params, match va { None => false, Some(..) => true})
+    }
+    / "(" whitespace* "..." whitespace* ")" { (Vec::new(), true) }
+    / "(" whitespace* ")" { (Vec::new(), false) }
+
 funcbody -> Function
-    = whitespace* "(" whitespace* params:eidentlist va:varargs_def? ")" whitespace* body:block "end" {
+    = whitespace* params:funcparams whitespace* body:block "end" {
+        let (pars, varargs) = params;
         Function {
-            params: params,
-            varargs: match va { None => false, Some(..) => true },
+            params: pars,
+            varargs: varargs,
             body: body,
         }
     }
@@ -360,7 +375,6 @@ stmt_inner -> Stmt
     / "break" { SBreak }
     / "return" vals:expression_list { SReturn(vals) }
     / "return" { SReturn(vec![]) }
-    / c:call { SCall(c) }
     / "function" whitespace+ name:ident f:funcbody { SFunc(VNamed(name.to_string()), f) }
     / "local" whitespace+ "function" whitespace+ name:ident body:funcbody {
         SLFunc(name.to_string(), body)
@@ -369,6 +383,7 @@ stmt_inner -> Stmt
         SDecl(locals, exprs)
     }
     / "local" whitespace+ locals:identlist { SDecl(locals, vec![]) }
+    / c:call { SCall(c) }
     / vars:varlist whitespace* "=" vals:expression_list { SAssign(vars, vals) }
 
 #[pub]
