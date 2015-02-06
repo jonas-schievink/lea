@@ -302,6 +302,15 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
     #[allow(unused_must_use)]
     fn visit_expr(&mut self, expr: &mut Expr) {
         match *expr {
+            ERawOp(ref mut lhs, ref mut rest) => {
+                self.visit_expr(lhs);
+
+                for t in rest {
+                    let (op, ref mut r) = *t;
+                    write!(self.writer, " {} ", op);
+                    self.visit_expr(r);
+                }
+            },
             EBinOp(ref mut lhs, op, ref mut rhs) => {
                 let prec = op.get_precedence();
                 let mut left_paren = false;     // Add parentheses to lhs

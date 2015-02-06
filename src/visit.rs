@@ -107,6 +107,13 @@ pub fn walk_stmt<V: Visitor>(stmt: &mut Stmt, visitor: &mut V) {
 
 pub fn walk_expr<V: Visitor>(expr: &mut Expr, visitor: &mut V) {
     match *expr {
+        ERawOp(ref mut lhs, ref mut rest) => {
+            visitor.visit_expr(lhs);
+            for t in rest {
+                let (_, ref mut r) = *t;
+                visitor.visit_expr(r);
+            }
+        },
         EBinOp(ref mut lhs, _op, ref mut rhs) => {
             visitor.visit_expr(lhs);
             visitor.visit_expr(rhs);

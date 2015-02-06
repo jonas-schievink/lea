@@ -195,38 +195,6 @@ Mul | Div | Mod
 
 */
 
-expr_mul -> Expr
-    = lhs:atom op:binop_mul rhs:atom { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
-    / a:atom { a }
-
-expr_add -> Expr
-    = lhs:expr_mul op:binop_add rhs:expr_mul { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
-    / a:expr_mul { a }
-
-expr_shift -> Expr
-    = lhs:expr_add op:binop_shift rhs:expr_add { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
-    / a:expr_add { a }
-
-expr_bor -> Expr
-    = lhs:expr_shift op:binop_bor rhs:expr_shift { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
-    / a:expr_shift { a }
-
-expr_xor -> Expr
-    = lhs:expr_bor op:binop_xor rhs:expr_bor { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
-    / a:expr_bor { a }
-
-expr_band -> Expr
-    = lhs:expr_xor op:binop_band rhs:expr_xor { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
-    / a:expr_xor { a }
-
-expr_logic -> Expr
-    = lhs:expr_band op:binop_logic rhs:expr_band { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
-    / a:expr_band { a }
-
-expr_rel -> Expr
-    = lhs:expr_logic op:binop_rel rhs:expr_logic { EBinOp(Box::new(lhs), op, Box::new(rhs)) }
-    / a:expr_logic { a }
-
 kvpair_inner -> (Expr, Expr)
     = "[" key:expression "]" whitespace* "=" whitespace* val:expression { (key, val) }
     / id:ident whitespace* "=" whitespace* val:expression { (ELit(TStr(id.to_string())), val) }
@@ -247,10 +215,16 @@ expr_special -> Expr
     / a:arraycons { EArray(a) }
     / "function" f:funcbody { EFunc(f) }
 
+expr_rest -> (BinOp, Expr)
+    = op:binop r:atom { (op, r) }
+
+expr_inner -> Expr
+    = expr_special
+    / l:atom rest:expr_rest* { ERawOp(Box::new(l), rest) }
+
 #[pub]
 expression -> Expr
-    = whitespace* e:expr_special whitespace* { e }
-    / expr_rel
+    = whitespace* e:expr_inner whitespace* { e }
 
 // Comma-separated list of expressions (at least one expression is required)
 expression_list -> Vec<Expr>

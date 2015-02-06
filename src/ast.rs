@@ -92,8 +92,6 @@ impl fmt::Display for BinOp {
 
 impl BinOp {
     pub fn get_precedence(&self) -> u8 {
-        // FIXME The grammar implements these rules aswell. Fix this redundancy somehow.
-
         match *self {
             Eq | NEq | LEq | GEq | Less | Greater => 0,
             LOr | LAnd => 1,
@@ -237,6 +235,13 @@ pub enum Expr {
     ELit(Literal),
     EBinOp(Box<Expr>, BinOp, Box<Expr>),
     EUnOp(UnOp, Box<Expr>),
+
+    /// Raw binary expression returned from generated parser. Operator precedences are not yet
+    /// applied, since the generated parser doesn't know about them.
+    ///
+    /// These expression are turned into EBinOp's right after the PEG-generated parser is run, so
+    /// following code only has to deal with tree-like expressions.
+    ERawOp(Box<Expr>, Vec<(BinOp, Expr)>),
 
     EVar(Variable),
     ECall(Call),
