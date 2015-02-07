@@ -4,7 +4,7 @@ peg_file! parse("../lea.rustpeg");
 
 pub use self::parse::{ident, literal};
 
-use ast::{Expr, Stmt, Block};
+use ast::{Expr, Stmt, Block, Function};
 use visit;
 use visit::Visitor;
 use expr_parser::ExprParser;
@@ -31,6 +31,18 @@ pub fn block(input: &str) -> Result<Block, String> {
     visit::walk_block(&mut b, &mut ExprParser);
 
     Ok(b)
+}
+
+/// Parses a block of statements and builds a function wrapper that can be run as the main function
+/// around it.
+pub fn parse_main(input: &str) -> Result<Function, String> {
+    let blk = try!(block(input));
+
+    Ok(Function {
+        params: Vec::new(),
+        varargs: true,
+        body: blk,
+    })
 }
 
 /// Parses a raw expression. This only runs the PEG parser, not the dedicated expression parser.

@@ -11,3 +11,4 @@ pub mod expr_parser;
 pub mod ast;
 pub mod visit;
 pub mod prettyprint;
+pub mod check;

@@ -13,6 +13,9 @@ pub trait Visitor : Sized {
     fn visit_var(&mut self, var: &mut Variable) {
         walk_var(var, self);
     }
+    fn visit_func(&mut self, func: &mut Function) {
+        walk_block(&mut func.body, self);
+    }
 }
 
 pub fn walk_block<V: Visitor>(b: &mut Block, visitor: &mut V) {
@@ -52,16 +55,12 @@ pub fn walk_stmt<V: Visitor>(stmt: &mut Stmt, visitor: &mut V) {
                 visitor.visit_expr(arg);
             }
         },
-        SFunc(ref mut var, Function {ref mut body, ..}) => {
+        SFunc(ref mut var, ref mut func) => {
             visitor.visit_var(var);
-            for stmt in &mut body.stmts {
-                visitor.visit_stmt(stmt);
-            }
+            visitor.visit_func(func);
         },
-        SLFunc(_, Function {ref mut body, ..}) => {
-            for stmt in &mut body.stmts {
-                visitor.visit_stmt(stmt);
-            }
+        SLFunc(_, ref mut func) => {
+            visitor.visit_func(func);
         },
         SIf {ref mut cond, ref mut body, ref mut el} => {
             visitor.visit_expr(cond);
@@ -130,10 +129,8 @@ pub fn walk_expr<V: Visitor>(expr: &mut Expr, visitor: &mut V) {
                 visitor.visit_expr(arg);
             }
         },
-        EFunc(Function {ref mut body, ..}) => {
-            for stmt in &mut body.stmts {
-                visitor.visit_stmt(stmt);
-            }
+        EFunc(ref mut func) => {
+            visitor.visit_func(func);
         },
         ETable(ref mut pairs) => {
             for &mut (ref mut key, ref mut val) in pairs {
