@@ -4,13 +4,8 @@
 
 use std::num::from_str_radix;
 
-use ast::{Literal, Variable, Call, Function, UnOp, BinOp, Block, Expr, Stmt};
-use ast::Expr::*;
-use ast::Stmt::*;
-use ast::UnOp::*;
-use ast::BinOp::*;
-use ast::Literal::*;
-use ast::Variable::*;
+use ast::*;
+
 
 whitespace -> ()
     = " "
@@ -95,34 +90,12 @@ literal -> Literal
     / b:boolean { TBool(b) }
     / "nil"     { TNil }
 
-binop_mul -> BinOp
-    = "*" {BinOp::Mul} / "/" {BinOp::Div} / "%" {BinOp::Mod}
-
-binop_add -> BinOp
-    = "+" {BinOp::Add} / "-" {BinOp::Sub}
-
-binop_shift -> BinOp
-    = ">>" {BinOp::ShiftR} / "<<" {BinOp::ShiftL}
-
-binop_bor -> BinOp
-    = "|" {BinOp::BOr}
-
-binop_xor -> BinOp
-    = "^" {BinOp::BXor}
-
-binop_band -> BinOp
-    = "&" {BinOp::BAnd}
-
-binop_logic -> BinOp
-    = "&&" {BinOp::LAnd} / "||" {BinOp::LOr}
-
-binop_rel -> BinOp
-    = "==" {BinOp::Eq} / "!=" {BinOp::NEq} / ">=" {BinOp::GEq} / "<=" {BinOp::LEq}
-    / "<" {BinOp::Less} / ">" {BinOp::Greater}
-
 binop -> BinOp
-    = binop_add / binop_mul / binop_shift / binop_rel / binop_logic / binop_band / binop_bor
-    / binop_xor
+    = "==" {BinOp::Eq} / "!=" {BinOp::NEq} / ">=" {BinOp::GEq} / "<=" {BinOp::LEq}
+    / ">>" {BinOp::ShiftR} / "<<" {BinOp::ShiftL} / "<" {BinOp::Less} / ">" {BinOp::Greater}
+    / "&&" {BinOp::LAnd} / "||" {BinOp::LOr} / "&" {BinOp::BAnd} / "^" {BinOp::BXor}
+    / "|" {BinOp::BOr} / "+" {BinOp::Add} / "-" {BinOp::Sub} / "*" {BinOp::Mul} / "/" {BinOp::Div}
+    / "%" {BinOp::Mod}
 
 unop -> UnOp
     = "-" {UnOp::Negate} / "!" {UnOp::LNot} / "~" {UnOp::BNot} / "#" {UnOp::Len}
@@ -173,27 +146,6 @@ atom_inner -> Expr
 // inside parentheses. Can not be decomposed any further.
 atom -> Expr
     = whitespace* a:atom_inner whitespace* { a }
-
-// The rules below define the operator precedence of all binary operators. The first expr_* rules
-// have the highest precedence.
-
-/*
-
-# Precedence levels (in ascending order)
-
-Eq | NEq | LEq | GEq | Less | Greater
-
-LOr | LAnd
-
-BAnd
-BXor
-BOr
-ShiftL | ShiftR
-
-Add | Sub
-Mul | Div | Mod
-
-*/
 
 kvpair_inner -> (Expr, Expr)
     = "[" key:expression "]" whitespace* "=" whitespace* val:expression { (key, val) }
