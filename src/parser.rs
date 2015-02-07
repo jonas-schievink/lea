@@ -2,10 +2,11 @@
 
 peg_file! parse("../lea.rustpeg");
 
-pub use self::parse::{ident, literal, statement, block};
+pub use self::parse::{ident, literal};
 
+use ast::{Expr, Stmt, Block};
+use visit;
 use visit::Visitor;
-use ast::Expr;
 use expr_parser::ExprParser;
 
 /// Parses an expression
@@ -16,9 +17,25 @@ pub fn expression(input: &str) -> Result<Expr, String> {
     Ok(e)
 }
 
+/// Parses a statement
+pub fn statement(input: &str) -> Result<Stmt, String> {
+    let mut s = try!(parse::statement(input));
+    ExprParser.visit_stmt(&mut s);
+
+    Ok(s)
+}
+
+/// Parses a block of statements
+pub fn block(input: &str) -> Result<Block, String> {
+    let mut b = try!(parse::block(input));
+    visit::walk_block(&mut b, &mut ExprParser);
+
+    Ok(b)
+}
+
 /// Parses a raw expression. This only runs the PEG parser, not the dedicated expression parser.
 ///
-/// The returned expression will be of the variant `ERaw`.
+/// The returned expression will be of the variant `ERawOp`.
 #[inline(always)]
 pub fn expression_raw(input: &str) -> Result<Expr, String> {
     parse::expression(input)
@@ -93,8 +110,8 @@ mod tests {
     fn expr_simple() {
         // Test simple expressions
 
-        assert_eq!(expression("3"), Ok(ERawOp(Box::new(ELit(TInt(3))), vec![])));
-        assert_eq!(expression("4+2"), Ok(ERawOp(Box::new(ELit(TInt(4))), vec![(BinOp::Add, ELit(TInt(2)))])));
+        assert_eq!(expression("3"), Ok(ELit(TInt(3))));
+        assert_eq!(expression("4+2"), Ok(EBinOp(Box::new(ELit(TInt(4))), BinOp::Add, Box::new(ELit(TInt(2))))));
         assert_eq!(expression("4 +2"), Ok(EBinOp(Box::new(ELit(TInt(4))), BinOp::Add, Box::new(ELit(TInt(2))))));
         assert_eq!(expression("4 <<2"), Ok(EBinOp(Box::new(ELit(TInt(4))), BinOp::ShiftL, Box::new(ELit(TInt(2))))));
         assert_eq!(expression("4% 2 "), Ok(EBinOp(Box::new(ELit(TInt(4))), BinOp::Mod, Box::new(ELit(TInt(2))))));
