@@ -16,17 +16,14 @@ impl Visitor for ExprParser {
     fn visit_expr(&mut self, expr: &mut Expr) {
         match *expr {
             ERawOp(..) => {
-                // Build a tree out of the expression
                 let mut operands: Vec<Expr> = Vec::new();
                 let mut operators: Vec<BinOp> = Vec::new();
                 let mut rest = Vec::new();
 
                 if let ERawOp(ref mut left, ref mut old_rest) = *expr {
-                    println!("got raw op: {:?} | {:?}", left, old_rest);
-
-                    // take ownership of `left` and `rest` by replacing with an empty Vec<> (saves us
-                    // from copying the content). We replace the whole expr anyways, so it doesn't
-                    // matter.
+                    // take ownership of `left` and `rest` by replacing with an empty Vec<> (saves
+                    // us from copying the content). We replace the whole expr anyways, so it
+                    // doesn't matter.
                     operands.push(mem::replace(left, EVarArgs));
                     mem::swap(old_rest, &mut rest);
                 } else { unreachable!(); }
@@ -44,7 +41,6 @@ impl Visitor for ExprParser {
                             let lhs = operands.pop().unwrap();
 
                             let expr = EBinOp(Box::new(lhs), stackop, Box::new(rhs));
-                            println!("l>=r | built node: {:?}", &expr);
                             operands.push(expr);
                         }
                     }
@@ -54,7 +50,7 @@ impl Visitor for ExprParser {
                     operands.push(rhs);
                 }
 
-                // Pop all operators and build nodes until no operators left
+                // Pop all operators and build nodes
                 while operators.len() > 0 {
                     let op = operators.pop().unwrap();
                     let rhs = operands.pop().unwrap();
@@ -69,14 +65,11 @@ impl Visitor for ExprParser {
                 // of operator-operand pairs)
                 assert_eq!(operands.len(), 1);
 
-                println!("result | {:?}", &operands[0]);
-
                 mem::replace(expr, operands.pop().unwrap());
             },
             _ => {},
         }
 
-        // If this expr contains any subexpressions, convert them as well
         walk_expr(expr, self);
     }
 }
