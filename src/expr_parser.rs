@@ -6,25 +6,31 @@
 use std::mem;
 
 use visit::*;
-use ast::{Expr, BinOp};
-use ast::Expr::*;
+use ast::*;
+use span::*;
 
 #[derive(Copy)]
 pub struct ExprParser;
 
+fn mknode(lhs: Expr, op: BinOp, rhs: Expr) -> Expr {
+    let start = lhs.span.start;
+    let end = rhs.span.start + rhs.span.len;
+    mkspanned(EBinOp(Box::new(lhs), op, Box::new(rhs)), start, end)
+}
+
 impl Visitor for ExprParser {
     fn visit_expr(&mut self, expr: &mut Expr) {
-        match *expr {
+        match expr.value {
             ERawOp(..) => {
                 let mut operands: Vec<Expr> = Vec::new();
                 let mut operators: Vec<BinOp> = Vec::new();
                 let mut rest = Vec::new();
 
-                if let ERawOp(ref mut left, ref mut old_rest) = *expr {
+                if let ERawOp(ref mut left, ref mut old_rest) = expr.value {
                     // take ownership of `left` and `rest` by replacing with an empty Vec<> (saves
                     // us from copying the content). We replace the whole expr anyways, so it
                     // doesn't matter.
-                    operands.push(mem::replace(left, EVarArgs));
+                    operands.push(mem::replace(left, mkspanned(EVarArgs, 0, 0)));
                     mem::swap(old_rest, &mut rest);
                 } else { unreachable!(); }
 
@@ -40,8 +46,7 @@ impl Visitor for ExprParser {
                             let rhs = operands.pop().unwrap();
                             let lhs = operands.pop().unwrap();
 
-                            let expr = EBinOp(Box::new(lhs), stackop, Box::new(rhs));
-                            operands.push(expr);
+                            operands.push(mknode(lhs, stackop, rhs));
                         }
                     }
 
@@ -57,7 +62,7 @@ impl Visitor for ExprParser {
                     let lhs = operands.pop().unwrap();
 
                     // PUSH UNTIL THERE IS NOTHING LEFT TO PUSH
-                    operands.push(EBinOp(Box::new(lhs), op, Box::new(rhs)));
+                    operands.push(mknode(lhs, op, rhs));
                 }
 
                 // If this algorithm works correctly, this always holds, since the input data can

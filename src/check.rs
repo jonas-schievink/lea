@@ -39,7 +39,7 @@ struct Checker {
 impl Visitor for Checker {
     fn visit_stmt(&mut self, s: &mut Stmt) {
         if let Ok(..) = self.res {
-            match *s {
+            match s.value {
                 SBreak => {
                     if self.looplvl == 0 {
                         self.res = Err(mkerr("Use of `break` outside of loop", None));
@@ -58,7 +58,7 @@ impl Visitor for Checker {
     }
 
     fn visit_expr(&mut self, e: &mut Expr) {
-        match *e {
+        match e.value {
             EVarArgs => {
                 if let Ok(..) = self.res {
                     if !self.vararg_func {
@@ -81,7 +81,7 @@ impl Visitor for Checker {
 pub fn check_func(func: &mut Function) -> Result<(), CheckError> {
     let mut ch = Checker {
         res: Ok(()),
-        vararg_func: func.varargs,
+        vararg_func: func.value.varargs,
         looplvl: 0,
     };
     walk_block(&mut func.body, &mut ch);

@@ -3,7 +3,9 @@
 //! rust-peg generates a parser from this definition at compile time
 
 use std::num::from_str_radix;
+use std::mem;
 
+use span::{Span, Spanned, mkspanned};
 use ast::*;
 
 
@@ -15,8 +17,8 @@ whitespace -> ()
     / "/*" ( [^*] / [*][^/] )* "*/"
 
 #[pub]
-ident -> &'input str
-    = [_a-zA-Z][_a-zA-Z0-9]* { match_str }
+ident -> Spanned<&'input str>
+    = [_a-zA-Z][_a-zA-Z0-9]* { mkspanned(match_str, start_pos, pos) }
 
 decstr -> &'input str
     = [0-9]+ { match_str }
@@ -82,13 +84,16 @@ boolean -> bool
     = "true" { true }
     / "false" { false }
 
-#[pub]
-literal -> Literal
+_literal -> Literal
     = f:float   { TFloat(f) }
     / i:integer { TInt(i) }
     / s:string  { TStr(s) }
     / b:boolean { TBool(b) }
     / "nil"     { TNil }
+
+#[pub]
+literal -> Spanned<Literal>
+    = l:_literal { mkspanned(l, start_pos, pos) }
 
 binop -> BinOp
     = "==" {BinOp::Eq} / "!=" {BinOp::NEq} / ">=" {BinOp::GEq} / "<=" {BinOp::LEq}
@@ -105,42 +110,61 @@ listsep -> ()
 
 /// Returns the expression with which something is indexed
 index -> Expr
-    = "." id:ident          { ELit(TStr(id.to_string())) }
-    / "[" e:expression "]"  { e }
+    = "." id:ident          { mkspanned(ELit(TStr(id.value.to_string())), start_pos, pos) }
+    / "[" e:expression "]"  { mkspanned(e.value, start_pos, pos) }
 
 variable -> Variable
     = i:ident idxs:index+    {
-        let mut v = VNamed(i.to_string());
+        let mut v = Spanned::new(i.span, VNamed(i.value.to_string()));
         for idx in idxs {
-            v = VIndex(Box::new(v), Box::new(idx));
+            let start = v.span.start;
+            let end = idx.span.start + idx.span.len;
+            v = mkspanned(VIndex(Box::new(v), Box::new(idx)), start, end);
         }
 
         v
     }
-    / i:ident { VNamed(i.to_string()) }
+    / i:ident { mkspanned(VNamed(i.value.to_string()), start_pos, pos) }
 
 callargs -> Vec<Expr>
     = whitespace* "(" args:expression ** listsep whitespace* ")" { args }
 
 call -> Call
     = v:variable args:callargs+ {
-        let mut it = args.into_iter();
-        let mut what = Call(Box::new(EVar(v)), it.next().unwrap());
+        fn get_arg_span(start: usize, args: &Vec<Expr>) -> Span {
+            let mut end: usize = start;
 
-        for list in it {
-            what = Call(Box::new(ECall(what)), list);
+            if args.len() > 0 {
+                end = args[args.len()-1].span.start + args[args.len()-1].span.len;
+            }
+
+            Span::new(start, end)
         }
 
-        what
+        let mut it = args.into_iter();
+        let first_args = it.next().unwrap();
+        let mut what = Spanned::new(get_arg_span(v.span.start, &first_args), Call {
+            callee: Box::new(Spanned::new(v.span, EVar(v))),
+            argv: first_args,
+        });
+
+        for list in it {
+            what = Spanned::new(get_arg_span(what.span.start, &list), Call {
+                callee: Box::new(Spanned::new(what.span, ECall(what.value))),
+                argv: list,
+            });
+        }
+
+        what.value
     }
 
 atom_inner -> Expr
-    = "(" expr:expression ")" { expr }
-    / "..." { EVarArgs }
-    / lit:literal { ELit(lit) }
-    / op:unop a:atom { EUnOp(op, Box::new(a)) }
-    / c:call { ECall(c) }
-    / v:variable { EVar(v) }
+    = "(" expr:expression ")" { mkspanned(expr.value, start_pos, pos) }
+    / "..." { mkspanned(EVarArgs, start_pos, pos) }
+    / lit:literal { Spanned::new(lit.span, ELit(lit.value)) }
+    / op:unop a:atom { mkspanned(EUnOp(op, Box::new(a)), start_pos, pos) }
+    / c:call { mkspanned(ECall(c), start_pos, pos) }
+    / v:variable { Spanned::new(v.span, EVar(v)) }
 
 // Atomic expression. Either a literal, a unary operator applied to another atom or a full expr
 // inside parentheses. Can not be decomposed any further.
@@ -149,7 +173,9 @@ atom -> Expr
 
 kvpair_inner -> (Expr, Expr)
     = "[" key:expression "]" whitespace* "=" whitespace* val:expression { (key, val) }
-    / id:ident whitespace* "=" whitespace* val:expression { (ELit(TStr(id.to_string())), val) }
+    / id:ident whitespace* "=" whitespace* val:expression {
+        (Spanned::new(id.span, ELit(TStr(id.value.to_string()))), val)
+    }
 
 kvpair -> (Expr, Expr)
     = whitespace* kv:kvpair_inner whitespace* { kv }
@@ -163,16 +189,16 @@ arraycons -> Vec<Expr>
     / "[" whitespace* "]" { Vec::new() }
 
 expr_special -> Expr
-    = t:tablecons { ETable(t) }
-    / a:arraycons { EArray(a) }
-    / "function" f:funcbody { EFunc(f) }
+    = t:tablecons { mkspanned(ETable(t), start_pos, pos) }
+    / a:arraycons { mkspanned(EArray(a), start_pos, pos) }
+    / "function" f:funcbody { mkspanned(EFunc(mkspanned(f, start_pos, pos)), start_pos, pos) }
 
 expr_rest -> (BinOp, Expr)
     = op:binop r:atom { (op, r) }
 
 expr_inner -> Expr
     = expr_special
-    / l:atom rest:expr_rest* { ERawOp(Box::new(l), rest) }
+    / l:atom rest:expr_rest* { mkspanned(ERawOp(Box::new(l), rest), start_pos, pos) }
 
 #[pub]
 expression -> Expr
@@ -185,8 +211,8 @@ expression_list -> Vec<Expr>
 if_else -> Block
     = "else" whitespace+ bl:block { bl }
 
-elseif -> (Expr, Block)
-    = "elseif" e:expression "then" whitespace+ body:block { (e, body) }
+elseif -> Spanned<(Expr, Block)>
+    = "elseif" e:expression "then" whitespace+ body:block { mkspanned((e, body), start_pos, pos) }
 
 stmt_if -> Stmt
     = "if" cond:expression "then" whitespace+ body:block elifs:elseif* el:if_else? "end" {
@@ -194,42 +220,44 @@ stmt_if -> Stmt
 
         // Start with "pure" else at the end
         let mut myelse = match el {
-            None => Block::new(vec![]),
+            None => mkspanned(_Block::new(vec![]), pos, pos),
             Some(block) => block,
         };
 
-        for (cond, body) in elifs {
-            myelse = Block::new(vec![
-                SIf {
+        for elif in elifs {
+            let (cond, body) = elif.value;
+
+            myelse = Spanned::new(elif.span, _Block::new(vec![
+                Spanned::new(elif.span, SIf {
                     cond: cond,
                     body: body,
                     el: myelse, // Old else block here
-                }
-            ]);
+                }),
+            ]));
         }
 
-        SIf {
+        mkspanned(SIf {
             cond: cond,
             body: body,
             el: myelse,
-        }
+        }, start_pos, pos)
     }
 
 stmt_while -> Stmt
     = "while" cond:expression "do" whitespace+ body:block "end" {
-        SWhile { cond: cond, body: body }
+        mkspanned(SWhile { cond: cond, body: body }, start_pos, pos)
     }
 
 stmt_repeat -> Stmt
     = "repeat" whitespace+ body:block "until" cond:expression {
-        SRepeat { abort_on: cond, body: body }
+        mkspanned(SRepeat { abort_on: cond, body: body }, start_pos, pos)
     }
 
 // List of comma-separated identifiers with at least one element
 identlist -> Vec<String>
     = ids:ident ++ listsep {
         let mut v = Vec::with_capacity(ids.len());
-        for id in ids { v.push(id.to_string()); }
+        for id in ids { v.push(id.value.to_string()); }
         v
     }
 
@@ -237,7 +265,7 @@ identlist -> Vec<String>
 eidentlist -> Vec<String>
     = ids:ident ** listsep {
         let mut v = Vec::with_capacity(ids.len());
-        for id in ids { v.push(id.to_string()); }
+        for id in ids { v.push(id.value.to_string()); }
         v
     }
 
@@ -249,25 +277,26 @@ _forexp -> Expr
 
 stmt_for -> Stmt
     = "for" whitespace+ var:ident whitespace* "=" start:expression "," end:expression step:_forexp? "do" whitespace+ body:block "end" {
-        SFor {
-            var: var.to_string(),
+        let stepspan = end.span;
+        mkspanned(SFor {
+            var: var.value.to_string(),
             start: start,
             end: end,
             step: match step {
-                None => ELit(TInt(1)),
+                None => Spanned::new(stepspan, ELit(TInt(1))),
                 Some(e) => e,
             },
             body: body,
-        }
+        }, start_pos, pos)
     }
 
 stmt_for_in -> Stmt
     = "for" whitespace+ vars:identlist whitespace+ "in" it:expression_list "do" whitespace+ body:block "end" {
-        SForIn {
+        mkspanned(SForIn {
             vars: vars,
             iter: it,
             body: body,
-        }
+        }, start_pos, pos)
     }
 
 varargs_def -> ()
@@ -281,14 +310,24 @@ funcparams -> (Vec<String>, bool)
     / "(" whitespace* "..." whitespace* ")" { (Vec::new(), true) }
     / "(" whitespace* ")" { (Vec::new(), false) }
 
-funcbody -> Function
+funcbody -> _Function
     = whitespace* params:funcparams whitespace* body:block "end" {
         let (pars, varargs) = params;
-        Function {
+        _Function {
             params: pars,
             varargs: varargs,
             body: body,
         }
+    }
+
+stmt_func -> Stmt
+    = "function" whitespace+ name:ident f:funcbody {
+        mkspanned(SFunc(Spanned::new(name.span, VNamed(name.value.to_string())), mkspanned(f, start_pos, pos)), start_pos, pos)
+    }
+
+stmt_lfunc -> Stmt
+    = "local" whitespace+ "function" whitespace+ name:ident f:funcbody {
+        mkspanned(SLFunc(name.value.to_string(), mkspanned(f, start_pos, pos)), start_pos, pos)
     }
 
 stmt_inner -> Stmt
@@ -297,20 +336,20 @@ stmt_inner -> Stmt
     / stmt_repeat
     / stmt_for_in
     / stmt_for
-    / "do" whitespace+ b:block "end" { SDo(b) }
-    / "break" { SBreak }
-    / "return" vals:expression_list { SReturn(vals) }
-    / "return" { SReturn(vec![]) }
-    / "function" whitespace+ name:ident f:funcbody { SFunc(VNamed(name.to_string()), f) }
-    / "local" whitespace+ "function" whitespace+ name:ident body:funcbody {
-        SLFunc(name.to_string(), body)
-    }
+    / stmt_func
+    / stmt_lfunc
+    / "do" whitespace+ b:block "end" { mkspanned(SDo(b), start_pos, pos) }
+    / "break" { mkspanned(SBreak, start_pos, pos) }
+    / "return" vals:expression_list { mkspanned(SReturn(vals), start_pos, pos) }
+    / "return" { mkspanned(SReturn(vec![]), start_pos, pos) }
     / "local" whitespace+ locals:identlist whitespace* "=" exprs:expression_list {
-        SDecl(locals, exprs)
+        mkspanned(SDecl(locals, exprs), start_pos, pos)
     }
-    / "local" whitespace+ locals:identlist { SDecl(locals, vec![]) }
-    / c:call { SCall(c) }
-    / vars:varlist whitespace* "=" vals:expression_list { SAssign(vars, vals) }
+    / "local" whitespace+ locals:identlist { mkspanned(SDecl(locals, vec![]), start_pos, pos) }
+    / c:call { mkspanned(SCall(c), start_pos, pos) }
+    / vars:varlist whitespace* "=" vals:expression_list {
+        mkspanned(SAssign(vars, vals), start_pos, pos)
+    }
 
 #[pub]
 statement -> Stmt
@@ -318,4 +357,4 @@ statement -> Stmt
 
 #[pub]
 block -> Block
-    = s:statement* { Block::new(s) }
+    = s:statement* { mkspanned(_Block::new(s), start_pos, pos) }

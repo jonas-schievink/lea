@@ -101,15 +101,15 @@ impl <'a, 'b, W: Writer> PrettyPrinter<'a, 'b, W> {
     /// Prints a function call
     #[allow(unused_must_use)]
     fn print_call(&mut self, c: &mut Call) {
-        let Call(ref mut expr, ref mut args) = *c;
+        let Call{ref mut callee, ref mut argv} = *c;
 
-        self.visit_expr(expr);
+        self.visit_expr(callee);
         self.writer.write_str("(");
 
-        for i in range(0, args.len()) {
-            self.visit_expr(&mut args[i]);
+        for i in range(0, argv.len()) {
+            self.visit_expr(&mut argv[i]);
 
-            if i < args.len() - 1 {
+            if i < argv.len() - 1 {
                 self.writer.write_str(", ");
             }
         }
@@ -123,7 +123,7 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
     fn visit_stmt(&mut self, stmt: &mut Stmt) {
         self.print_indent();
 
-        match *stmt {
+        match stmt.value {
             SDecl(ref names, ref mut vals) => {
                 write!(self.writer, "local ");
                 for i in range(0, names.len()) {
@@ -164,11 +164,11 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
                     }
                 }
             },
-            SDo(Block {ref mut stmts, ..}) => {
+            SDo(ref mut block) => {
                 write!(self.writer, "do{}", self.lineend);
                 self.indent();
 
-                for stmt in stmts {
+                for stmt in &mut block.value.stmts {
                     self.visit_stmt(stmt);
                 }
 
@@ -250,7 +250,7 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
                 write!(self.writer, ", ");
                 self.visit_expr(end);
 
-                match *step {
+                match step.value {
                     ELit(TInt(1)) => {},    // default step, ignore
                     _ => {
                         write!(self.writer, ", ");
@@ -301,7 +301,7 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
 
     #[allow(unused_must_use)]
     fn visit_expr(&mut self, expr: &mut Expr) {
-        match *expr {
+        match expr.value {
             ERawOp(ref mut lhs, ref mut rest) => {
                 self.visit_expr(lhs);
 
@@ -317,13 +317,13 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
                 let mut right_paren = false;    // Add parentheses to rhs
 
                 // Add parentheses if the precedence of lhs is lower / rhs is higher
-                match **lhs {
+                match lhs.value {
                     EBinOp(_, lop, _) => {
                         if lop.get_precedence() < prec { left_paren = true; }
                     },
                     _ => {},    // No need for parentheses
                 }
-                match **rhs {
+                match rhs.value {
                     EBinOp(_, rop, _) => {
                         if rop.get_precedence() > prec { right_paren = true; }
                     }
@@ -341,7 +341,7 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
                 if right_paren { write!(self.writer, ")"); }
             },
             EUnOp(op, ref mut operand) => {
-                match **operand {
+                match operand.value {
                     EBinOp(..) => {
                         write!(self.writer, "{}(", op);
                         self.visit_expr(operand);
@@ -359,7 +359,9 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
             ECall(ref mut c) => {
                 self.print_call(c);
             },
-            EFunc(Function {ref mut body, ref params, varargs}) => {
+            EFunc(ref mut f) => {
+                let _Function {ref mut body, ref params, varargs} = f.value;
+
                 write!(self.writer, "function(");
                 for i in range(0, params.len()) {
                     write!(self.writer, "{}", &params[i]);
@@ -389,7 +391,7 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
                     self.print_indent();
 
                     let mut key_full = true;    // Print the key in "[expr] = " notation
-                    match *key {
+                    match key.value {
                         ELit(TStr(ref s)) => {
                             // If it's an identifier, don't use "[expr] = " syntax
                             match parser::ident(s.as_slice()) {
@@ -448,7 +450,7 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
 
     #[allow(unused_must_use)]
     fn visit_var(&mut self, var: &mut Variable) {
-        match *var {
+        match var.value {
             VNamed(ref s) | VLocal(ref s) | VGlobal(ref s) => {
                 write!(self.writer, "{}", s);
             },

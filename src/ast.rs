@@ -1,9 +1,11 @@
-pub use self::Variable::*;
-pub use self::Stmt::*;
-pub use self::Expr::*;
+pub use self::_Variable::*;
+pub use self::_Stmt::*;
+pub use self::_Expr::*;
 pub use self::Literal::*;
 
 use std::fmt;
+
+use span::Spanned;
 
 use self::UnOp::*;
 use self::BinOp::*;
@@ -109,16 +111,16 @@ impl BinOp {
 /// A block containing any number of statements. All blocks carry a scope in which local variables
 /// can be declared.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Block {
+pub struct _Block {
     pub stmts: Vec<Stmt>,
 
     /// List of locals. Collected when resolving.
     pub locals: Vec<String>,
 }
 
-impl Block {
-    pub fn new(stmts: Vec<Stmt>) -> Block {
-        Block {
+impl _Block {
+    pub fn new(stmts: Vec<Stmt>) -> _Block {
+        _Block {
             stmts: stmts,
             locals: vec![],
         }
@@ -126,10 +128,13 @@ impl Block {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct Call(pub Box<Expr>, pub Vec<Expr>);
+pub struct Call {
+    pub callee: Box<Expr>,
+    pub argv: Vec<Expr>,
+}
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct Function {
+pub struct _Function {
     // Parameters this function takes. Each one declares a similarly named local in the body block.
     pub params: Vec<String>,
     pub varargs: bool,
@@ -138,7 +143,7 @@ pub struct Function {
 
 /// Something that can be assigned to a value
 #[derive(Clone, PartialEq, Debug)]
-pub enum Variable {
+pub enum _Variable {
     /// References a named variable; later resolved to local or global
     VNamed(String),
 
@@ -157,7 +162,7 @@ pub enum Variable {
 
 /// Statement nodes
 #[derive(Clone, Debug, PartialEq)]
-pub enum Stmt {
+pub enum _Stmt {
     /// Declare a list of locals and assign initial values.
     ///
     /// Initial values are optional and default to `nil` (the second vector can have less elements
@@ -231,7 +236,7 @@ pub enum Stmt {
 
 /// Expression nodes
 #[derive(Clone, PartialEq, Debug)]
-pub enum Expr {
+pub enum _Expr {
     ELit(Literal),
     EBinOp(Box<Expr>, BinOp, Box<Expr>),
     EUnOp(UnOp, Box<Expr>),
@@ -245,6 +250,7 @@ pub enum Expr {
 
     EVar(Variable),
     ECall(Call),
+
     /// Instantiates a function/closure
     EFunc(Function),
 
@@ -255,3 +261,9 @@ pub enum Expr {
     /// "..."; expands to var args. only valid if used inside varargs functions
     EVarArgs,
 }
+
+pub type Expr = Spanned<_Expr>;
+pub type Stmt = Spanned<_Stmt>;
+pub type Block = Spanned<_Block>;
+pub type Function = Spanned<_Function>;
+pub type Variable = Spanned<_Variable>;

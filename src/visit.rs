@@ -2,7 +2,6 @@
 
 use ast::*;
 
-
 pub trait Visitor : Sized {
     fn visit_stmt(&mut self, stmt: &mut Stmt) {
         walk_stmt(stmt, self);
@@ -14,18 +13,18 @@ pub trait Visitor : Sized {
         walk_var(var, self);
     }
     fn visit_func(&mut self, func: &mut Function) {
-        walk_block(&mut func.body, self);
+        walk_block(&mut func.value.body, self);
     }
 }
 
 pub fn walk_block<V: Visitor>(b: &mut Block, visitor: &mut V) {
-    for stmt in &mut b.stmts {
+    for stmt in &mut b.value.stmts {
         visitor.visit_stmt(stmt);
     }
 }
 
 pub fn walk_stmt<V: Visitor>(stmt: &mut Stmt, visitor: &mut V) {
-    match *stmt {
+    match stmt.value {
         SDecl(_, ref mut vals) => {
             for val in vals {
                 visitor.visit_expr(val);
@@ -39,8 +38,8 @@ pub fn walk_stmt<V: Visitor>(stmt: &mut Stmt, visitor: &mut V) {
                 visitor.visit_expr(val);
             }
         },
-        SDo(Block {ref mut stmts, ..}) => {
-            for stmt in stmts {
+        SDo(ref mut block) => {
+            for stmt in &mut block.value.stmts {
                 visitor.visit_stmt(stmt);
             }
         },
@@ -49,9 +48,9 @@ pub fn walk_stmt<V: Visitor>(stmt: &mut Stmt, visitor: &mut V) {
                 visitor.visit_expr(val);
             }
         },
-        SCall(Call(ref mut expr, ref mut args)) => {
-            visitor.visit_expr(expr);
-            for arg in args {
+        SCall(Call{ref mut callee, ref mut argv}) => {
+            visitor.visit_expr(callee);
+            for arg in argv {
                 visitor.visit_expr(arg);
             }
         },
@@ -64,22 +63,22 @@ pub fn walk_stmt<V: Visitor>(stmt: &mut Stmt, visitor: &mut V) {
         },
         SIf {ref mut cond, ref mut body, ref mut el} => {
             visitor.visit_expr(cond);
-            for stmt in &mut body.stmts {
+            for stmt in &mut body.value.stmts {
                 visitor.visit_stmt(stmt);
             }
-            for stmt in &mut el.stmts {
+            for stmt in &mut el.value.stmts {
                 visitor.visit_stmt(stmt);
             }
         },
         SWhile {ref mut cond, ref mut body} => {
             visitor.visit_expr(cond);
-            for stmt in &mut body.stmts {
+            for stmt in &mut body.value.stmts {
                 visitor.visit_stmt(stmt);
             }
         },
         SRepeat {ref mut abort_on, ref mut body} => {
             visitor.visit_expr(abort_on);
-            for stmt in &mut body.stmts {
+            for stmt in &mut body.value.stmts {
                 visitor.visit_stmt(stmt);
             }
         },
@@ -87,7 +86,7 @@ pub fn walk_stmt<V: Visitor>(stmt: &mut Stmt, visitor: &mut V) {
             visitor.visit_expr(start);
             visitor.visit_expr(step);
             visitor.visit_expr(end);
-            for stmt in &mut body.stmts {
+            for stmt in &mut body.value.stmts {
                 visitor.visit_stmt(stmt);
             }
         },
@@ -95,7 +94,7 @@ pub fn walk_stmt<V: Visitor>(stmt: &mut Stmt, visitor: &mut V) {
             for ref mut expr in iter_exprs {
                 visitor.visit_expr(expr);
             }
-            for stmt in &mut body.stmts {
+            for stmt in &mut body.value.stmts {
                 visitor.visit_stmt(stmt);
             }
         },
@@ -105,7 +104,7 @@ pub fn walk_stmt<V: Visitor>(stmt: &mut Stmt, visitor: &mut V) {
 }
 
 pub fn walk_expr<V: Visitor>(expr: &mut Expr, visitor: &mut V) {
-    match *expr {
+    match expr.value {
         ERawOp(ref mut lhs, ref mut rest) => {
             visitor.visit_expr(lhs);
             for t in rest {
@@ -123,9 +122,9 @@ pub fn walk_expr<V: Visitor>(expr: &mut Expr, visitor: &mut V) {
         EVar(ref mut var) => {
             visitor.visit_var(var);
         },
-        ECall(Call(ref mut expr, ref mut args)) => {
-            visitor.visit_expr(expr);
-            for arg in args {
+        ECall(Call{ref mut callee, ref mut argv}) => {
+            visitor.visit_expr(callee);
+            for arg in argv {
                 visitor.visit_expr(arg);
             }
         },
@@ -151,7 +150,7 @@ pub fn walk_expr<V: Visitor>(expr: &mut Expr, visitor: &mut V) {
 }
 
 pub fn walk_var<V: Visitor>(var: &mut Variable, visitor: &mut V) {
-    match *var {
+    match var.value {
         VIndex(ref mut var, ref mut idx) => {
             visitor.visit_var(var);
             visitor.visit_expr(idx);
@@ -171,6 +170,7 @@ mod tests {
     use super::*;
     use ast::*;
     use parser::block;
+    use span::Spanned;
 
     #[test]
     fn visit_noop() {
@@ -227,9 +227,9 @@ mod tests {
         // "i" is not visited, since it's stored as a string. Everything else is a "VNamed" since
         // variable resolution hasn't yet taken place.
         assert_eq!(v.vars, vec![
-            VNamed("a".to_string()),
-            VNamed("j".to_string()),
-            VNamed("i".to_string()),
+            Spanned::default(VNamed("a".to_string())),
+            Spanned::default(VNamed("j".to_string())),
+            Spanned::default(VNamed("i".to_string())),
         ]);
     }
 }
