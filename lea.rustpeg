@@ -108,18 +108,28 @@ unop -> UnOp
 listsep -> ()
     = whitespace* "," whitespace*
 
-/// Returns the expression with which something is indexed
-index -> Expr
-    = "." id:ident          { mkspanned(ELit(TStr(id.value.to_string())), start_pos, pos) }
-    / "[" e:expression "]"  { mkspanned(e.value, start_pos, pos) }
+/// Returns the expression with which something is indexed and a boolean indicating if dot-notation
+/// was used.
+index -> (Expr, bool)
+    = "." id:ident          { (mkspanned(ELit(TStr(id.value.to_string())), start_pos, pos), true) }
+    / "[" e:expression "]"  { (mkspanned(e.value, start_pos, pos), false) }
 
 variable -> Variable
     = i:ident idxs:index+    {
         let mut v = Spanned::new(i.span, VNamed(i.value.to_string()));
         for idx in idxs {
+            let (expr, dot) = idx;
+
             let start = v.span.start;
-            let end = idx.span.start + idx.span.len;
-            v = mkspanned(VIndex(Box::new(v), Box::new(idx)), start, end);
+            let end = expr.span.start + expr.span.len;
+
+            if dot {
+                if let ELit(TStr(s)) = expr.value {
+                    v = mkspanned(VDotIndex(Box::new(v), s), start, end);
+                    continue;
+                }
+            }
+            v = mkspanned(VIndex(Box::new(v), Box::new(expr)), start, end);
         }
 
         v

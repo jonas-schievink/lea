@@ -220,16 +220,15 @@ mod tests {
     fn expr_idx() {
         assert_eq!(expression("t").unwrap().value,
             EVar(Spanned::default(VNamed("t".to_string()))));
-        assert_eq!(expression("t.i"), expression("t[\"i\"]"));
+        assert!(expression("t.i") != expression("t[\"i\"]"));
 
-        assert_eq!(expression("t.i.j").unwrap().value, EVar(Spanned::default(VIndex(
-            Box::new(Spanned::default(VIndex(
+        assert_eq!(expression("t.i.j").unwrap().value, EVar(Spanned::default(VDotIndex(
+            Box::new(Spanned::default(VDotIndex(
                 Box::new(Spanned::default(VNamed("t".to_string()))),
-                Box::new(Spanned::default(ELit(TStr("i".to_string())))),
+                "i".to_string(),
             ))),
-            Box::new(Spanned::default(ELit(TStr("j".to_string())))),
+            "j".to_string(),
         ))));
-        assert_eq!(expression("t.i.j[8]"), expression("t[\"i\"][\"j\"][8]"));
     }
 
     #[test]
