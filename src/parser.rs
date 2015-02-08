@@ -1,6 +1,6 @@
 //! Wrapper around rust-peg generated parser methods.
 
-peg_file! parse("../lea.rustpeg");
+peg_file! parse("lea.rustpeg");
 
 pub use self::parse::{ident, literal};
 

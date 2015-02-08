@@ -77,7 +77,7 @@ impl Visitor for Checker {
     }
 }
 
-/// Checks that the passed block contains only valid statements.
+/// Checks that the passed function contains only valid statements.
 pub fn check_func(func: &mut Function) -> Result<(), CheckError> {
     let mut ch = Checker {
         res: Ok(()),
