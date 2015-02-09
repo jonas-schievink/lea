@@ -1,9 +1,11 @@
 [package]
 
 name = "lea"
-description = "A Lua-based language written in Rust"
 version = "0.0.1"
 authors = ["jonas-schievink <jonas@schievink.net>"]
+description = """
+A Lua-based language written in Rust
+"""
 
 repository = "https://github.com/jonas-schievink/lea"
 readme = "README.md"
