@@ -2,7 +2,7 @@
 
 peg_file! parse("lea.rustpeg");
 
-pub use self::parse::{ident, literal};
+pub use self::parse::{ParseError, ident, literal};
 
 use ast::*;
 use span::Spanned;
@@ -11,7 +11,7 @@ use visit::Visitor;
 use expr_parser::ExprParser;
 
 /// Parses an expression
-pub fn expression(input: &str) -> Result<Expr, String> {
+pub fn expression(input: &str) -> Result<Expr, ParseError> {
     let mut e = try!(parse::expression(input));
     ExprParser.visit_expr(&mut e);
 
@@ -19,7 +19,7 @@ pub fn expression(input: &str) -> Result<Expr, String> {
 }
 
 /// Parses a statement
-pub fn statement(input: &str) -> Result<Stmt, String> {
+pub fn statement(input: &str) -> Result<Stmt, ParseError> {
     let mut s = try!(parse::statement(input));
     ExprParser.visit_stmt(&mut s);
 
@@ -27,7 +27,7 @@ pub fn statement(input: &str) -> Result<Stmt, String> {
 }
 
 /// Parses a block of statements
-pub fn block(input: &str) -> Result<Block, String> {
+pub fn block(input: &str) -> Result<Block, ParseError> {
     let mut b = try!(parse::block(input));
     visit::walk_block(&mut b, &mut ExprParser);
 
@@ -36,7 +36,7 @@ pub fn block(input: &str) -> Result<Block, String> {
 
 /// Parses a block of statements and builds a function wrapper that can be run as the main function
 /// around it.
-pub fn parse_main(input: &str) -> Result<Function, String> {
+pub fn parse_main(input: &str) -> Result<Function, ParseError> {
     let blk = try!(block(input));
 
     Ok(Spanned::new(blk.span, _Function {
@@ -50,7 +50,7 @@ pub fn parse_main(input: &str) -> Result<Function, String> {
 ///
 /// The returned expression will be of the variant `ERawOp`.
 #[inline(always)]
-pub fn expression_raw(input: &str) -> Result<Expr, String> {
+pub fn expression_raw(input: &str) -> Result<Expr, ParseError> {
     parse::expression(input)
 }
 
@@ -308,7 +308,7 @@ mod tests {
     }
 
     #[test]
-    fn stmt_simple() {
+    fn stmt() {
         assert_eq!(statement("break").unwrap().value, SBreak);
         assert_eq!(statement("do end").unwrap().value, SDo(Spanned::default(_Block::new(vec![]))));
         assert_eq!(statement("do break end").unwrap().value, SDo(
@@ -320,117 +320,7 @@ mod tests {
                 Spanned::default(SBreak),
             ]))
         ));
-    }
 
-    #[test]
-    fn stmt_return() {
-        assert_eq!(statement("return").unwrap().value, SReturn(vec![]));
-        assert_eq!(statement("return 1").unwrap().value, SReturn(vec![Spanned::default(ELit(TInt(1)))]));
-        assert_eq!(statement("return 1, 2"), statement("return \t\n1 \n,  \t2"));
-
-        assert!(statement("return 1,").is_err());
-    }
-
-    #[test]
-    fn stmt_if() {
-        assert_eq!(statement("if 5 then end").unwrap().value, SIf {
-            cond: Spanned::default(ELit(TInt(5))),
-            body: Spanned::default(_Block::new(vec![])),
-            el: Spanned::default(_Block::new(vec![])),
-        });
-        assert_eq!(statement("if 5 then end"), statement("if 5 then else end"));
-        assert_eq!(statement("if 5 then end"), statement("if 5 then\nelse\nend"));
-        assert_eq!(statement("if 5 then end"), statement("if  5  then  else  end"));
-        assert_eq!(statement("if 5 then end"), statement("if\t5\tthen\telse\tend"));
-        assert_eq!(statement("if 5 then end"), statement("if 5 then else\n end"));
-
-        assert_eq!(statement("if 1 then break elseif 2 then break break else break end").unwrap().value,
-        SIf {
-            cond: Spanned::default(ELit(TInt(1))),
-            body: Spanned::default(_Block::new(vec![Spanned::default(SBreak)])),
-            el: Spanned::default(_Block::new(vec![Spanned::default(SIf {
-                cond: Spanned::default(ELit(TInt(2))),
-                body: Spanned::default(_Block::new(vec![
-                    Spanned::default(SBreak), Spanned::default(SBreak),
-                ])),
-                el: Spanned::default(_Block::new(vec![Spanned::default(SBreak)])),
-            })])),
-        });
-    }
-
-    #[test]
-    fn stmt_while() {
-        assert_eq!(statement("while 1 do break end").unwrap().value, SWhile {
-            cond: Spanned::default(ELit(TInt(1))),
-            body: Spanned::default(_Block::new(vec![Spanned::default(SBreak)])),
-        });
-        assert_eq!(statement("while 1 do end"), statement(" while   1  do  end  "));
-        assert_eq!(statement("while 1 do break end"), statement(" while   \n1\n do  break\t\n end  "));
-    }
-
-    #[test]
-    fn stmt_repeat() {
-        assert_eq!(statement("repeat break until 1").unwrap().value, SRepeat {
-            abort_on: Spanned::default(ELit(TInt(1))),
-            body: Spanned::default(_Block::new(vec![Spanned::default(SBreak)])),
-        });
-    }
-
-    #[test]
-    fn stmt_for() {
-        assert_eq!(statement("for i = 1, #t do do end break end").unwrap().value, SFor {
-            var: "i".to_string(),
-            start: Spanned::default(ELit(TInt(1))),
-            end: Spanned::default(EUnOp(
-                UnOp::Len,
-                Box::new(Spanned::default(EVar(Spanned::default(VNamed("t".to_string())))))
-            )),
-            step: Spanned::default(ELit(TInt(1))),
-            body: Spanned::default(_Block::new(vec![
-                Spanned::default(SDo(Spanned::default(_Block::new(vec![])))),
-                Spanned::default(SBreak),
-            ])),
-        });
-        assert_eq!(statement("for \n\t_\n=\n2,3,4\ndo\nend"), statement("for _=2,3,4 do end"));
-    }
-
-    #[test]
-    fn stmt_for_in() {
-        assert_eq!(statement("for i in j do end").unwrap().value, SForIn {
-            vars: vec!["i".to_string()],
-            iter: vec![Spanned::default(EVar(Spanned::default(VNamed("j".to_string()))))],
-            body: Spanned::default(_Block::new(vec![])),
-        });
-        assert_eq!(statement(" for  i,j, k , l in 1, 2,3 , 4 do break end").unwrap().value, SForIn {
-            vars: vec!["i".to_string(), "j".to_string(), "k".to_string(), "l".to_string()],
-            iter: vec![
-                Spanned::default(ELit(TInt(1))),
-                Spanned::default(ELit(TInt(2))),
-                Spanned::default(ELit(TInt(3))),
-                Spanned::default(ELit(TInt(4))),
-            ],
-            body: Spanned::default(_Block::new(vec![
-                Spanned::default(SBreak),
-            ])),
-        });
-    }
-
-    #[test]
-    fn stmt_decl() {
-        assert_eq!(statement("local i").unwrap().value, SDecl(vec!["i".to_string()], vec![]));
-        assert_eq!(statement("local j,k").unwrap().value, SDecl(vec!["j".to_string(), "k".to_string()], vec![]));
-        assert_eq!(statement("local i = nil").unwrap().value, SDecl(vec!["i".to_string()], vec![
-            Spanned::default(ELit(TNil))
-        ]));
-        assert_eq!(statement("local i,j = 0, 2").unwrap().value, SDecl(vec![
-            "i".to_string(), "j".to_string(),
-        ], vec![
-            Spanned::default(ELit(TInt(0))), Spanned::default(ELit(TInt(2))),
-        ]));
-    }
-
-    #[test]
-    fn stmt() {
         assert_eq!(statement("i, j = k, l").unwrap().value, SAssign(vec![
             Spanned::default(VNamed("i".to_string())), Spanned::default(VNamed("j".to_string())),
         ], vec![
@@ -465,6 +355,92 @@ mod tests {
         assert!(statement("function f(i,) end").is_err());
         assert!(statement("function f(,i) end").is_err());
         assert!(statement("function f(i,,j) end").is_err());
+
+        assert_eq!(statement("local i").unwrap().value, SDecl(vec!["i".to_string()], vec![]));
+        assert_eq!(statement("local j,k").unwrap().value, SDecl(vec!["j".to_string(), "k".to_string()], vec![]));
+        assert_eq!(statement("local i = nil").unwrap().value, SDecl(vec!["i".to_string()], vec![
+            Spanned::default(ELit(TNil))
+        ]));
+        assert_eq!(statement("local i,j = 0, 2").unwrap().value, SDecl(vec![
+            "i".to_string(), "j".to_string(),
+        ], vec![
+            Spanned::default(ELit(TInt(0))), Spanned::default(ELit(TInt(2))),
+        ]));
+
+        assert_eq!(statement("for i in j do end").unwrap().value, SForIn {
+            vars: vec!["i".to_string()],
+            iter: vec![Spanned::default(EVar(Spanned::default(VNamed("j".to_string()))))],
+            body: Spanned::default(_Block::new(vec![])),
+        });
+        assert_eq!(statement(" for  i,j, k , l in 1, 2,3 , 4 do break end").unwrap().value, SForIn {
+            vars: vec!["i".to_string(), "j".to_string(), "k".to_string(), "l".to_string()],
+            iter: vec![
+                Spanned::default(ELit(TInt(1))),
+                Spanned::default(ELit(TInt(2))),
+                Spanned::default(ELit(TInt(3))),
+                Spanned::default(ELit(TInt(4))),
+            ],
+            body: Spanned::default(_Block::new(vec![
+                Spanned::default(SBreak),
+            ])),
+        });
+
+        assert_eq!(statement("for i = 1, #t do do end break end").unwrap().value, SFor {
+            var: "i".to_string(),
+            start: Spanned::default(ELit(TInt(1))),
+            end: Spanned::default(EUnOp(
+                UnOp::Len,
+                Box::new(Spanned::default(EVar(Spanned::default(VNamed("t".to_string())))))
+            )),
+            step: Spanned::default(ELit(TInt(1))),
+            body: Spanned::default(_Block::new(vec![
+                Spanned::default(SDo(Spanned::default(_Block::new(vec![])))),
+                Spanned::default(SBreak),
+            ])),
+        });
+        assert_eq!(statement("for \n\t_\n=\n2,3,4\ndo\nend"), statement("for _=2,3,4 do end"));
+
+        assert_eq!(statement("repeat break until 1").unwrap().value, SRepeat {
+            abort_on: Spanned::default(ELit(TInt(1))),
+            body: Spanned::default(_Block::new(vec![Spanned::default(SBreak)])),
+        });
+
+        assert_eq!(statement("while 1 do break end").unwrap().value, SWhile {
+            cond: Spanned::default(ELit(TInt(1))),
+            body: Spanned::default(_Block::new(vec![Spanned::default(SBreak)])),
+        });
+        assert_eq!(statement("while 1 do end"), statement(" while   1  do  end  "));
+        assert_eq!(statement("while 1 do break end"), statement(" while \n1\n do break\t\n end "));
+
+        assert_eq!(statement("if 5 then end").unwrap().value, SIf {
+            cond: Spanned::default(ELit(TInt(5))),
+            body: Spanned::default(_Block::new(vec![])),
+            el: Spanned::default(_Block::new(vec![])),
+        });
+        assert_eq!(statement("if 5 then end"), statement("if 5 then else end"));
+        assert_eq!(statement("if 5 then end"), statement("if 5 then\nelse\nend"));
+        assert_eq!(statement("if 5 then end"), statement("if  5  then  else  end"));
+        assert_eq!(statement("if 5 then end"), statement("if\t5\tthen\telse\tend"));
+        assert_eq!(statement("if 5 then end"), statement("if 5 then else\n end"));
+
+        assert_eq!(statement("if 1 then break elseif 2 then break break else break end").unwrap().value,
+        SIf {
+            cond: Spanned::default(ELit(TInt(1))),
+            body: Spanned::default(_Block::new(vec![Spanned::default(SBreak)])),
+            el: Spanned::default(_Block::new(vec![Spanned::default(SIf {
+                cond: Spanned::default(ELit(TInt(2))),
+                body: Spanned::default(_Block::new(vec![
+                    Spanned::default(SBreak), Spanned::default(SBreak),
+                ])),
+                el: Spanned::default(_Block::new(vec![Spanned::default(SBreak)])),
+            })])),
+        });
+
+        assert_eq!(statement("return").unwrap().value, SReturn(vec![]));
+        assert_eq!(statement("return 1").unwrap().value, SReturn(vec![Spanned::default(ELit(TInt(1)))]));
+        assert_eq!(statement("return 1, 2"), statement("return \t\n1 \n,  \t2"));
+
+        assert!(statement("return 1,").is_err());
     }
 
     #[test]

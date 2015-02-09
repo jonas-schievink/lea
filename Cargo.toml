@@ -8,5 +8,5 @@ authors = ["jonas-schievink <jonas@schievink.net>"]
 repository = "https://github.com/jonas-schievink/lea"
 readme = "README.md"
 
-[dependencies]
-peg = "*"
+[dependencies.peg]
+git = "https://github.com/jonas-schievink/rust-peg.git"
