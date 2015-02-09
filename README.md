@@ -10,6 +10,9 @@
 * 0 based arrays
 * Larger standard library (including an FFI, filesystem functions, etc.)
 
+# Note
+
+This project does not have the same goal as Lua does. Lua is a very minimal language (including its reference implementation). Lea is basically the same language, but the implementation is much bigger, since the library provides an AST, multiple transformation passes, and a seperate bytecode emission pass. Lua does all of this basically while it's parsing the source code, which makes it much faster, but prevents operations on the whole AST (since there is none).
 
 ## Inequality operator `!=`
 
@@ -68,3 +71,10 @@ Lua was designed to be a very small language with a minimal runtime. This comes 
 Lea will provide a larger runtime library (mainly wrappers around the Rust stdlib):
 * **FFI** - A Foreign Function Interface for loading and calling C code at runtime makes Lua-typical wrapper modules written in C obsolete. Lua provides an FFI via third-party modules.
 * **Filesystem** - Lua's filesystem API is limited to simple operations, as more complex scenarios are not portable and rely on OS-specific features. Lea will provide a more complete API, including support for iterating over directories, changing the current directory, locking files, checking file permissions, etc.
+
+
+# TODOs
+
+## String interning
+
+Many strings encountered while parsing source code are not unique (eg. identifiers), which makes them candidates for string interning. This should save quite a bit of memory while compiling source code.
