@@ -12,8 +12,11 @@ pub trait Visitor : Sized {
     fn visit_var(&mut self, var: &mut Variable) {
         walk_var(var, self);
     }
+    fn visit_block(&mut self, block: &mut Block) {
+        walk_block(block, self);
+    }
     fn visit_func(&mut self, func: &mut Function) {
-        walk_block(&mut func.value.body, self);
+        self.visit_block(&mut func.value.body);
     }
 }
 
@@ -39,9 +42,7 @@ pub fn walk_stmt<V: Visitor>(stmt: &mut Stmt, visitor: &mut V) {
             }
         },
         SDo(ref mut block) => {
-            for stmt in &mut block.value.stmts {
-                visitor.visit_stmt(stmt);
-            }
+            visitor.visit_block(block);
         },
         SReturn(ref mut vals) => {
             for val in vals {
@@ -63,40 +64,28 @@ pub fn walk_stmt<V: Visitor>(stmt: &mut Stmt, visitor: &mut V) {
         },
         SIf {ref mut cond, ref mut body, ref mut el} => {
             visitor.visit_expr(cond);
-            for stmt in &mut body.value.stmts {
-                visitor.visit_stmt(stmt);
-            }
-            for stmt in &mut el.value.stmts {
-                visitor.visit_stmt(stmt);
-            }
+            visitor.visit_block(body);
+            visitor.visit_block(el);
         },
         SWhile {ref mut cond, ref mut body} => {
             visitor.visit_expr(cond);
-            for stmt in &mut body.value.stmts {
-                visitor.visit_stmt(stmt);
-            }
+            visitor.visit_block(body);
         },
         SRepeat {ref mut abort_on, ref mut body} => {
             visitor.visit_expr(abort_on);
-            for stmt in &mut body.value.stmts {
-                visitor.visit_stmt(stmt);
-            }
+            visitor.visit_block(body);
         },
         SFor {ref mut start, ref mut step, ref mut end, ref mut body, ..} => {
             visitor.visit_expr(start);
             visitor.visit_expr(step);
             visitor.visit_expr(end);
-            for stmt in &mut body.value.stmts {
-                visitor.visit_stmt(stmt);
-            }
+            visitor.visit_block(body);
         },
         SForIn {iter: ref mut iter_exprs, ref mut body, ..} => {
             for ref mut expr in iter_exprs {
                 visitor.visit_expr(expr);
             }
-            for stmt in &mut body.value.stmts {
-                visitor.visit_stmt(stmt);
-            }
+            visitor.visit_block(body);
         },
 
         SBreak => {},
@@ -224,8 +213,8 @@ mod tests {
         let mut v = VarVisitor { vars: Vec::new() };
         walk_block(&mut myblock, &mut v);
 
-        // "i" is not visited, since it's stored as a string. Everything else is a "VNamed" since
-        // variable resolution hasn't yet taken place.
+        // The first "i" is not visited, since it's stored as a string. Everything else is a
+        // "VNamed" since variable resolution hasn't yet taken place.
         assert_eq!(v.vars, vec![
             Spanned::default(VNamed("a".to_string())),
             Spanned::default(VNamed("j".to_string())),

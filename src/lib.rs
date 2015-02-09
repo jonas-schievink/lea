@@ -13,3 +13,4 @@ pub mod ast;
 pub mod visit;
 pub mod prettyprint;
 pub mod check;
+pub mod resolve;

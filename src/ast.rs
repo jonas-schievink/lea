@@ -110,7 +110,7 @@ impl BinOp {
 
 /// A block containing any number of statements. All blocks carry a scope in which local variables
 /// can be declared.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct _Block {
     pub stmts: Vec<Stmt>,
 
@@ -123,6 +123,35 @@ impl _Block {
         _Block {
             stmts: stmts,
             locals: vec![],
+        }
+    }
+
+    pub fn with_locals(stmts: Vec<Stmt>, locals: Vec<String>) -> _Block {
+        _Block {
+            stmts: stmts,
+            locals: locals,
+        }
+    }
+}
+
+impl PartialEq for _Block {
+    fn eq(&self, other: &_Block) -> bool {
+        use std::collections::HashSet;
+
+        // Compares locals ignoring their order.
+        if self.stmts == other.stmts {
+            let mut set = HashSet::new();
+            for l in &self.locals {
+                set.insert(l);
+            }
+
+            for l in &other.locals {
+                if !set.contains(l) { return false; }
+            }
+
+            true
+        } else {
+            false
         }
     }
 }
