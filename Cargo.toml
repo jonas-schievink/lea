@@ -1,12 +1,12 @@
 [package]
 
 name = "lea"
+description = "A Lua-based language written in Rust"
 version = "0.0.1"
 authors = ["jonas-schievink <jonas@schievink.net>"]
 
+repository = "https://github.com/jonas-schievink/lea"
+readme = "README.md"
+
 [dependencies]
 peg = "*"
-
-#[dependencies.peg]
-#path = "../rust-peg"
-
