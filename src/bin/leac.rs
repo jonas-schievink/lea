@@ -13,6 +13,7 @@ use std::fmt;
 use std::old_io::{stdio, File};
 
 use lea::parser::parse_main;
+use lea::check;
 
 macro_rules! printerr {
     ($($arg:tt)*) => {
@@ -35,16 +36,29 @@ fn print_usage() {
 
 fn read_and_compile<T: Reader>(file: &mut T) {
     match file.read_to_string() {
-        Ok(source) => {
-            let res = parse_main(source.as_slice());
-
-            if let Err(err) = res {
-                printerr!("{}", err);
-            }
-        },
         Err(err) => {
             printerr!("error opening file: {}", err);
-        }
+            return;
+        },
+        Ok(source) => {
+            match parse_main(source.as_slice()) {
+                Err(err) => {
+                    printerr!("parse error: {}", err);
+                    return;
+                },
+                Ok(mut main) => {
+                    match check::check_func(&mut main) {
+                        Err(err) => {
+                            printerr!("check error: {}", err);
+                            return;
+                        },
+                        Ok(()) => {
+                            // TODO Resolve
+                        },
+                    }
+                },
+            }
+        },
     }
 }
 
@@ -67,11 +81,11 @@ pub fn main() {
             "--help" | "-h" => {
                 print_usage();
                 return;
-            }
+            },
             _ => {
                 // Unknown arg, must be input file
                 inputarg = Some(arg.clone());
-            }
+            },
         }
 
         lastarg = Some(arg);
