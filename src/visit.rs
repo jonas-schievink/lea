@@ -151,6 +151,7 @@ pub fn walk_var<V: Visitor>(var: &mut Variable, visitor: &mut V) {
         VNamed(..) => {},
         VLocal(..) => {},
         VGlobal(..) => {},
+        VUpvalue(..) => {},
     }
 }
 

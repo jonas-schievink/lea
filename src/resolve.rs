@@ -11,7 +11,7 @@ struct Resolver<'a> {
     /// Set of locals reachable from within the currently resolved block (contains all locals from
     /// parent scopes)
     reachable: HashSet<String>,
-    /// Set of locals declared within this block
+    /// Set of locals declared within this block. Subset of `reachable`.
     owned: HashSet<String>,
 }
 
@@ -62,6 +62,12 @@ impl <'a> Visitor for Resolver<'a> {
                     walk_expr(expr, self);
                 }
             },
+            SFor{ref var, ref mut body, ..} => {
+                resolve_with_locals(body, vec![var.clone()]);
+            },
+            SForIn{ref vars, ref mut body, ..} => {
+                resolve_with_locals(body, vars.clone());
+            },
             _ => {
                 walk_stmt(s, self);
             }
@@ -80,6 +86,21 @@ impl <'a> Visitor for Resolver<'a> {
 
         resolve_block_with(b, res);
     }
+}
+
+/// Resolves a block and defines a list of locals that can be used inside the block
+fn resolve_with_locals(b: &mut Block, locals: Vec<String>) {
+    let mut set = HashSet::new();
+    for local in locals {
+        set.insert(local);
+    }
+
+    let res = Resolver {
+        reachable: set.clone(),
+        owned: set,
+    };
+
+    resolve_block_with(b, res);
 }
 
 fn resolve_block_with<'a>(b: &mut Block, mut res: Resolver<'a>) {

@@ -179,6 +179,9 @@ pub enum _Variable {
     /// References the local variable in the current scope with the given name
     VLocal(String),
 
+    /// References a local declared by the parent function
+    VUpvalue(String),
+
     /// References a named global
     VGlobal(String),
 
