@@ -14,6 +14,7 @@ use std::old_io::{stdio, File};
 
 use lea::parser::parse_main;
 use lea::check;
+use lea::resolve;
 
 macro_rules! printerr {
     ($($arg:tt)*) => {
@@ -53,7 +54,8 @@ fn read_and_compile<T: Reader>(file: &mut T) {
                             return;
                         },
                         Ok(()) => {
-                            // TODO Resolve
+                            // Resolution cannot fail
+                            resolve::resolve_block(&mut main.body);
                         },
                     }
                 },
