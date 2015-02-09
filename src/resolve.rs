@@ -21,21 +21,26 @@ impl <'a> Resolver<'a> {
     }
 
     fn resolve_var(&mut self, v: &mut Variable) {
-        if let VNamed(..) = v.value {
-            let mut name = String::new();
+        match v.value {
+            VNamed(..) => {
+                let mut name = String::new();
 
-            if let VNamed(ref mut vname) = v.value {
-                mem::swap(vname, &mut name);
+                if let VNamed(ref mut vname) = v.value {
+                    mem::swap(vname, &mut name);
+                }
+
+                mem::replace(&mut v.value, if self.is_declared(&name) {
+                    VLocal(name)
+                } else {
+                    VGlobal(name)
+                });
+            },
+            VIndex(..) => {
+                walk_var(v, self);
+            },
+            _ => {
+                panic!("unexpected variable: {:?}", v.value);
             }
-
-            mem::replace(&mut v.value, if self.is_declared(&name) {
-                VLocal(name)
-            } else {
-                VGlobal(name)
-            });
-        } else {
-            // Only VNamed variables should be existing at this point
-            unreachable!();
         }
     }
 }
@@ -93,7 +98,7 @@ i = 0
 do
     local i
     local j = i
-    j = i
+    i[j] = j
 end
 j = i
 "#).unwrap();
@@ -110,8 +115,11 @@ j = i
                     Spanned::default(EVar(Spanned::default(VLocal("i".to_string())))),
                 ])),
                 Spanned::default(SAssign(
-                    vec![Spanned::default(VLocal("j".to_string()))],
-                    vec![Spanned::default(EVar(Spanned::default(VLocal("i".to_string()))))],
+                    vec![Spanned::default(VIndex(
+                        Box::new(Spanned::default(VLocal("i".to_string()))),
+                        Box::new(Spanned::default(EVar(Spanned::default(VLocal("j".to_string())))))
+                    ))],
+                    vec![Spanned::default(EVar(Spanned::default(VLocal("j".to_string()))))],
                 )),
             ], vec!["i".to_string(), "j".to_string()])))),
             Spanned::default(SAssign(
