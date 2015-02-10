@@ -9,7 +9,7 @@ use std::ops::{Deref, DerefMut};
 /// A span is a range of input characters in the source code. Span does not know about lines and
 /// the PEG parser handles lines as whitespace, so it is not trivial to convert a Span object (a
 /// span of characters) into a span of lines.
-#[derive(Copy, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Span {
     pub start: usize,
     pub len: usize,

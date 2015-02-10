@@ -4,8 +4,9 @@ pub use self::_Expr::*;
 pub use self::Literal::*;
 
 use std::fmt;
+use std::collections::HashSet;
 
-use span::Spanned;
+use span::{Span, Spanned};
 
 use self::UnOp::*;
 use self::BinOp::*;
@@ -111,33 +112,34 @@ impl BinOp {
 /// A block containing any number of statements. All blocks carry a scope in which local variables
 /// can be declared.
 #[derive(Clone, Debug)]
-pub struct _Block {
+pub struct Block {
+    pub span: Span,
     pub stmts: Vec<Stmt>,
 
-    /// List of locals. Collected when resolving.
+    /// List of locals declared inside this block. Collected when resolving.
     pub locals: Vec<String>,
 }
 
-impl _Block {
-    pub fn new(stmts: Vec<Stmt>) -> _Block {
-        _Block {
+impl Block {
+    pub fn new(stmts: Vec<Stmt>, span: Span) -> Block {
+        Block {
+            span: span,
             stmts: stmts,
-            locals: vec![],
+            locals: Vec::new(),
         }
     }
 
-    pub fn with_locals(stmts: Vec<Stmt>, locals: Vec<String>) -> _Block {
-        _Block {
+    pub fn with_locals(stmts: Vec<Stmt>, locals: Vec<String>, span: Span) -> Block {
+        Block {
+            span: span,
             stmts: stmts,
             locals: locals,
         }
     }
 }
 
-impl PartialEq for _Block {
-    fn eq(&self, other: &_Block) -> bool {
-        use std::collections::HashSet;
-
+impl PartialEq for Block {
+    fn eq(&self, other: &Block) -> bool {
         // Compares locals ignoring their order.
         if self.stmts == other.stmts {
             let mut set = HashSet::new();
@@ -296,6 +298,5 @@ pub enum _Expr {
 
 pub type Expr = Spanned<_Expr>;
 pub type Stmt = Spanned<_Stmt>;
-pub type Block = Spanned<_Block>;
 pub type Function = Spanned<_Function>;
 pub type Variable = Spanned<_Variable>;

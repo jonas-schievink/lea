@@ -230,20 +230,20 @@ stmt_if -> Stmt
 
         // Start with "pure" else at the end
         let mut myelse = match el {
-            None => mkspanned(_Block::new(vec![]), pos, pos),
+            None => Block::new(vec![], Span::new(pos, pos)),
             Some(block) => block,
         };
 
         for elif in elifs {
             let (cond, body) = elif.value;
 
-            myelse = Spanned::new(elif.span, _Block::new(vec![
+            myelse = Block::new(vec![
                 Spanned::new(elif.span, SIf {
                     cond: cond,
                     body: body,
                     el: myelse, // Old else block here
                 }),
-            ]));
+            ], elif.span);
         }
 
         mkspanned(SIf {
@@ -367,4 +367,4 @@ statement -> Stmt
 
 #[pub]
 block -> Block
-    = s:statement* { mkspanned(_Block::new(s), start_pos, pos) }
+    = s:statement* { Block::new(s, Span::new(start_pos, pos)) }

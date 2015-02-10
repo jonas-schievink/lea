@@ -21,7 +21,7 @@ pub trait Visitor : Sized {
 }
 
 pub fn walk_block<V: Visitor>(b: &mut Block, visitor: &mut V) {
-    for stmt in &mut b.value.stmts {
+    for stmt in &mut b.stmts {
         visitor.visit_stmt(stmt);
     }
 }

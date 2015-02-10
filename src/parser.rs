@@ -61,6 +61,8 @@ mod tests {
     use ast::*;
     use span::Spanned;
 
+    use std::default::Default;
+
     #[test]
     fn literals() {
         assert_eq!(literal("0").unwrap().value, TInt(0));
@@ -266,15 +268,15 @@ mod tests {
             EFunc(Spanned::default(_Function {
                 params: vec![],
                 varargs: false,
-                body: Spanned::default(_Block::new(vec![])),
+                body: Block::new(vec![], Default::default()),
         })));
         assert_eq!(expression("function(i, j, ...) break end").unwrap().value,
             EFunc(Spanned::default(_Function {
                 params: vec!["i".to_string(), "j".to_string()],
                 varargs: true,
-                body: Spanned::default(_Block::new(vec![
+                body: Block::new(vec![
                     Spanned::default(SBreak),
-                ])),
+                ], Default::default()),
         })));
 
         assert!(expression("function(...)end").is_ok());
@@ -310,15 +312,17 @@ mod tests {
     #[test]
     fn stmt() {
         assert_eq!(statement("break").unwrap().value, SBreak);
-        assert_eq!(statement("do end").unwrap().value, SDo(Spanned::default(_Block::new(vec![]))));
+        assert_eq!(statement("do end").unwrap().value, SDo(Block::new(
+            vec![], Default::default()
+        )));
         assert_eq!(statement("do break end").unwrap().value, SDo(
-            Spanned::default(_Block::new(vec![Spanned::default(SBreak)]))
+            Block::new(vec![Spanned::default(SBreak)], Default::default())
         ));
         assert_eq!(statement("do do end break end").unwrap().value, SDo(
-            Spanned::default(_Block::new(vec![
-                Spanned::default(SDo(Spanned::default(_Block::new(vec![])))),
+            Block::new(vec![
+                Spanned::default(SDo(Block::new(vec![], Default::default()))),
                 Spanned::default(SBreak),
-            ]))
+            ], Default::default())
         ));
 
         assert_eq!(statement("i, j = k, l").unwrap().value, SAssign(vec![
@@ -339,7 +343,7 @@ mod tests {
             Spanned::default(_Function {
                 params: vec![],
                 varargs: false,
-                body: Spanned::default(_Block::new(vec![])),
+                body: Block::new(vec![], Default::default()),
             })
         ));
 
@@ -348,7 +352,7 @@ mod tests {
             Spanned::default(_Function {
                 params: vec!["i".to_string(), "j".to_string()],
                 varargs: false,
-                body: Spanned::default(_Block::new(vec![])),
+                body: Block::new(vec![], Default::default()),
             })
         ));
 
@@ -370,7 +374,7 @@ mod tests {
         assert_eq!(statement("for i in j do end").unwrap().value, SForIn {
             vars: vec!["i".to_string()],
             iter: vec![Spanned::default(EVar(Spanned::default(VNamed("j".to_string()))))],
-            body: Spanned::default(_Block::new(vec![])),
+            body: Block::new(vec![], Default::default()),
         });
         assert_eq!(statement(" for  i,j, k , l in 1, 2,3 , 4 do break end").unwrap().value, SForIn {
             vars: vec!["i".to_string(), "j".to_string(), "k".to_string(), "l".to_string()],
@@ -380,9 +384,9 @@ mod tests {
                 Spanned::default(ELit(TInt(3))),
                 Spanned::default(ELit(TInt(4))),
             ],
-            body: Spanned::default(_Block::new(vec![
+            body: Block::new(vec![
                 Spanned::default(SBreak),
-            ])),
+            ], Default::default()),
         });
 
         assert_eq!(statement("for i = 1, #t do do end break end").unwrap().value, SFor {
@@ -393,29 +397,29 @@ mod tests {
                 Box::new(Spanned::default(EVar(Spanned::default(VNamed("t".to_string())))))
             )),
             step: Spanned::default(ELit(TInt(1))),
-            body: Spanned::default(_Block::new(vec![
-                Spanned::default(SDo(Spanned::default(_Block::new(vec![])))),
+            body: Block::new(vec![
+                Spanned::default(SDo(Block::new(vec![], Default::default()))),
                 Spanned::default(SBreak),
-            ])),
+            ], Default::default()),
         });
         assert_eq!(statement("for \n\t_\n=\n2,3,4\ndo\nend"), statement("for _=2,3,4 do end"));
 
         assert_eq!(statement("repeat break until 1").unwrap().value, SRepeat {
             abort_on: Spanned::default(ELit(TInt(1))),
-            body: Spanned::default(_Block::new(vec![Spanned::default(SBreak)])),
+            body: Block::new(vec![Spanned::default(SBreak)], Default::default()),
         });
 
         assert_eq!(statement("while 1 do break end").unwrap().value, SWhile {
             cond: Spanned::default(ELit(TInt(1))),
-            body: Spanned::default(_Block::new(vec![Spanned::default(SBreak)])),
+            body: Block::new(vec![Spanned::default(SBreak)], Default::default()),
         });
         assert_eq!(statement("while 1 do end"), statement(" while   1  do  end  "));
         assert_eq!(statement("while 1 do break end"), statement(" while \n1\n do break\t\n end "));
 
         assert_eq!(statement("if 5 then end").unwrap().value, SIf {
             cond: Spanned::default(ELit(TInt(5))),
-            body: Spanned::default(_Block::new(vec![])),
-            el: Spanned::default(_Block::new(vec![])),
+            body: Block::new(vec![], Default::default()),
+            el: Block::new(vec![], Default::default()),
         });
         assert_eq!(statement("if 5 then end"), statement("if 5 then else end"));
         assert_eq!(statement("if 5 then end"), statement("if 5 then\nelse\nend"));
@@ -426,14 +430,14 @@ mod tests {
         assert_eq!(statement("if 1 then break elseif 2 then break break else break end").unwrap().value,
         SIf {
             cond: Spanned::default(ELit(TInt(1))),
-            body: Spanned::default(_Block::new(vec![Spanned::default(SBreak)])),
-            el: Spanned::default(_Block::new(vec![Spanned::default(SIf {
+            body: Block::new(vec![Spanned::default(SBreak)], Default::default()),
+            el: Block::new(vec![Spanned::default(SIf {
                 cond: Spanned::default(ELit(TInt(2))),
-                body: Spanned::default(_Block::new(vec![
+                body: Block::new(vec![
                     Spanned::default(SBreak), Spanned::default(SBreak),
-                ])),
-                el: Spanned::default(_Block::new(vec![Spanned::default(SBreak)])),
-            })])),
+                ], Default::default()),
+                el: Block::new(vec![Spanned::default(SBreak)], Default::default()),
+            })], Default::default()),
         });
 
         assert_eq!(statement("return").unwrap().value, SReturn(vec![]));
@@ -452,9 +456,9 @@ mod tests {
         assert_eq!(statement("break /* test */").unwrap().value, SBreak);
         assert_eq!(statement("break /**///").unwrap().value, SBreak);
         assert_eq!(statement("do break /*aeurebv// */break end").unwrap().value, SDo(
-            Spanned::default(_Block::new(vec![
+            Block::new(vec![
                 Spanned::default(SBreak), Spanned::default(SBreak),
-            ]))
+            ], Default::default())
         ));
     }
 
@@ -465,7 +469,7 @@ mod tests {
     t = 1
     local r, s = 4, 2, 1
     function f(g, ...) do end end
-    "#).unwrap().value, _Block::new(vec![
+    "#).unwrap(), Block::new(vec![
             Spanned::default(SAssign(
                 vec![Spanned::default(VNamed("t".to_string()))],
                 vec![Spanned::default(ELit(TInt(1)))]
@@ -478,10 +482,10 @@ mod tests {
             Spanned::default(SFunc(Spanned::default(VNamed("f".to_string())), Spanned::default(_Function {
                 params: vec!["g".to_string()],
                 varargs: true,
-                body: Spanned::default(_Block::new(vec![
-                    Spanned::default(SDo(Spanned::default(_Block::new(vec![]))))
-                ])),
+                body: Block::new(vec![
+                    Spanned::default(SDo(Block::new(vec![], Default::default())))
+                ], Default::default()),
             }))),
-        ]));
+        ], Default::default()));
     }
 }

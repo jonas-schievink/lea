@@ -168,7 +168,7 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
                 write!(self.writer, "do{}", self.lineend);
                 self.indent();
 
-                for stmt in &mut block.value.stmts {
+                for stmt in &mut block.stmts {
                     self.visit_stmt(stmt);
                 }
 
