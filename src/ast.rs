@@ -109,7 +109,7 @@ impl BinOp {
     }
 }
 
-/// A block containing any number of statements. All blocks carry a scope in which local variables
+/// A block containing any number of statements. All blocks define a scope in which local variables
 /// can be declared.
 #[derive(Clone, Debug)]
 pub struct Block {
@@ -118,6 +118,9 @@ pub struct Block {
 
     /// List of locals declared inside this block. Collected when resolving.
     pub locals: Vec<String>,
+    /// Set to true while resolving in case a local inside this block is used as an upvalue.
+    /// Causes the emission of a CLOSE opcode that closes all locals used as upvalues.
+    pub needs_close: bool,
 }
 
 impl Block {
@@ -178,11 +181,13 @@ pub enum _Variable {
     /// References a named variable; later resolved to local or global
     VNamed(String),
 
-    /// References the local variable in the current scope with the given name
-    VLocal(String),
+    /// References a local variable in the current scope if the usize is 0 and in the scope n
+    /// levels above the current one otherwise.
+    VLocal(String, usize),
 
-    /// References a local declared by the parent function
-    VUpvalue(String),
+    /// References a local declared by a parent function (at the defined level, where 0 is the
+    /// direct parent)
+    VUpvalue(String, usize),
 
     /// References a named global
     VGlobal(String),

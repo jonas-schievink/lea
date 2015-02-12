@@ -8,39 +8,101 @@ use std::collections::HashMap;
 
 use self::LocalRef::*;
 
+
+/// Describes how a local can be reached
+#[derive(PartialEq, Eq, Copy, Debug)]
 enum LocalRef {
-    /// Local declared in the current block
+    /// Local declared in the current block (with the given id)
     Owned(usize),
     /// Local declared in a parent block
     /// id, parent block level (0 = direct parent, 1 = parent of parent, ...)
     Outer(usize, usize),
-    /// Upvalue with the given id defined in the parent function
+    /// Upvalue with the given id defined in some active scope of the parent function (`pfunc`)
     Upvalue(usize),
 }
 
 /// A resolver will work on a single scope and resolve any `VNamed` references
 struct Resolver<'a> {
-    /// Set of locals reachable from within the currently resolved block (contains all locals from
-    /// parent scopes)
+    /// Caches locals that were already looked up. Newly declared locals also get an entry here.
     reachable: HashMap<String, LocalRef>,
-    /// Set of locals declared within this block. Subset of `reachable`.
+
+    /// Set of locals declared within this block. Subset of `reachable`. Maps local names to an
+    /// index into `local_vec`.
     owned: HashMap<String, usize>,
+
     /// Locals owned by (declared in) the current block
     local_vec: Vec<String>,
+
+    /// Resolver of the parent scope
+    pscope: Option<&'a Resolver<'a>>,
+
     /// Resolver of the parent function. Knows all locals available to this function as upvalues.
     pfunc: Option<&'a Resolver<'a>>,
 }
 
 impl <'a> Resolver<'a> {
-    fn is_local_reachable(&mut self, name: &str) -> bool {
-        self.reachable.get(name).is_some()
+    /// Tries to find a local with the given name. Looks up the `reachable` cache first. If not
+    /// found, searches the parent scope(s), then the parent function(s) (if existing). If the
+    /// local was found, adds an entry for it to the `reachable` map and returns a copy of the
+    /// `LocalRef`. Otherwise, returns None.
+    fn lookup(&mut self, name: &str) -> Option<LocalRef> {
+        if let Some(l) = self.reachable.get(name) {
+            // Cache hit, return a copy
+            Some(l)
+        } else {
+            // Locals declared inside the current scope are added automatically, no need to search
+            // them. Search containing scopes (parents) first:
+            if let Some(parent) = self.pscope {
+                if let Some(l) = parent.lookup(name) {
+                    // Parent found the local, modify the `LocalRef` to make it valid for us
+                    let result = match l {
+                        Owned(id) => {
+                            // Local owned by direct parent
+                            Outer(id, 0)
+                        },
+                        Outer(id, lvl) => {
+                            // Increment level, since we're a scope below
+                            Outer(id, lvl+1)
+                        },
+                        Upvalue(id) => {
+                            
+                        },
+                    };
+
+                    self.reachable.insert(name, result);
+                    Some(result)
+                }
+            }
+        }
     }
 
-    fn is_upvalue(&mut self, name: &String) -> bool {
-        // Ask the parent function's resolver to search for an available upvalue
-        // This recursively registers the upvalue as one, should some function up the stack have a
-        // local with the correct name.
-        false
+    /// Returns the way the local with the given name is reachable
+    fn is_reachable(&mut self, name: &str) -> Option<LocalRef> {
+        if let Some(l) = self.reachable.get(name) {
+            // Owned local, parent scope owned local, already used Upvalue
+            Some(l)
+        } else {
+            // Other option: Not yet used Upvalue
+            match self.pfunc {
+                None => None,
+                Some(res) => {
+                    // Ask parent function's resolver
+                    if let Some(var) = res.is_reachable(name) {
+                        match var {
+
+                        }
+
+                        // "Import" Upvalue
+                        let upval = Upvalue()
+                        self.reachable
+                    } else {
+                        // Parent resolver doesn't know => Unreachable
+                        // (this will read/write a global instead)
+                        None
+                    }
+                }
+            }
+        }
     }
 
     fn add_local(&mut self, name: String) {
@@ -60,7 +122,7 @@ impl <'a> Resolver<'a> {
                     mem::swap(vname, &mut name);
                 }
 
-                mem::replace(&mut v.value, if self.is_local_reachable(&name) {
+                mem::replace(&mut v.value, if Some((l)) = self.reachable.get(&name) {
                     VLocal(name)
                 } else {
                     VGlobal(name)
