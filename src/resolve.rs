@@ -5,6 +5,7 @@ use visit::*;
 
 use std::mem;
 use std::collections::HashMap;
+use std::default::Default;
 
 use self::LocalRef::*;
 
@@ -30,17 +31,19 @@ struct Resolver<'a> {
     /// index into `local_vec`.
     owned: HashMap<String, usize>,
 
-    /// Locals owned by (declared in) the current block
-    local_vec: Vec<String>,
-
-    /// Resolver of the parent scope
-    pscope: Option<&'a Resolver<'a>>,
-
-    /// Resolver of the parent function. Knows all locals available to this function as upvalues.
-    pfunc: Option<&'a Resolver<'a>>,
+    /// Id assigned to the next local declared in the current block
+    next_id: usize,
 }
 
 impl <'a> Resolver<'a> {
+    fn new(pfunc: Option<&'a Resolver<'a>>) -> Resolver<'a> {
+        Resolver {
+            reachable: Default::default(),
+            owned: Default::default(),
+            next_id: 0,
+        }
+    }
+
     /// Tries to find a local with the given name. Looks up the `reachable` cache first. If not
     /// found, searches the parent scope(s), then the parent function(s) (if existing). If the
     /// local was found, adds an entry for it to the `reachable` map and returns a copy of the
@@ -65,41 +68,12 @@ impl <'a> Resolver<'a> {
                             Outer(id, lvl+1)
                         },
                         Upvalue(id) => {
-                            
+
                         },
                     };
 
                     self.reachable.insert(name, result);
                     Some(result)
-                }
-            }
-        }
-    }
-
-    /// Returns the way the local with the given name is reachable
-    fn is_reachable(&mut self, name: &str) -> Option<LocalRef> {
-        if let Some(l) = self.reachable.get(name) {
-            // Owned local, parent scope owned local, already used Upvalue
-            Some(l)
-        } else {
-            // Other option: Not yet used Upvalue
-            match self.pfunc {
-                None => None,
-                Some(res) => {
-                    // Ask parent function's resolver
-                    if let Some(var) = res.is_reachable(name) {
-                        match var {
-
-                        }
-
-                        // "Import" Upvalue
-                        let upval = Upvalue()
-                        self.reachable
-                    } else {
-                        // Parent resolver doesn't know => Unreachable
-                        // (this will read/write a global instead)
-                        None
-                    }
                 }
             }
         }
@@ -122,7 +96,7 @@ impl <'a> Resolver<'a> {
                     mem::swap(vname, &mut name);
                 }
 
-                mem::replace(&mut v.value, if Some((l)) = self.reachable.get(&name) {
+                mem::replace(&mut v.value, if Some((l)) = self.lookup(&name) {
                     VLocal(name)
                 } else {
                     VGlobal(name)
@@ -142,8 +116,8 @@ impl <'a> Resolver<'a> {
         let mut res = Resolver {
             reachable: HashMap::new(),
             owned: HashMap::new(),
-            local_vec: Vec::new(),
             pfunc: self.pfunc,
+            next_id: self.next_id,
         };
 
         for name in locals {
@@ -151,6 +125,8 @@ impl <'a> Resolver<'a> {
         }
 
         resolve_block_with(b, res);
+
+        self.next_id = res.next_id;
     }
 }
 
@@ -189,23 +165,6 @@ impl <'a> Visitor for Resolver<'a> {
             local_vec: Vec::new(),
             pfunc: self.pfunc,
         };
-
-        for (name, localref) in &self.reachable {
-            res.reachable.insert(name.clone(), match *localref {
-                Owned(id) => {
-                    // Child blocks can access our locals as outer locals
-                    Outer(id, 0)
-                },
-                Outer(id, lvl) => {
-                    // Increase block level
-                    Outer(id, lvl + 1)
-                },
-                Upvalue(id) => {
-                    // Upvalues already imported stay this way until the function is left
-                    Upvalue(id)
-                },
-            });
-        }
 
         resolve_block_with(b, res);
     }

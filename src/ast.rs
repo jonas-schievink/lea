@@ -4,7 +4,8 @@ pub use self::_Expr::*;
 pub use self::Literal::*;
 
 use std::fmt;
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
+use std::default::Default;
 
 use span::{Span, Spanned};
 
@@ -111,13 +112,17 @@ impl BinOp {
 
 /// A block containing any number of statements. All blocks define a scope in which local variables
 /// can be declared.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Block {
     pub span: Span,
     pub stmts: Vec<Stmt>,
 
     /// List of locals declared inside this block. Collected when resolving.
-    pub locals: Vec<String>,
+    pub locals: HashSet<usize>,
+
+    /// Maps local names to their id
+    pub localmap: HashMap<String, usize>,
+
     /// Set to true while resolving in case a local inside this block is used as an upvalue.
     /// Causes the emission of a CLOSE opcode that closes all locals used as upvalues.
     pub needs_close: bool,
@@ -128,35 +133,8 @@ impl Block {
         Block {
             span: span,
             stmts: stmts,
-            locals: Vec::new(),
-        }
-    }
-
-    pub fn with_locals(stmts: Vec<Stmt>, locals: Vec<String>, span: Span) -> Block {
-        Block {
-            span: span,
-            stmts: stmts,
-            locals: locals,
-        }
-    }
-}
-
-impl PartialEq for Block {
-    fn eq(&self, other: &Block) -> bool {
-        // Compares locals ignoring their order.
-        if self.stmts == other.stmts {
-            let mut set = HashSet::new();
-            for l in &self.locals {
-                set.insert(l);
-            }
-
-            for l in &other.locals {
-                if !set.contains(l) { return false; }
-            }
-
-            true
-        } else {
-            false
+            locals: Default::default(),
+            localmap: Default::default(),
         }
     }
 }
@@ -181,13 +159,8 @@ pub enum _Variable {
     /// References a named variable; later resolved to local or global
     VNamed(String),
 
-    /// References a local variable in the current scope if the usize is 0 and in the scope n
-    /// levels above the current one otherwise.
-    VLocal(String, usize),
-
-    /// References a local declared by a parent function (at the defined level, where 0 is the
-    /// direct parent)
-    VUpvalue(String, usize),
+    /// References the local variable with the given id
+    VLocal(usize),
 
     /// References a named global
     VGlobal(String),

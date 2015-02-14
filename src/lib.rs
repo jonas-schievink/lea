@@ -2,9 +2,8 @@
 #![feature(core)]
 #![feature(io)]
 
+#![plugin(peg_syntax_ext)]
 
-#[plugin]
-extern crate peg_syntax_ext;
 
 pub mod parser;
 pub mod expr_parser;
