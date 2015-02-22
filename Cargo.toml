@@ -3,12 +3,11 @@
 name = "lea"
 version = "0.0.1"
 authors = ["jonas-schievink <jonas@schievink.net>"]
+repository = "https://github.com/jonas-schievink/lea"
+readme = "README.md"
 description = """
 A Lua-based language written in Rust
 """
-
-repository = "https://github.com/jonas-schievink/lea"
-readme = "README.md"
 
 [dependencies.peg]
 git = "https://github.com/jonas-schievink/rust-peg.git"
