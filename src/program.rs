@@ -5,11 +5,11 @@ use opcode::Opcode;
 
 use std::vec::Vec;
 
-/// Describes how an Upvalue is used (= where to get it from)
+/// Describes how an open Upvalue is referenced
 pub enum UpvalDesc {
-    /// Upvalue references the local variable of the parent in the given stack slot
+    /// Upvalue is local variable of the parent in the given stack slot
     Stack(usize),
-    /// Upvalue references the parent's Upvalue with the given ID
+    /// Upvalue is the parent's Upvalue with the given ID
     Upval(usize),
 }
 
@@ -55,9 +55,9 @@ pub enum Upval {
 }
 
 /// Instantiated function
-pub struct Function<'a> {
-    /// The prototype from which this function was instantiated
-    proto: &'a FunctionProto,
+pub struct Function {
+    /// The index of the prototype from which this function was instantiated
+    proto: usize,
     /// Upvalue references, indexed by upvalue ID
     upvalues: Vec<Upval>,
 }

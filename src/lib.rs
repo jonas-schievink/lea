@@ -9,6 +9,7 @@ pub mod parser;
 pub mod expr_parser;
 pub mod span;
 pub mod ast;
+pub mod program;
 pub mod visit;
 pub mod prettyprint;
 pub mod check;

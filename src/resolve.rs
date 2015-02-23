@@ -1,7 +1,13 @@
 //! This module contains the logic used to resolve identifiers to their locals or globals.
+//!
+//! Internally, this module also performs the register allocation for all locals. This makes it
+//! easy to reference upvalues (see `UpvalDesc` in program.rs) and makes the bytecode emitter do
+//! less work.
+
 
 use ast::*;
 use visit::*;
+use program::UpvalDesc;
 
 use std::mem;
 use std::collections::HashMap;
@@ -18,8 +24,8 @@ enum LocalRef {
     /// Local declared in a parent block
     /// id, parent block level (0 = direct parent, 1 = parent of parent, ...)
     Outer(usize, usize),
-    /// Upvalue with the given id defined in some active scope of the parent function (`pfunc`)
-    Upvalue(usize),
+    /// Upvalue defined in some active scope of the parent function (`pfunc`)
+    Upvalue(UpvalDesc),
 }
 
 /// A resolver will work on a single scope and resolve any `VNamed` references
