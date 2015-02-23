@@ -39,6 +39,8 @@ struct Resolver<'a> {
 
     /// Id assigned to the next local declared in the current block
     next_id: usize,
+
+    pfunc: Option<&'a Resolver<'a>>,
 }
 
 impl <'a> Resolver<'a> {

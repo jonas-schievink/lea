@@ -2,6 +2,7 @@
 //! all constants and optionally debug info (such as local names and line numbers).
 
 use opcode::Opcode;
+use value::Value;
 
 use std::vec::Vec;
 
@@ -17,13 +18,10 @@ pub enum UpvalDesc {
 pub struct FunctionProto {
     /// The max. number of stack slots used
     stacksize: u8,
-    /// Number of named parameters accepted
+    /// Number of parameters accepted (ignoring varargs)
     params: u8,
-    /// true if declared as a varargs function
+    /// True if declared as a varargs function
     varargs: bool,
-    /// Local names, indexed by stack slot. Unnamed stack slots aren't mapped (temporaries,
-    /// stripped debug info)
-    local_names: Vec<String>,
     /// The opcodes emitted for the code in the function body
     opcodes: Vec<Opcode>,
     /// Constants used by this function. Maximum of 65535. These map to indices into the program's
