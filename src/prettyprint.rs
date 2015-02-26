@@ -360,7 +360,7 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
                 self.print_call(c);
             },
             EFunc(ref mut f) => {
-                let _Function {ref mut body, ref params, varargs} = f.value;
+                let _Function {ref mut body, ref params, varargs, ..} = f.value;
 
                 write!(self.writer, "function(");
                 for i in range(0, params.len()) {
@@ -451,8 +451,12 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
     #[allow(unused_must_use)]
     fn visit_var(&mut self, var: &mut Variable) {
         match var.value {
-            VNamed(ref s) | VLocal(ref s, _) | VGlobal(ref s) => {
+            VNamed(ref s) | VGlobal(ref s) => {
                 write!(self.writer, "{}", s);
+            },
+            VLocal(slot) => {
+                // TODO resolve name
+                panic!("VLocal not supported in pretty-printer");
             },
             VIndex(ref mut var, ref mut expr) => {
                 self.visit_var(var);

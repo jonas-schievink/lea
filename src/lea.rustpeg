@@ -323,11 +323,7 @@ funcparams -> (Vec<String>, bool)
 funcbody -> _Function
     = whitespace* params:funcparams whitespace* body:block "end" {
         let (pars, varargs) = params;
-        _Function {
-            params: pars,
-            varargs: varargs,
-            body: body,
-        }
+        _Function::new(pars, varargs, body)
     }
 
 stmt_func -> Stmt

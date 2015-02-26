@@ -8,6 +8,7 @@ use std::collections::{HashSet, HashMap};
 use std::default::Default;
 
 use span::{Span, Spanned};
+use program::UpvalDesc;
 
 use self::UnOp::*;
 use self::BinOp::*;
@@ -117,9 +118,6 @@ pub struct Block {
     pub span: Span,
     pub stmts: Vec<Stmt>,
 
-    /// List of locals declared inside this block. Collected when resolving.
-    pub locals: HashSet<usize>,
-
     /// Maps local names to their id
     pub localmap: HashMap<String, usize>,
 
@@ -133,8 +131,8 @@ impl Block {
         Block {
             span: span,
             stmts: stmts,
-            locals: Default::default(),
             localmap: Default::default(),
+            needs_close: false,
         }
     }
 }
@@ -147,10 +145,23 @@ pub struct Call {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct _Function {
-    // Parameters this function takes. Each one declares a similarly named local in the body block.
+    /// Parameters this function takes. Each one also declares a local in the body block.
     pub params: Vec<String>,
     pub varargs: bool,
     pub body: Block,
+    /// Upvalues referenced by this function. Collected while resolving.
+    pub upvalues: Vec<UpvalDesc>,
+}
+
+impl _Function {
+    pub fn new(params: Vec<String>, varargs: bool, body: Block) -> _Function {
+        _Function {
+            params: params,
+            varargs: varargs,
+            body: body,
+            upvalues: vec![],
+        }
+    }
 }
 
 /// Something that can be assigned to a value
@@ -164,6 +175,9 @@ pub enum _Variable {
 
     /// References a named global
     VGlobal(String),
+
+    /// References the upvalue with the given id (index into the `upvalues` field of the Function)
+    VUpval(usize),
 
     /// References an indexed variable (a field)
     VIndex(Box<Variable>, Box<Expr>),

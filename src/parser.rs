@@ -39,11 +39,7 @@ pub fn block(input: &str) -> Result<Block, ParseError> {
 pub fn parse_main(input: &str) -> Result<Function, ParseError> {
     let blk = try!(block(input));
 
-    Ok(Spanned::new(blk.span, _Function {
-        params: Vec::new(),
-        varargs: true,
-        body: blk,
-    }))
+    Ok(Spanned::new(blk.span, _Function::new(vec![], true, blk)))
 }
 
 /// Parses a raw expression. This only runs the PEG parser, not the dedicated expression parser.

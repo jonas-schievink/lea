@@ -2,7 +2,7 @@
 
 pub use self::Value::*;
 
-use table::Table;
+//use table::Table;
 use program::Function;
 
 pub enum Value {

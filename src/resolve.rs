@@ -19,13 +19,12 @@ use self::LocalRef::*;
 /// Describes how a local can be reached
 #[derive(PartialEq, Eq, Copy, Debug)]
 enum LocalRef {
-    /// Local declared in the current block (with the given id)
-    Owned(usize),
-    /// Local declared in a parent block
-    /// id, parent block level (0 = direct parent, 1 = parent of parent, ...)
-    Outer(usize, usize),
-    /// Upvalue defined in some active scope of the parent function (`pfunc`)
-    Upvalue(UpvalDesc),
+    /// Local declared in the current block or a parent block in the same function. The `usize` is
+    /// the stack slot allocated to the local.
+    Local(usize),
+    /// Upvalue defined in some active scope of the parent function (`pfunc`). The `usize` is an
+    /// index into the `upvalues` vector of the function that references the upval.
+    Upvalue(usize),
 }
 
 /// A resolver will work on a single scope and resolve any `VNamed` references
@@ -33,22 +32,35 @@ struct Resolver<'a> {
     /// Caches locals that were already looked up. Newly declared locals also get an entry here.
     reachable: HashMap<String, LocalRef>,
 
-    /// Set of locals declared within this block. Subset of `reachable`. Maps local names to an
-    /// index into `local_vec`.
+    /// Set of locals declared within this block. Maps local names to their stack slot.
+    /// Note that the lowest stack slot isn't always 0 (since parent blocks allocate first).
     owned: HashMap<String, usize>,
 
-    /// Id assigned to the next local declared in the current block
+    /// Id assigned to the next local declared in the current block. This is the next free stack
+    /// slot in this function.
     next_id: usize,
 
-    pfunc: Option<&'a Resolver<'a>>,
+    /// Resolver of outer block inside the current function, or `None` if this is the topmost block
+    /// of the function.
+    pblock: Option<&'a Resolver<'a>>,
+
+    /// Reference to the function we resolve for
+    func: &'a mut Function,
+
+    /// Parent function's resolver and a reference to the parent function
+    pfunc: Option<&'a mut Resolver<'a>>,
 }
 
 impl <'a> Resolver<'a> {
-    fn new(pfunc: Option<&'a Resolver<'a>>) -> Resolver<'a> {
+    fn new(pblock: Option<&'a Resolver<'a>>, pfunc: Option<&'a mut Resolver<'a>>,
+    func: &'a mut Function, start: usize) -> Resolver<'a> {
         Resolver {
             reachable: Default::default(),
             owned: Default::default(),
-            next_id: 0,
+            next_id: start,
+            pblock: pblock,
+            func: func,
+            pfunc: pfunc,
         }
     }
 
@@ -59,40 +71,62 @@ impl <'a> Resolver<'a> {
     fn lookup(&mut self, name: &str) -> Option<LocalRef> {
         if let Some(l) = self.reachable.get(name) {
             // Cache hit, return a copy
-            Some(l)
+            Some(*l)
         } else {
             // Locals declared inside the current scope are added automatically, no need to search
             // them. Search containing scopes (parents) first:
-            if let Some(parent) = self.pscope {
+            if let Some(parent) = self.pblock {
                 if let Some(l) = parent.lookup(name) {
-                    // Parent found the local, modify the `LocalRef` to make it valid for us
-                    let result = match l {
-                        Owned(id) => {
-                            // Local owned by direct parent
-                            Outer(id, 0)
-                        },
-                        Outer(id, lvl) => {
-                            // Increment level, since we're a scope below
-                            Outer(id, lvl+1)
-                        },
-                        Upvalue(id) => {
-
-                        },
-                    };
-
-                    self.reachable.insert(name, result);
-                    Some(result)
+                    // Parent block found the local, add cache entry
+                    self.reachable.insert(String::from_str(name), l);
+                    return Some(l);
                 }
             }
+
+            // Not a parent block local. Might be Upvalue: Search parent function.
+            if let Some(pfunc) = self.pfunc {
+                if let Some(l) = pfunc.lookup(name) {
+                    // Found as Upvalue or Local in the parent function
+                    return match l {
+                        Local(slot) => {
+                            let upvalId = self.func.upvalues.len();
+                            print!("new upval `{}` (id {}) from stack slot {}", name, upvalId, slot);
+                            // Register our upvalue
+                            self.func.upvalues.push(UpvalDesc::Stack(slot));
+
+                            let lref = Upvalue(upvalId);
+                            self.reachable.insert(String::from_str(name), lref);
+                            Some(lref)
+                        },
+                        Upvalue(id) => {
+                            // Chained upvalue. The parent's resolve method has already registered
+                            // the upvalue, so we don't have to do much:
+                            let upvalId = self.func.upvalues.len();
+                            print!("new upvalue `{}` (id {}) from parent upvalue {}", name, upvalId, id);
+                            self.func.upvalues.push(UpvalDesc::Upval(id));
+
+                            let lref = Upvalue(upvalId);
+                            self.reachable.insert(String::from_str(name), lref);
+                            Some(lref)
+                        },
+                    };
+                }
+            }
+
+            // No matching upvalue found. Defer to global access.
+            None
         }
     }
 
+    /// Adds a local with the given name, making it reachable.
     fn add_local(&mut self, name: String) {
-        let id = self.local_vec.len();
-        self.local_vec.push(name.clone());
+        print!("Adding local `{}`; stack slot {}", name, self.next_id);
+
+        let id = self.owned.len() + self.next_id;
 
         self.owned.insert(name.clone(), id);
-        self.reachable.insert(name, Owned(id));
+        self.reachable.insert(name, Local(id));
+        self.next_id += 1;
     }
 
     fn resolve_var(&mut self, v: &mut Variable) {
@@ -104,10 +138,16 @@ impl <'a> Resolver<'a> {
                     mem::swap(vname, &mut name);
                 }
 
-                mem::replace(&mut v.value, if Some((l)) = self.lookup(&name) {
-                    VLocal(name)
-                } else {
-                    VGlobal(name)
+                mem::replace(&mut v.value, match self.lookup(&name) {
+                    None => {
+                        VGlobal(name)
+                    },
+                    Some(Local(slot)) => {
+                        VLocal(slot)
+                    },
+                    Some(Upvalue(id)) => {
+                        VUpval(id)
+                    }
                 });
             },
             VIndex(..) => {
@@ -118,24 +158,26 @@ impl <'a> Resolver<'a> {
             }
         }
     }
+}
 
-    /// Resolves a block and defines a list of locals that can be used inside the block
-    fn resolve_with_locals(&self, b: &mut Block, locals: Vec<String>) {
-        let mut res = Resolver {
-            reachable: HashMap::new(),
-            owned: HashMap::new(),
-            pfunc: self.pfunc,
-            next_id: self.next_id,
-        };
+fn resolve_block_with<'a>(b: &mut Block, mut res: Resolver<'a>) {
+    walk_block(b, &mut res);
 
-        for name in locals {
-            res.add_local(name);
-        }
+    b.localmap = res.owned;
+}
 
-        resolve_block_with(b, res);
+/// Resolves a block inside the resolver's scope and defines a list of locals that can be used
+/// inside the block
+fn resolve_with_locals<'a>(res: &Resolver<'a>, b: &mut Block, locals: Vec<String>) {
+    let mut newres = Resolver::new(Some(res), res.pfunc, res.func, res.next_id);
 
-        self.next_id = res.next_id;
+    for name in locals {
+        newres.add_local(name);
     }
+
+    resolve_block_with(b, newres);
+
+    res.next_id = newres.next_id;
 }
 
 impl <'a> Visitor for Resolver<'a> {
@@ -151,10 +193,10 @@ impl <'a> Visitor for Resolver<'a> {
                 }
             },
             SFor{ref var, ref mut body, ..} => {
-                self.resolve_with_locals(body, vec![var.clone()]);
+                resolve_with_locals(self, body, vec![var.clone()]);
             },
             SForIn{ref vars, ref mut body, ..} => {
-                self.resolve_with_locals(body, vars.clone());
+                resolve_with_locals(self, body, vars.clone());
             },
             _ => {
                 walk_stmt(s, self);
@@ -170,7 +212,6 @@ impl <'a> Visitor for Resolver<'a> {
         let mut res = Resolver {
             reachable: HashMap::new(),
             owned: HashMap::new(),
-            local_vec: Vec::new(),
             pfunc: self.pfunc,
         };
 
@@ -181,12 +222,6 @@ impl <'a> Visitor for Resolver<'a> {
         // TODO
         self.visit_block(&mut f.value.body);
     }
-}
-
-fn resolve_block_with<'a>(b: &mut Block, mut res: Resolver<'a>) {
-    walk_block(b, &mut res);
-
-    b.locals = res.local_vec;
 }
 
 /// Resolves all locals used in the given block. Recursively resolves all blocks found inside.
