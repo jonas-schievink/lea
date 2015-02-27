@@ -13,171 +13,115 @@ use std::mem;
 use std::collections::HashMap;
 use std::default::Default;
 
-use self::LocalRef::*;
 
-
-/// Describes how a local can be reached
-#[derive(PartialEq, Eq, Copy, Debug)]
-enum LocalRef {
-    /// Local declared in the current block or a parent block in the same function. The `usize` is
-    /// the stack slot allocated to the local.
-    Local(usize),
-    /// Upvalue defined in some active scope of the parent function (`pfunc`). The `usize` is an
-    /// index into the `upvalues` vector of the function that references the upval.
-    Upvalue(usize),
+struct Scope {
+    start_slot: usize,
+    locals: Vec<String>,
 }
 
-/// A resolver will work on a single scope and resolve any `VNamed` references
+impl Scope {
+    fn new(start_slot: usize) -> Scope {
+        Scope {
+            start_slot: start_slot,
+            locals: vec![],
+        }
+    }
+}
+
+/// Data used by the resolver, associated to a function
+struct FuncData {
+    /// Upvalues referenced from within the function
+    upvals: Vec<UpvalDesc>,
+    upval_names: Vec<String>,
+
+    /// Maps known upvalue names to their id
+    upval_map: HashMap<String, usize>,
+
+    /// Stack of lists of locals. Tracks all active scopes and thus all available locals.
+    scopes: Vec<Scope>,
+
+    /// Number of stack slots needed to execute this function
+    stacksz: usize,
+}
+
+impl FuncData {
+    fn new() -> FuncData {
+        FuncData {
+            upvals: vec![],
+            upval_names: vec![],
+            upval_map: Default::default(),
+            scopes: vec![],
+            stacksz: 0,
+        }
+    }
+
+    /// Registers an upvalue
+    fn add_upval(&mut self, name: String, desc: UpvalDesc) {
+        let id = upvals.len();
+        upvals.push(desc);
+        upval_names.push(name);
+        upval_map.insert(name, id);
+    }
+
+    /// Finds a reachable local (no upvalues are considered) with the given name and returns its
+    /// stack slot
+    fn get_local(&self, name: String) -> Option<usize> {
+        // scan backwards through scopes
+        let mut level = self.scopes.len() - 1;
+        while level >= 0 {
+            let scope = &self.scopes[level];
+            for id in range(0, scope.locals.len()) {
+                if name == scope.locals[id] {
+                    return Some(id);
+                }
+            }
+        }
+
+        None
+    }
+}
+
+/// A resolver will resolve any `VNamed` references in a function
 struct Resolver<'a> {
-    /// Caches locals that were already looked up. Newly declared locals also get an entry here.
-    reachable: HashMap<String, LocalRef>,
-
-    /// Set of locals declared within this block. Maps local names to their stack slot.
-    /// Note that the lowest stack slot isn't always 0 (since parent blocks allocate first).
-    owned: HashMap<String, usize>,
-
-    /// Id assigned to the next local declared in the current block. This is the next free stack
-    /// slot in this function.
-    next_id: usize,
-
-    /// Resolver of outer block inside the current function, or `None` if this is the topmost block
-    /// of the function.
-    pblock: Option<&'a Resolver<'a>>,
-
-    /// Reference to the function we resolve for
-    func: &'a mut Function,
-
-    /// Parent function's resolver and a reference to the parent function
-    pfunc: Option<&'a mut Resolver<'a>>,
+    /// Stack of active functions
+    funcs: Vec<FuncData>,
 }
 
 impl <'a> Resolver<'a> {
-    fn new(pblock: Option<&'a Resolver<'a>>, pfunc: Option<&'a mut Resolver<'a>>,
-    func: &'a mut Function, start: usize) -> Resolver<'a> {
+    /// Resolves the given function, assuming it doesn't have a parent function.
+    pub fn resolve(f: &mut Function) {
         Resolver {
-            reachable: Default::default(),
-            owned: Default::default(),
-            next_id: start,
-            pblock: pblock,
-            func: func,
-            pfunc: pfunc,
-        }
+            funcs: vec![],
+        }.visit_func(f);
     }
 
-    /// Tries to find a local with the given name. Looks up the `reachable` cache first. If not
-    /// found, searches the parent scope(s), then the parent function(s) (if existing). If the
-    /// local was found, adds an entry for it to the `reachable` map and returns a copy of the
-    /// `LocalRef`. Otherwise, returns None.
-    fn lookup(&mut self, name: &str) -> Option<LocalRef> {
-        if let Some(l) = self.reachable.get(name) {
-            // Cache hit, return a copy
-            Some(*l)
-        } else {
-            // Locals declared inside the current scope are added automatically, no need to search
-            // them. Search containing scopes (parents) first:
-            if let Some(parent) = self.pblock {
-                if let Some(l) = parent.lookup(name) {
-                    // Parent block found the local, add cache entry
-                    self.reachable.insert(String::from_str(name), l);
-                    return Some(l);
-                }
+    /// Finds an upvalue in a parent function
+    fn find_upval(&mut self, name: String, ref_level: usize, level: usize) -> Option<usize> {
+        // search parent functions for locals / upvalues that match
+        let mut level = self.funcs.len() - 2;   // start at parent
+        while level >= 0 {
+            let pdata = &self.funcs[level];
+            if let Some(slot) = pdata.get_local(name) {
+                // add upval to the using function
             }
 
-            // Not a parent block local. Might be Upvalue: Search parent function.
-            if let Some(pfunc) = self.pfunc {
-                if let Some(l) = pfunc.lookup(name) {
-                    // Found as Upvalue or Local in the parent function
-                    return match l {
-                        Local(slot) => {
-                            let upvalId = self.func.upvalues.len();
-                            print!("new upval `{}` (id {}) from stack slot {}", name, upvalId, slot);
-                            // Register our upvalue
-                            self.func.upvalues.push(UpvalDesc::Stack(slot));
-
-                            let lref = Upvalue(upvalId);
-                            self.reachable.insert(String::from_str(name), lref);
-                            Some(lref)
-                        },
-                        Upvalue(id) => {
-                            // Chained upvalue. The parent's resolve method has already registered
-                            // the upvalue, so we don't have to do much:
-                            let upvalId = self.func.upvalues.len();
-                            print!("new upvalue `{}` (id {}) from parent upvalue {}", name, upvalId, id);
-                            self.func.upvalues.push(UpvalDesc::Upval(id));
-
-                            let lref = Upvalue(upvalId);
-                            self.reachable.insert(String::from_str(name), lref);
-                            Some(lref)
-                        },
-                    };
-                }
-            }
-
-            // No matching upvalue found. Defer to global access.
-            None
+            level -= 1;
         }
+
+        None
     }
 
-    /// Adds a local with the given name, making it reachable.
-    fn add_local(&mut self, name: String) {
-        print!("Adding local `{}`; stack slot {}", name, self.next_id);
+    /// Searches for an upvalue with the given name
+    fn get_upval(&mut self, name: String) -> Option<usize> {
+        // search known upvals first
+        let data = &self.funcs[self.funcs.len() - 1];
 
-        let id = self.owned.len() + self.next_id;
-
-        self.owned.insert(name.clone(), id);
-        self.reachable.insert(name, Local(id));
-        self.next_id += 1;
-    }
-
-    fn resolve_var(&mut self, v: &mut Variable) {
-        match v.value {
-            VNamed(..) => {
-                let mut name = String::new();
-
-                if let VNamed(ref mut vname) = v.value {
-                    mem::swap(vname, &mut name);
-                }
-
-                mem::replace(&mut v.value, match self.lookup(&name) {
-                    None => {
-                        VGlobal(name)
-                    },
-                    Some(Local(slot)) => {
-                        VLocal(slot)
-                    },
-                    Some(Upvalue(id)) => {
-                        VUpval(id)
-                    }
-                });
-            },
-            VIndex(..) => {
-                walk_var(v, self);
-            },
-            _ => {
-                panic!("unexpected variable: {:?}", v.value);
-            }
+        if let Some(id) = data.upval_map.get(name) {
+            return Some(id);
         }
+
+        self.find_upval(name)
     }
-}
-
-fn resolve_block_with<'a>(b: &mut Block, mut res: Resolver<'a>) {
-    walk_block(b, &mut res);
-
-    b.localmap = res.owned;
-}
-
-/// Resolves a block inside the resolver's scope and defines a list of locals that can be used
-/// inside the block
-fn resolve_with_locals<'a>(res: &Resolver<'a>, b: &mut Block, locals: Vec<String>) {
-    let mut newres = Resolver::new(Some(res), res.pfunc, res.func, res.next_id);
-
-    for name in locals {
-        newres.add_local(name);
-    }
-
-    resolve_block_with(b, newres);
-
-    res.next_id = newres.next_id;
 }
 
 impl <'a> Visitor for Resolver<'a> {
@@ -229,21 +173,14 @@ impl <'a> Visitor for Resolver<'a> {
 /// Allows blocks inside the given block to access locals declared within the parent block
 /// (assuming they are declared before the block). Does not allow the given block to access outer
 /// locals.
-pub fn resolve_block(b: &mut Block) {
-    let res = Resolver {
-        reachable: HashMap::new(),
-        owned: HashMap::new(),
-        local_vec: Vec::new(),
-        pfunc: None,    // Assume no parent function
-    };
-
-    resolve_block_with(b, res);
+pub fn resolve_func(f: &mut Function) {
+    FuncResolver::resolve(f);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use parser::block;
+    use parser::parse_main;
     use span::Spanned;
     use ast::*;
 
@@ -251,7 +188,7 @@ mod tests {
 
     #[test]
     fn test() {
-        let mut b = block(r#"
+        let mut f = parse_main(r#"
 i = 0
 local a
 do
@@ -261,9 +198,9 @@ do
 end
 j = i
 "#).unwrap();
-        resolve_block(&mut b);
+        resolve_func(&mut f);
 
-        assert_eq!(b, Block::with_locals(vec![
+        assert_eq!(f.value.body, Block::with_locals(vec![
             Spanned::default(SAssign(
                 vec![Spanned::default(VGlobal("i".to_string()))],
                 vec![Spanned::default(ELit(TInt(0)))],

@@ -30,6 +30,8 @@ pub struct FunctionProto {
     consts: Vec<usize>,
     /// List of Upvalue reference descriptions
     upvalues: Vec<UpvalDesc>,
+    /// Names of Upvalues (names may not be defined)
+    upval_names: Vec<String>,
     /// Contains the last opcode number emitted for a given line
     lines: Vec<usize>,
 }
