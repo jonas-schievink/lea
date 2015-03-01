@@ -14,44 +14,28 @@ use std::collections::HashMap;
 use std::default::Default;
 
 
-struct Scope {
-    start_slot: usize,
-    locals: Vec<String>,
-}
-
-impl Scope {
-    fn new(start_slot: usize) -> Scope {
-        Scope {
-            start_slot: start_slot,
-            locals: vec![],
-        }
-    }
-}
-
 /// Data used by the resolver, associated to a function
 struct FuncData {
+    locals: Vec<String>,
+
     /// Upvalues referenced from within the function
     upvals: Vec<UpvalDesc>,
     upval_names: Vec<String>,
-
     /// Maps known upvalue names to their id
     upval_map: HashMap<String, usize>,
 
     /// Stack of lists of locals. Tracks all active scopes and thus all available locals.
-    scopes: Vec<Scope>,
-
-    /// Number of stack slots needed to execute this function
-    stacksz: usize,
+    scopes: Vec<Vec<usize>>,
 }
 
 impl FuncData {
     fn new() -> FuncData {
         FuncData {
+            locals: vec![],
             upvals: vec![],
             upval_names: vec![],
             upval_map: Default::default(),
             scopes: vec![],
-            stacksz: 0,
         }
     }
 
@@ -63,15 +47,14 @@ impl FuncData {
         upval_map.insert(name, id);
     }
 
-    /// Finds a reachable local (no upvalues are considered) with the given name and returns its
-    /// stack slot
+    /// Finds a reachable local (no upvalues are considered) with the given name and returns its id
     fn get_local(&self, name: String) -> Option<usize> {
         // scan backwards through scopes
         let mut level = self.scopes.len() - 1;
         while level >= 0 {
             let scope = &self.scopes[level];
-            for id in range(0, scope.locals.len()) {
-                if name == scope.locals[id] {
+            for id in &scope.locals {
+                if name == self.locals[id] {
                     return Some(id);
                 }
             }
@@ -82,19 +65,12 @@ impl FuncData {
 }
 
 /// A resolver will resolve any `VNamed` references in a function
-struct Resolver<'a> {
+struct Resolver {
     /// Stack of active functions
     funcs: Vec<FuncData>,
 }
 
-impl <'a> Resolver<'a> {
-    /// Resolves the given function, assuming it doesn't have a parent function.
-    pub fn resolve(f: &mut Function) {
-        Resolver {
-            funcs: vec![],
-        }.visit_func(f);
-    }
-
+impl Resolver {
     /// Finds an upvalue in a parent function
     fn find_upval(&mut self, name: String, ref_level: usize, level: usize) -> Option<usize> {
         // search parent functions for locals / upvalues that match
@@ -124,7 +100,7 @@ impl <'a> Resolver<'a> {
     }
 }
 
-impl <'a> Visitor for Resolver<'a> {
+impl Visitor for Resolver {
     fn visit_stmt(&mut self, s: &mut Stmt) {
         match s.value {
             SDecl(ref mut names, ref mut exprs) => {
@@ -174,7 +150,9 @@ impl <'a> Visitor for Resolver<'a> {
 /// (assuming they are declared before the block). Does not allow the given block to access outer
 /// locals.
 pub fn resolve_func(f: &mut Function) {
-    FuncResolver::resolve(f);
+    Resolver {
+        funcs: vec![],
+    }.visit_func(f);
 }
 
 #[cfg(test)]

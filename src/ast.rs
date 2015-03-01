@@ -118,7 +118,7 @@ pub struct Block {
     pub span: Span,
     pub stmts: Vec<Stmt>,
 
-    /// Maps local names to their id
+    /// Maps local names of locals declared in this block to their id
     pub localmap: HashMap<String, usize>,
 
     /// Set to true while resolving in case a local inside this block is used as an upvalue.
@@ -147,6 +147,9 @@ pub struct Call {
 pub struct _Function {
     /// Parameters this function takes. Each one also declares a local in the body block.
     pub params: Vec<String>,
+    /// Vector of all locals declared in blocks inside this function (multiple with same name
+    /// possible). The index into this vector serves as an identification for the local
+    pub locals: Vec<String>,
     pub varargs: bool,
     pub body: Block,
     /// Upvalues referenced by this function. Collected while resolving.
@@ -156,7 +159,8 @@ pub struct _Function {
 impl _Function {
     pub fn new(params: Vec<String>, varargs: bool, body: Block) -> _Function {
         _Function {
-            params: params,
+            params: params.clone(),
+            locals: params,
             varargs: varargs,
             body: body,
             upvalues: vec![],
@@ -167,17 +171,20 @@ impl _Function {
 /// Something that can be assigned to a value
 #[derive(Clone, PartialEq, Debug)]
 pub enum _Variable {
-    /// References a named variable; later resolved to local or global
+    /// References a named variable; later resolved to local, global or upvalue references
     VNamed(String),
 
-    /// References the local variable with the given id
+    /// References the local variable with the given ID.
+    ///
+    /// Note that the resolver has to ensure that the usize is valid, since not all locals can be
+    /// reached from all blocks.
     VLocal(usize),
-
-    /// References a named global
-    VGlobal(String),
 
     /// References the upvalue with the given id (index into the `upvalues` field of the Function)
     VUpval(usize),
+
+    /// References a named global
+    VGlobal(String),
 
     /// References an indexed variable (a field)
     VIndex(Box<Variable>, Box<Expr>),
@@ -219,7 +226,7 @@ pub enum _Stmt {
     /// Assign function to named variable (`function XY(...) ... end`)
     SFunc(Variable, Function),
 
-    /// Assign function to named local (`local function XY(...) ... end`)
+    /// Assign function to newly declared local (`local function XY(...) ... end`)
     SLFunc(String, Function),
 
     /// Executes `body` if `cond` is true and `el` if not
