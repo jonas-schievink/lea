@@ -72,12 +72,12 @@ struct Resolver {
 
 impl Resolver {
     /// Finds an upvalue in a parent function
-    fn find_upval(&mut self, name: String, ref_level: usize, level: usize) -> Option<usize> {
+    fn find_upval(&mut self, name: String) -> Option<usize> {
         // search parent functions for locals / upvalues that match
         let mut level = self.funcs.len() - 2;   // start at parent
         while level >= 0 {
             let pdata = &self.funcs[level];
-            if let Some(slot) = pdata.get_local(name) {
+            if let Some(id) = pdata.get_local(name) {
                 // add upval to the using function
             }
 

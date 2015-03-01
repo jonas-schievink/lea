@@ -9,6 +9,10 @@ use std::vec::Vec;
 /// Describes how an open Upvalue is referenced
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum UpvalDesc {
+    /// Upvalue is the parent's local with the given id
+    ///
+    /// This is emitted by the resolver and converted to `Stack` by the emitter
+    Local(usize),
     /// Upvalue is local variable of the parent in the given stack slot
     Stack(usize),
     /// Upvalue is the parent's Upvalue with the given ID
