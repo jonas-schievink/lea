@@ -147,9 +147,9 @@ pub fn walk_var<V: Visitor>(var: &mut Variable, visitor: &mut V) {
         VDotIndex(ref mut var, _) => {
             visitor.visit_var(var);
         },
-
         VNamed(..) => {},
         VLocal(..) => {},
+        VUpval(..) => {},
         VGlobal(..) => {},
     }
 }

@@ -454,7 +454,7 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
             VNamed(ref s) | VGlobal(ref s) => {
                 write!(self.writer, "{}", s);
             },
-            VLocal(slot) => {
+            VLocal(..) | VUpval(..) => {
                 // TODO resolve name
                 panic!("VLocal not supported in pretty-printer");
             },

@@ -8,6 +8,7 @@
 use ast::*;
 use visit::*;
 use program::UpvalDesc;
+use span::Spanned;
 
 use std::mem;
 use std::collections::HashMap;
@@ -43,21 +44,20 @@ impl FuncData {
     fn add_upval(&mut self, name: String, desc: UpvalDesc) -> usize {
         let id = self.upvals.len();
         self.upvals.push(desc);
-        self.upval_names.push(name);
+        self.upval_names.push(name.clone());
         self.upval_map.insert(name, id);
 
         id
     }
 
     /// Finds a reachable local (no upvalues are considered) with the given name and returns its id
-    fn get_local(&self, name: String) -> Option<usize> {
+    fn get_local(&self, name: &String) -> Option<usize> {
         // scan backwards through scopes
         let mut level = self.scopes.len() - 1;
         while level >= 0 {
-            let scope = &self.scopes[level];
-            for id in &scope.locals {
-                if name == self.locals[id] {
-                    return Some(id);
+            for id in &self.scopes[level] {
+                if *name == self.locals[*id] {
+                    return Some(*id);
                 }
             }
         }
@@ -74,20 +74,17 @@ struct Resolver {
 
 impl Resolver {
     /// Finds an upvalue in a parent function
-    fn find_upval(&mut self, name: String, userlvl: usize) -> Option<usize> {
+    fn find_upval(&mut self, name: &String, userlvl: usize) -> Option<usize> {
         if userlvl == 0 {
             return None;
         }
 
         // search parent functions for locals / upvalues that match
-        let mydata = &mut self.funcs[level];
-        let plevel = userlvl - 1;
-        let pdata = &self.funcs[level];
-        if let Some(id) = pdata.get_local(name) {
-            return mydata.add_upval(name, UpvalDesc::Local(id));
+        if let Some(id) = self.funcs[userlvl - 1].get_local(name) {
+            return Some(self.funcs[userlvl].add_upval(name.clone(), UpvalDesc::Local(id)));
         } else {
             if let Some(id) = self.find_upval(name, userlvl - 1) {
-                return mydata.add_upval(name, UpvalDesc::Upval(id));
+                return Some(self.funcs[userlvl].add_upval(name.clone(), UpvalDesc::Upval(id)));
             } else {
                 return None;
             }
@@ -97,31 +94,41 @@ impl Resolver {
     }
 
     /// Searches for an upvalue with the given name
-    fn get_upval(&mut self, name: String) -> Option<usize> {
-        // search known upvals first
-        let data = &self.funcs[self.funcs.len() - 1];
+    fn get_upval(&mut self, name: &String) -> Option<usize> {
+        let level = self.funcs.len() - 1;
 
-        if let Some(id) = data.upval_map.get(name) {
-            return Some(id);
+        {
+            // search known upvals first
+            let data = &self.funcs[level];
+            if let Some(id) = data.upval_map.get(name) {
+                return Some(*id);
+            }
         }
 
-        self.find_upval(name)
+        self.find_upval(name, level)
     }
 
-    /// Declares a new local with the given name.
+    /// Declares a new local with the given name in the currently active scope and function.
     fn add_local(&mut self, name: String) -> usize {
+        let level = self.funcs.len() - 1;
+
         // this might be a redeclaration, in which case we ignore it (the emitter handles it)
-        let func = &self.funcs[self.funcs.len() - 1];
-        let scope = func.scopes[func.scopes.len() - 1];
-        for id in scope {
-            let lname = func.locals[id];
-            if lname == name {
-                // already declared
-                return id;
+        let func = &mut self.funcs[level];
+        let scopelvl = func.scopes.len() - 1;
+
+        {
+            let scope = &func.scopes[scopelvl];
+            for id in scope {
+                let lname = &func.locals[*id];
+                if *lname == name {
+                    // already declared
+                    return *id;
+                }
             }
         }
 
         // create new local
+        let scope = &mut func.scopes[scopelvl];
         let id = func.locals.len();
         func.locals.push(name);
         scope.push(id);
@@ -129,15 +136,44 @@ impl Resolver {
         id
     }
 
+    /// Resolves the given variable if it's of type `VNamed`
+    fn resolve_var(&mut self, svar: &mut Variable) {
+        let ref mut var = svar.value;
+
+        if let VNamed(..) = *var {
+            let newvar = if let VNamed(ref name) = *var {
+                // first, try a local with that name
+                if let Some(id) = self.funcs[self.funcs.len() - 1].get_local(&name) {
+                    VLocal(id)
+                } else {
+                    // find an upvalue
+                    if let Some(id) = self.get_upval(&name) {
+                        VUpval(id)
+                    } else {
+                        // fall back to global access
+                        VGlobal(name.clone())
+                    }
+                }
+            } else { unreachable!(); };
+
+            mem::replace(var, newvar);
+        }
+    }
+
     /// Resolves a block and declares a list of locals inside of it
     fn resolve_block(&mut self, b: &mut Block, locals: Vec<String>) {
-        let mut data = &mut self.funcs[self.funcs.len() - 1];
-        data.scopes.push(locals);
+        let level = self.funcs.len() - 1;
+        self.funcs[level].scopes.push(vec![]);
+        for name in locals {
+            self.add_local(name);
+        }
+
         walk_block(b, self);
 
-        let scope = data.scopes.pop();
+        let data = &mut self.funcs[level];
+        let scope = data.scopes.pop().unwrap();
         for id in scope {
-            let name = data.locals[id];
+            let name = &data.locals[id];
             b.localmap.insert(name.clone(), id);
         }
     }
@@ -155,12 +191,12 @@ impl Visitor for Resolver {
                     self.add_local(name.clone());
                 }
             },
-            SLFunc(ref mut name, _) => {
+            SLFunc(ref mut name, ref mut f) => {
                 self.add_local(name.clone());
-                walk_stmt(s, self);
+                self.visit_func(f);
             },
             SFor{ref var, ref mut body, ..} => {
-                self.resolve_block(body, vec![var]);
+                self.resolve_block(body, vec![var.clone()]);
             },
             SForIn{ref vars, ref mut body, ..} => {
                 self.resolve_block(body, vars.clone());
@@ -183,7 +219,7 @@ impl Visitor for Resolver {
         self.funcs.push(FuncData::new(f.params.clone()));
         self.visit_block(&mut f.value.body);
 
-        let data = self.funcs.pop();
+        let data = self.funcs.pop().unwrap();
         f.locals = data.locals;
         f.upvalues = data.upvals;
     }
