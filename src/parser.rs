@@ -263,12 +263,16 @@ mod tests {
         assert_eq!(expression("function()end").unwrap().value,
             EFunc(Spanned::default(_Function {
                 params: vec![],
+                locals: vec![],
+                upvalues: vec![],
                 varargs: false,
                 body: Block::new(vec![], Default::default()),
         })));
         assert_eq!(expression("function(i, j, ...) break end").unwrap().value,
             EFunc(Spanned::default(_Function {
                 params: vec!["i".to_string(), "j".to_string()],
+                locals: vec![],
+                upvalues: vec![],
                 varargs: true,
                 body: Block::new(vec![
                     Spanned::default(SBreak),
@@ -338,6 +342,8 @@ mod tests {
         assert_eq!(statement("local\nfunction\nt()\nend").unwrap().value, SLFunc("t".to_string(),
             Spanned::default(_Function {
                 params: vec![],
+                locals: vec![],
+                upvalues: vec![],
                 varargs: false,
                 body: Block::new(vec![], Default::default()),
             })
@@ -347,6 +353,8 @@ mod tests {
             Spanned::default(VNamed("f".to_string())),
             Spanned::default(_Function {
                 params: vec!["i".to_string(), "j".to_string()],
+                locals: vec![],
+                upvalues: vec![],
                 varargs: false,
                 body: Block::new(vec![], Default::default()),
             })
@@ -477,6 +485,8 @@ mod tests {
             ])),
             Spanned::default(SFunc(Spanned::default(VNamed("f".to_string())), Spanned::default(_Function {
                 params: vec!["g".to_string()],
+                locals: vec![],
+                upvalues: vec![],
                 varargs: true,
                 body: Block::new(vec![
                     Spanned::default(SDo(Block::new(vec![], Default::default())))

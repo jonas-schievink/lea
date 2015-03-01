@@ -8,7 +8,6 @@
 use ast::*;
 use visit::*;
 use program::UpvalDesc;
-use span::Spanned;
 
 use std::mem;
 use std::collections::HashMap;
@@ -54,12 +53,15 @@ impl FuncData {
     fn get_local(&self, name: &String) -> Option<usize> {
         // scan backwards through scopes
         let mut level = self.scopes.len() - 1;
-        while level >= 0 {
+        loop {
             for id in &self.scopes[level] {
                 if *name == self.locals[*id] {
                     return Some(*id);
                 }
             }
+
+            if level == 0 { break; }
+            level -= 1;
         }
 
         None
@@ -259,13 +261,13 @@ j = i
 "#).unwrap();
         resolve_func(&mut f);
 
-        assert_eq!(f.value.body, Block::with_locals(vec![
+        assert_eq!(f.value.body, Block::new(vec![
             Spanned::default(SAssign(
                 vec![Spanned::default(VGlobal("i".to_string()))],
                 vec![Spanned::default(ELit(TInt(0)))],
             )),
             Spanned::default(SDecl(vec!["a".to_string()], vec![])),
-            Spanned::default(SDo(Block::with_locals(vec![
+            Spanned::default(SDo(Block::new(vec![
                 Spanned::default(SDecl(vec!["i".to_string()], vec![])),
                 Spanned::default(SDecl(vec!["j".to_string()], vec![
                     Spanned::default(EVar(Spanned::default(VLocal("i".to_string())))),
@@ -277,11 +279,11 @@ j = i
                     ))],
                     vec![Spanned::default(EVar(Spanned::default(VLocal("a".to_string()))))],
                 )),
-            ], vec!["i".to_string(), "j".to_string()], Default::default()))),
+            ], vec!["i".to_string(), "j".to_string()]))),
             Spanned::default(SAssign(
                 vec![Spanned::default(VGlobal("j".to_string()))],
                 vec![Spanned::default(EVar(Spanned::default(VGlobal("i".to_string()))))],
             )),
-        ], vec!["a".to_string()], Default::default()));
+        ], vec!["a".to_string()]));
     }
 }

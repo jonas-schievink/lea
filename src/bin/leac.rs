@@ -1,10 +1,6 @@
 //! The Lea compiler command line frontend
 
-#![feature(io)]
-#![feature(path)]
-#![feature(env)]
-#![feature(core)]
-#![feature(os)]
+#![feature(core, old_io, old_path)]
 
 extern crate lea;
 
@@ -29,7 +25,7 @@ fn print_err_fmt(fmt: fmt::Arguments) {
 }
 
 fn print_usage() {
-    println!("Usage: leac file");
+    println!("Usage: leac [file]");
     println!("");
     println!("Parses and checks the given file. If an error occurs, outputs it.");
     println!("When the compiler is done, this will actually compile the source code.");
@@ -55,7 +51,7 @@ fn read_and_compile<T: Reader>(file: &mut T) {
                         },
                         Ok(()) => {
                             // Resolution cannot fail
-                            resolve::resolve_block(&mut main.body);
+                            resolve::resolve_func(&mut main);
                         },
                     }
                 },
@@ -70,9 +66,7 @@ pub fn main() {
     let mut lastarg: Option<String> = None;
 
     iter.next();    // Consume first argument (exec name)
-    for os_arg in iter {
-        let arg = os_arg.into_string().unwrap();
-
+    for arg in iter {
         if let Some(..) = inputarg {
             printerr!("Invalid argument: {}", lastarg.unwrap());
             print_usage();

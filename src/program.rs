@@ -22,29 +22,29 @@ pub enum UpvalDesc {
 /// A compiled function (prototype). Instantiated by the VM
 pub struct FunctionProto {
     /// The max. number of stack slots used
-    stacksize: u8,
+    pub stacksize: u8,
     /// Number of parameters accepted (ignoring varargs)
-    params: u8,
+    pub params: u8,
     /// True if declared as a varargs function
-    varargs: bool,
+    pub varargs: bool,
     /// The opcodes emitted for the code in the function body
-    opcodes: Vec<Opcode>,
+    pub opcodes: Vec<Opcode>,
     /// Constants used by this function. Maximum of 65535. These map to indices into the program's
     /// constant table.
-    consts: Vec<usize>,
+    pub consts: Vec<usize>,
     /// List of Upvalue reference descriptions
-    upvalues: Vec<UpvalDesc>,
+    pub upvalues: Vec<UpvalDesc>,
     /// Names of Upvalues (names may not be defined)
-    upval_names: Vec<String>,
+    pub upval_names: Vec<String>,
     /// Contains the last opcode number emitted for a given line
-    lines: Vec<usize>,
+    pub lines: Vec<usize>,
 }
 
 pub struct Program {
     /// Functions defined inside the program
-    funcs: Vec<FunctionProto>,
+    pub funcs: Vec<FunctionProto>,
     /// Constants used within the program (strings, integers, floats)
-    consts: Vec<Value>,
+    pub consts: Vec<Value>,
 }
 
 
@@ -62,7 +62,7 @@ pub enum Upval {
 /// Instantiated function
 pub struct Function {
     /// The index of the prototype from which this function was instantiated
-    proto: usize,
+    pub proto: usize,
     /// Upvalue references, indexed by upvalue ID
-    upvalues: Vec<Upval>,
+    pub upvalues: Vec<Upval>,
 }

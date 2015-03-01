@@ -4,7 +4,7 @@ pub use self::_Expr::*;
 pub use self::Literal::*;
 
 use std::fmt;
-use std::collections::{HashSet, HashMap};
+use std::collections::HashMap;
 use std::default::Default;
 
 use span::{Span, Spanned};

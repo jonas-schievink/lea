@@ -3,7 +3,7 @@
 pub use self::Value::*;
 
 //use table::Table;
-use program::Function;
+//use program::Function;
 
 pub enum Value {
     TNil,

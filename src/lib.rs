@@ -1,4 +1,4 @@
-#![feature(plugin, core, io, old_io)]
+#![feature(plugin, core, old_io)]
 
 #![plugin(peg_syntax_ext)]
 
