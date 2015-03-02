@@ -8,6 +8,7 @@
 use ast::*;
 use visit::*;
 use program::UpvalDesc;
+use span::{Span, Spanned};
 
 use std::mem;
 use std::collections::HashMap;
@@ -138,22 +139,6 @@ impl Resolver {
         id
     }
 
-    /// Resolves the given variable if it's of type `VNamed`
-    fn resolve_var(&mut self, name: &String) -> _Variable {
-        // first, try a local with that name
-        if let Some(id) = self.funcs[self.funcs.len() - 1].get_local(&name) {
-            VLocal(id)
-        } else {
-            // find an upvalue
-            if let Some(id) = self.get_upval(&name) {
-                VUpval(id)
-            } else {
-                // fall back to global access
-                VGlobal(name.clone())
-            }
-        }
-    }
-
     /// Resolves a block and declares a list of locals inside of it
     fn resolve_block(&mut self, b: &mut Block, locals: Vec<String>) {
         let level = self.funcs.len() - 1;
@@ -169,6 +154,25 @@ impl Resolver {
         for id in scope {
             let name = &data.locals[id];
             b.localmap.insert(name.clone(), id);
+        }
+    }
+
+    /// Resolves the given named variable
+    fn resolve_var(&mut self, name: &String, span: Span) -> _Variable {
+        // first, try a local with that name
+        if let Some(id) = self.funcs[self.funcs.len() - 1].get_local(&name) {
+            VLocal(id)
+        } else {
+            // find an upvalue
+            if let Some(id) = self.get_upval(&name) {
+                VUpval(id)
+            } else {
+                // fall back to global access; resolve environment
+                let envvar = Box::new(Spanned::new(span,
+                    self.resolve_var(&"_ENV".to_string(), span)));
+
+                VResGlobal(envvar, name.clone())
+            }
         }
     }
 }
@@ -207,7 +211,7 @@ impl Visitor for Resolver {
 
             if let VNamed(..) = *var {
                 let newvar = if let VNamed(ref name) = *var {
-                    self.resolve_var(name)
+                    self.resolve_var(name, v.span)
                 } else { unreachable!(); };
 
                 mem::replace(var, newvar);
@@ -223,7 +227,13 @@ impl Visitor for Resolver {
     }
 
     fn visit_func(&mut self, f: &mut Function) {
-        self.funcs.push(FuncData::new(f.params.clone()));
+        let mut data = FuncData::new(f.params.clone());
+        if self.funcs.len() == 0 {
+            // root function, add implicit _ENV upvalue
+            data.add_upval("_ENV".to_string(), UpvalDesc::Upval(0));    // the UpvalDesc is ignored
+        }
+
+        self.funcs.push(data);
         self.visit_block(&mut f.value.body);
 
         let data = self.funcs.pop().unwrap();
@@ -237,16 +247,13 @@ impl Visitor for Resolver {
 /// Allows blocks inside the given block to access locals declared within the parent block
 /// (assuming they are declared before the block). Does not allow the given block to access outer
 /// locals.
+///
+/// This also resolves any `VGlobal` to `VResGlobal` and resolves the function environments.
 pub fn resolve_func(f: &mut Function) {
     Resolver {
         funcs: vec![],
     }.visit_func(f);
 }
-
-/// Resolves all global accesses with their corresponding environment lookup
-/*pub fn resolve_globals(f: &mut Function) {
-    // TODO
-}*/
 
 #[cfg(test)]
 mod tests {
@@ -286,7 +293,7 @@ j = i
 
         assert_eq!(f.value.body, Block::with_locals(vec![
             Spanned::default(SAssign(
-                vec![Spanned::default(VGlobal("i".to_string()))],
+                vec![Spanned::default(VResGlobal(Box::new(Spanned::default(VUpval(0))), "i".to_string()))],
                 vec![Spanned::default(ELit(TInt(0)))],
             )),
             Spanned::default(SDecl(vec!["a".to_string()], vec![])),
@@ -304,8 +311,12 @@ j = i
                 )),
             ], Default::default(), localmap!{ i: 1, j: 2 }))),
             Spanned::default(SAssign(
-                vec![Spanned::default(VGlobal("j".to_string()))],
-                vec![Spanned::default(EVar(Spanned::default(VGlobal("i".to_string()))))],
+                vec![Spanned::default(
+                    VResGlobal(Box::new(Spanned::default(VUpval(0))), "j".to_string())
+                )],
+                vec![Spanned::default(EVar(Spanned::default(
+                    VResGlobal(Box::new(Spanned::default(VUpval(0))), "i".to_string())
+                )))],
             )),
         ], Default::default(), localmap!{ a: 0 }));
     }

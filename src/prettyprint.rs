@@ -451,7 +451,7 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
     #[allow(unused_must_use)]
     fn visit_var(&mut self, var: &mut Variable) {
         match var.value {
-            VNamed(ref s) | VGlobal(ref s) => {
+            VNamed(ref s) | VGlobal(ref s) | VResGlobal(_, ref s) => {
                 write!(self.writer, "{}", s);
             },
             VLocal(..) | VUpval(..) => {

@@ -201,6 +201,10 @@ pub enum _Variable {
     /// References a named global
     VGlobal(String),
 
+    /// References a resolved global. The left variable is the environment, which is indexed with
+    /// the string on the right.
+    VResGlobal(Box<Variable>, String),
+
     /// References an indexed variable (a field)
     VIndex(Box<Variable>, Box<Expr>),
 
