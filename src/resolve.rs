@@ -387,4 +387,81 @@ end
             ])),
         ], Default::default()));
     }
+
+    #[test]
+    fn env_complex() {
+        let mut f = parse_main(r#"
+_ENV = nil
+local _ENV
+local function f() local _ENV i = nil end
+local function g() _ENV = nil end
+local function h() local function h1() r = nil end end
+"#).unwrap();
+        resolve_func(&mut f);
+
+        assert_eq!(f.value, _Function {
+            params: vec![],
+            varargs: true,
+            locals: vec!["_ENV".to_string(), "f".to_string(), "g".to_string(), "h".to_string()],
+            upvalues: vec![UpvalDesc::Upval(0)],
+            body: Block::with_locals(vec![
+                Spanned::default(SAssign(vec![
+                    Spanned::default(VUpval(0))
+                ], vec![
+                    Spanned::default(ELit(TNil))
+                ])),
+                Spanned::default(SDecl(vec!["_ENV".to_string()], vec![])),
+                Spanned::default(SLFunc("f".to_string(), Spanned::default(_Function {
+                    params: vec![],
+                    varargs: false,
+                    locals: vec!["_ENV".to_string()],
+                    upvalues: vec![],
+                    body: Block::with_locals(vec![
+                        Spanned::default(SDecl(vec!["_ENV".to_string()], vec![])),
+                        Spanned::default(SAssign(vec![
+                            Spanned::default(VResGlobal(
+                                Box::new(Spanned::default(VLocal(0))), "i".to_string()
+                            )),
+                        ], vec![Spanned::default(ELit(TNil))])),
+                    ], Default::default(), localmap!{ _ENV: 0 }),
+                }))),
+                Spanned::default(SLFunc("g".to_string(), Spanned::default(_Function {
+                    params: vec![],
+                    varargs: false,
+                    locals: vec![],
+                    upvalues: vec![UpvalDesc::Local(0)],
+                    body: Block::with_locals(vec![
+                        Spanned::default(SAssign(vec![
+                            Spanned::default(VUpval(0))
+                        ], vec![
+                            Spanned::default(ELit(TNil))
+                        ])),
+                    ], Default::default(), localmap!{}),
+                }))),
+                Spanned::default(SLFunc("h".to_string(), Spanned::default(_Function {
+                    params: vec![],
+                    varargs: false,
+                    locals: vec!["h1".to_string()],
+                    upvalues: vec![UpvalDesc::Local(0)],
+                    body: Block::with_locals(vec![
+                        Spanned::default(SLFunc("h1".to_string(), Spanned::default(_Function {
+                            params: vec![],
+                            varargs: false,
+                            locals: vec![],
+                            upvalues: vec![UpvalDesc::Upval(0)],
+                            body: Block::new(vec![
+                                Spanned::default(SAssign(vec![
+                                    Spanned::default(VResGlobal(
+                                        Box::new(Spanned::default(VUpval(0))), "r".to_string()
+                                    ))
+                                ], vec![
+                                    Spanned::default(ELit(TNil)),
+                                ])),
+                            ], Default::default()),
+                        }))),
+                    ], Default::default(), localmap!{ h1: 0 }),
+                }))),
+            ], Default::default(), localmap!{ _ENV: 0, f: 1, g: 2, h: 3 }),
+        });
+    }
 }
