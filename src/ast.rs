@@ -24,7 +24,7 @@ pub enum Literal {
 }
 
 /// Unary operators
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum UnOp {
     Negate, // -
     LNot,   // !
@@ -33,7 +33,7 @@ pub enum UnOp {
 }
 
 /// Binary operators
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum BinOp {
     Add,
     Sub,
@@ -113,27 +113,42 @@ impl BinOp {
 
 /// A block containing any number of statements. All blocks define a scope in which local variables
 /// can be declared.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Block {
     pub span: Span,
     pub stmts: Vec<Stmt>,
 
     /// Maps local names of locals declared in this block to their id
     pub localmap: HashMap<String, usize>,
-
-    /// Set to true while resolving in case a local inside this block is used as an upvalue.
-    /// Causes the emission of a CLOSE opcode that closes all locals used as upvalues.
-    pub needs_close: bool,
 }
 
 impl Block {
+    /// Create a new block of statements
     pub fn new(stmts: Vec<Stmt>, span: Span) -> Block {
         Block {
             span: span,
             stmts: stmts,
             localmap: Default::default(),
-            needs_close: false,
         }
+    }
+
+    /// Creates a new block and assigns a map of locals declared inside this block.
+    ///
+    /// Note that this does not check if the local map is valid. This would require access to the
+    /// enclosing Function.
+    pub fn with_locals(stmts: Vec<Stmt>, span: Span, localmap: HashMap<String, usize>) -> Block {
+        Block {
+            span: span,
+            stmts: stmts,
+            localmap: localmap,
+        }
+    }
+}
+
+impl PartialEq for Block {
+    /// Compare two `Block`s without comparing their spans
+    fn eq(&self, rhs: &Block) -> bool {
+        self.stmts == rhs.stmts && self.localmap == rhs.localmap
     }
 }
 
@@ -159,8 +174,8 @@ pub struct _Function {
 impl _Function {
     pub fn new(params: Vec<String>, varargs: bool, body: Block) -> _Function {
         _Function {
-            params: params.clone(),
-            locals: params,
+            params: params,
+            locals: vec![],
             varargs: varargs,
             body: body,
             upvalues: vec![],

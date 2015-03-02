@@ -2,14 +2,13 @@
 //! with some helper structs and functions.
 
 use std::fmt;
-use std::num::Int;
 use std::default::Default;
 use std::ops::{Deref, DerefMut};
 
 /// A span is a range of input characters in the source code. Span does not know about lines and
 /// the PEG parser handles lines as whitespace, so it is not trivial to convert a Span object (a
 /// span of characters) into a span of lines.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Span {
     pub start: usize,
     pub len: usize,
@@ -26,7 +25,7 @@ impl Span {
 
 impl Default for Span {
     fn default() -> Span {
-        Span::new(Int::max_value(), Int::max_value())
+        Span::new(0, 0)
     }
 }
 
