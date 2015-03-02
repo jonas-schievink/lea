@@ -334,37 +334,57 @@ end
 "#).unwrap();
         resolve_func(&mut f);
 
-        assert_eq!(f.value.body, Block::with_locals(vec![
-            Spanned::default(SDecl(vec!["a".to_string()], vec![])),
-            Spanned::default(SLFunc("f".to_string(), Spanned::default(_Function {
-                params: vec![],
-                varargs: false,
-                locals: vec!["f".to_string(), "g".to_string()],
-                upvalues: vec![UpvalDesc::Local(1), UpvalDesc::Local(0)],
-                body: Block::with_locals(vec![
-                    Spanned::default(SAssign(vec![
-                        Spanned::default(VUpval(0))
-                    ], vec![
-                        Spanned::default(ELit(TNil))
-                    ])),
-                    Spanned::default(SDecl(vec!["f".to_string()], vec![
-                        Spanned::default(EVar(Spanned::default(VUpval(0))))
-                    ])),
-                    Spanned::default(SLFunc("g".to_string(), Spanned::default(_Function {
-                        params: vec![],
-                        varargs: false,
-                        locals: vec![],
-                        upvalues: vec![UpvalDesc::Local(0), UpvalDesc::Upval(1)],
-                        body: Block::with_locals(vec![
-                            Spanned::default(SAssign(vec![
-                                Spanned::default(VUpval(0))
-                            ], vec![
-                                Spanned::default(EVar(Spanned::default(VUpval(1))))
-                            ])),
-                        ], Default::default(), localmap!{}),
-                    }))),
-                ], Default::default(), localmap!{ f: 0, g: 1 }),
-            }))),
-        ], Default::default(), localmap!{ a: 0, f: 1 }));
+        assert_eq!(f.value, _Function {
+            params: vec![],
+            varargs: true,
+            locals: vec!["a".to_string(), "f".to_string()],
+            upvalues: vec![UpvalDesc::Upval(0)],    // `_ENV`; the UpvalDesc is ignored
+            body: Block::with_locals(vec![
+                Spanned::default(SDecl(vec!["a".to_string()], vec![])),
+                Spanned::default(SLFunc("f".to_string(), Spanned::default(_Function {
+                    params: vec![],
+                    varargs: false,
+                    locals: vec!["f".to_string(), "g".to_string()],
+                    upvalues: vec![UpvalDesc::Local(1), UpvalDesc::Local(0)],
+                    body: Block::with_locals(vec![
+                        Spanned::default(SAssign(vec![
+                            Spanned::default(VUpval(0))
+                        ], vec![
+                            Spanned::default(ELit(TNil))
+                        ])),
+                        Spanned::default(SDecl(vec!["f".to_string()], vec![
+                            Spanned::default(EVar(Spanned::default(VUpval(0))))
+                        ])),
+                        Spanned::default(SLFunc("g".to_string(), Spanned::default(_Function {
+                            params: vec![],
+                            varargs: false,
+                            locals: vec![],
+                            upvalues: vec![UpvalDesc::Local(0), UpvalDesc::Upval(1)],
+                            body: Block::with_locals(vec![
+                                Spanned::default(SAssign(vec![
+                                    Spanned::default(VUpval(0))
+                                ], vec![
+                                    Spanned::default(EVar(Spanned::default(VUpval(1))))
+                                ])),
+                            ], Default::default(), localmap!{}),
+                        }))),
+                    ], Default::default(), localmap!{ f: 0, g: 1 }),
+                }))),
+            ], Default::default(), localmap!{ a: 0, f: 1 }),
+        });
+    }
+
+    #[test]
+    fn env_simple() {
+        let mut f = parse_main("_ENV = 0").unwrap();
+        resolve_func(&mut f);
+
+        assert_eq!(f.value.body, Block::new(vec![
+            Spanned::default(SAssign(vec![
+                Spanned::default(VUpval(0))
+            ], vec![
+                Spanned::default(ELit(TInt(0)))
+            ])),
+        ], Default::default()));
     }
 }
