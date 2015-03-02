@@ -40,7 +40,7 @@ fn read_and_compile<T: Reader>(file: &mut T, filename: &str) {
         Ok(source) => {
             match parse_main(source.as_slice()) {
                 Err(err) => {
-                    printerr!("parse error: {}", err);
+                    printerr!("parse error: {}", err.format(source.as_slice(), filename));
                     return;
                 },
                 Ok(mut main) => {

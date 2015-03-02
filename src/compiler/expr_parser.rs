@@ -1,4 +1,4 @@
-//! This module contains an AST visitor that turns all "ERawOp"s into "proper" expression nodes,
+//! This module contains an AST visitor that turns all `ERawOp`s into `EBinOp` expression trees,
 //! ensuring proper operator precedences are used.
 //!
 //! This makes a tree out of the "raw" expressions parsed by the generated parser.
@@ -12,6 +12,8 @@ use super::span::*;
 #[derive(Copy)]
 pub struct ExprParser;
 
+/// Builds a `EBinOp` node and attaches the correct span. This requires that `lhs` and `rhs` are in
+/// the right "order" concerning their spans.
 fn mknode(lhs: Expr, op: BinOp, rhs: Expr) -> Expr {
     let start = lhs.span.start;
     let end = rhs.span.start + rhs.span.len;

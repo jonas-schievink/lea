@@ -2,17 +2,43 @@
 
 peg_file! parse("lea.rustpeg");
 
-pub use self::parse::{ParseError, ident, literal};
+pub use self::parse::{ident, literal};
 
 use super::ast::*;
-use super::span::Spanned;
+use super::span::{Span, Spanned};
 use super::visit;
 use super::visit::Visitor;
 use super::expr_parser::ExprParser;
 
+/// Custom error type adding a dummy span and providing a `format` method.
+#[derive(Debug, PartialEq, Eq)]
+pub struct ParseError {
+    err: parse::ParseError,
+    span: Span,
+}
+
+impl ParseError {
+    fn new(err: parse::ParseError) -> ParseError {
+        ParseError {
+            span: Span::new(err.offset, err.offset + 1),
+            err: err,
+        }
+    }
+
+    pub fn format(&self, code: &str, source_name: &str) -> String {
+        let mut res = format!("{}: {}\n", source_name, self.err);
+        res.push_str(self.span.format(code, source_name).as_slice());
+
+        res
+    }
+}
+
 /// Parses an expression
 pub fn expression(input: &str) -> Result<Expr, ParseError> {
-    let mut e = try!(parse::expression(input));
+    let mut e = match parse::expression(input) {
+        Err(err) => { return Err(ParseError::new(err)); },
+        Ok(res) => res,
+    };
     ExprParser.visit_expr(&mut e);
 
     Ok(e)
@@ -20,7 +46,10 @@ pub fn expression(input: &str) -> Result<Expr, ParseError> {
 
 /// Parses a statement
 pub fn statement(input: &str) -> Result<Stmt, ParseError> {
-    let mut s = try!(parse::statement(input));
+    let mut s = match parse::statement(input) {
+        Err(err) => { return Err(ParseError::new(err)); },
+        Ok(res) => res,
+    };
     ExprParser.visit_stmt(&mut s);
 
     Ok(s)
@@ -28,7 +57,10 @@ pub fn statement(input: &str) -> Result<Stmt, ParseError> {
 
 /// Parses a block of statements
 pub fn block(input: &str) -> Result<Block, ParseError> {
-    let mut b = try!(parse::block(input));
+    let mut b = match parse::block(input) {
+        Err(err) => { return Err(ParseError::new(err)); },
+        Ok(res) => res,
+    };
     visit::walk_block(&mut b, &mut ExprParser);
 
     Ok(b)
@@ -47,7 +79,10 @@ pub fn parse_main(input: &str) -> Result<Function, ParseError> {
 /// The returned expression will be of the variant `ERawOp`.
 #[inline(always)]
 pub fn expression_raw(input: &str) -> Result<Expr, ParseError> {
-    parse::expression(input)
+    match parse::expression(input) {
+        Err(err) => Err(ParseError::new(err)),
+        Ok(res) => Ok(res),
+    }
 }
 
 #[cfg(test)]
