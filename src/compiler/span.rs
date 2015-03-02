@@ -2,12 +2,12 @@
 //! with some helper structs and functions.
 
 use std::fmt;
+use std::cmp;
 use std::default::Default;
+use std::io::Write;
 use std::ops::{Deref, DerefMut};
 
-/// A span is a range of input characters in the source code. Span does not know about lines and
-/// the PEG parser handles lines as whitespace, so it is not trivial to convert a Span object (a
-/// span of characters) into a span of lines.
+/// A span is a range of input characters in the source code.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Span {
     pub start: usize,
@@ -20,6 +20,56 @@ impl Span {
             start: start,
             len: end - start,
         }
+    }
+
+    /// Given the source code from which this span was created (while compiling it), this prints
+    /// the part of the source code this span points to. All lines contained in this span are
+    /// printed and below each line, a marker shows which part belongs to the span.
+    pub fn format(&self, code: &str, source_name: &str) -> String {
+        let mut start = self.start;
+        let mut res = String::new();
+        let mut len_left = self.len;
+        let mut lineno = 1;
+        for line in code.lines() {
+            if line.len() + 1 > start {
+                let prefix = format!("{}:{}   ", source_name, lineno);
+                let srcline = format!("{}{}\n", prefix, line);
+                res.push_str(srcline.as_slice());
+
+                for _ in 0..start+prefix.len() {
+                    res.push(' ');
+                }
+
+                let marks = cmp::min(line.len(), len_left);
+                for _ in 0..marks {
+                    res.push('^');
+                }
+                len_left -= marks;
+
+                if len_left == 0 { break; }   // whole span printed, done
+            }
+            start -= cmp::min(line.len() + 1, start);
+            lineno += 1;
+        }
+
+        res
+    }
+
+    /// Computes the first and last line this span points to in the given source code fragment.
+    ///
+    /// In most cases, spans are contained to one line, so both values will be the same.
+    pub fn get_lines(&self, code: &str) -> (usize, usize) {
+        let mut pos = 0;
+        let mut lineno = 0;
+        let mut start = 0;
+        for line in code.lines() {
+            lineno += 1;
+            pos += line.len() + 1;
+            if pos > self.start { start = lineno; }
+            if pos > self.start + self.len { return (start, lineno); }
+        }
+
+        panic!("self.pos > code.len()");
     }
 }
 

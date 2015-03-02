@@ -21,6 +21,8 @@ pub enum UpvalDesc {
 
 /// A compiled function (prototype). Instantiated by the VM
 pub struct FunctionProto {
+    /// The name of the source from which this function was compiled
+    pub source_name: String,
     /// The max. number of stack slots used
     pub stacksize: u8,
     /// Number of parameters accepted (ignoring varargs)

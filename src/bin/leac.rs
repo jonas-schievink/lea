@@ -31,7 +31,7 @@ fn print_usage() {
     println!("When the compiler is done, this will actually compile the source code.");
 }
 
-fn read_and_compile<T: Reader>(file: &mut T) {
+fn read_and_compile<T: Reader>(file: &mut T, filename: &str) {
     match file.read_to_string() {
         Err(err) => {
             printerr!("error opening file: {}", err);
@@ -45,8 +45,16 @@ fn read_and_compile<T: Reader>(file: &mut T) {
                 },
                 Ok(mut main) => {
                     match check::check_func(&mut main) {
-                        Err(err) => {
-                            printerr!("check error: {}", err);
+                        Err(errs) => {
+                            let mut errstr = String::new();
+                            let mut i = 1;
+                            for err in &errs {
+                                errstr.push_str("error: ");
+                                errstr.push_str(err.format(source.as_slice(), filename).as_slice());
+                                if i < errs.len() - 1 { errstr.push_str("\n"); }
+                                i += 1;
+                            }
+                            printerr!("{}", errstr);
                             return;
                         },
                         Ok(()) => {
@@ -93,8 +101,8 @@ pub fn main() {
 
     let f = inputarg.unwrap();
     if f.as_slice() == "-" {
-        read_and_compile(&mut stdio::stdin_raw());
+        read_and_compile(&mut stdio::stdin_raw(), "<stdin>");
     } else {
-        read_and_compile(&mut File::open(&Path::new(f)));
+        read_and_compile(&mut File::open(&Path::new(f.clone())), f.as_slice());
     }
 }
