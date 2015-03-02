@@ -4,11 +4,10 @@
 //! easy to reference upvalues (see `UpvalDesc` in program.rs) and makes the bytecode emitter do
 //! less work.
 
-
-use ast::*;
-use visit::*;
+use super::ast::*;
+use super::visit::*;
+use super::span::{Span, Spanned};
 use program::UpvalDesc;
-use span::{Span, Spanned};
 
 use std::mem;
 use std::collections::HashMap;
@@ -258,10 +257,10 @@ pub fn resolve_func(f: &mut Function) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use parser::parse_main;
-    use span::Spanned;
+    use compiler::parser::parse_main;
+    use compiler::span::Spanned;
+    use compiler::ast::*;
     use program::UpvalDesc;
-    use ast::*;
 
     use std::default::Default;
 

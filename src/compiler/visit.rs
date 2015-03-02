@@ -1,6 +1,6 @@
 //! AST visitor implementation
 
-use ast::*;
+use super::ast::*;
 
 pub trait Visitor : Sized {
     fn visit_stmt(&mut self, stmt: &mut Stmt) {
@@ -160,9 +160,9 @@ pub fn walk_var<V: Visitor>(var: &mut Variable, visitor: &mut V) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ast::*;
-    use parser::block;
-    use span::Spanned;
+    use compiler::ast::*;
+    use compiler::parser::block;
+    use compiler::span::Spanned;
 
     #[test]
     fn visit_noop() {

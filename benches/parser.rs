@@ -5,7 +5,7 @@ extern crate lea;
 
 use test::Bencher;
 
-use lea::parser::*;
+use lea::compiler::parser::*;
 
 #[bench]
 fn bench_simple(b: &mut Bencher) {

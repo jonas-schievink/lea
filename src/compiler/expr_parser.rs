@@ -5,9 +5,9 @@
 
 use std::mem;
 
-use visit::*;
-use ast::*;
-use span::*;
+use super::visit::*;
+use super::ast::*;
+use super::span::*;
 
 #[derive(Copy)]
 pub struct ExprParser;

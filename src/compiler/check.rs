@@ -2,8 +2,8 @@
 
 use std::fmt;
 
-use ast::*;
-use visit::*;
+use super::ast::*;
+use super::visit::*;
 
 pub struct CheckError {
     msg: &'static str,
@@ -92,7 +92,7 @@ pub fn check_func(func: &mut Function) -> Result<(), CheckError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use parser::parse_main;
+    use compiler::parser::parse_main;
 
     #[test]
     fn test() {

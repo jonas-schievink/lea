@@ -5,8 +5,8 @@
 use std::num::from_str_radix;
 use std::mem;
 
-use span::{Span, Spanned, mkspanned};
-use ast::*;
+use compiler::span::{Span, Spanned, mkspanned};
+use compiler::ast::*;
 
 
 whitespace -> ()

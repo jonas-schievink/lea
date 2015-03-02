@@ -7,7 +7,7 @@ use std::fmt;
 use std::collections::HashMap;
 use std::default::Default;
 
-use span::{Span, Spanned};
+use super::span::{Span, Spanned};
 use program::UpvalDesc;
 
 use self::UnOp::*;

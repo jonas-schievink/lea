@@ -8,9 +8,9 @@ use std::env;
 use std::fmt;
 use std::old_io::{stdio, File};
 
-use lea::parser::parse_main;
-use lea::check;
-use lea::resolve;
+use lea::compiler::parser::parse_main;
+use lea::compiler::check;
+use lea::compiler::resolve;
 
 macro_rules! printerr {
     ($($arg:tt)*) => {

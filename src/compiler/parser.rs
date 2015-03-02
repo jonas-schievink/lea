@@ -4,11 +4,11 @@ peg_file! parse("lea.rustpeg");
 
 pub use self::parse::{ParseError, ident, literal};
 
-use ast::*;
-use span::Spanned;
-use visit;
-use visit::Visitor;
-use expr_parser::ExprParser;
+use super::ast::*;
+use super::span::Spanned;
+use super::visit;
+use super::visit::Visitor;
+use super::expr_parser::ExprParser;
 
 /// Parses an expression
 pub fn expression(input: &str) -> Result<Expr, ParseError> {
@@ -54,8 +54,8 @@ pub fn expression_raw(input: &str) -> Result<Expr, ParseError> {
 mod tests {
     use super::*;
 
-    use ast::*;
-    use span::Spanned;
+    use compiler::ast::*;
+    use compiler::span::Spanned;
 
     use std::default::Default;
 

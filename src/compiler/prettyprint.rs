@@ -1,8 +1,8 @@
 //! AST pretty printer
 
-use parser;
-use ast::*;
-use visit::*;
+use super::parser;
+use super::ast::*;
+use super::visit::*;
 
 pub struct PrettyPrinter<'a, 'b, W: Writer + 'a> {
     writer: &'a mut W,
@@ -475,9 +475,9 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use parser::block;
-    use visit::walk_block;
-    use ast::Block;
+    use compiler::parser::block;
+    use compiler::visit::walk_block;
+    use compiler::ast::Block;
 
     fn print_block(block: &mut Block) -> String {
         let mut v = Vec::new();
