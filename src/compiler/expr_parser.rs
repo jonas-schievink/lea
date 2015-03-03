@@ -8,6 +8,7 @@ use std::mem;
 use super::visit::*;
 use super::ast::*;
 use super::span::*;
+use op::*;
 
 #[derive(Copy)]
 pub struct ExprParser;

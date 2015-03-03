@@ -92,6 +92,8 @@ mod tests {
     use compiler::ast::*;
     use compiler::span::Spanned;
 
+    use op::*;
+
     use std::default::Default;
 
     #[test]

@@ -26,10 +26,13 @@ pub struct CompileConfig {
 }
 
 impl Default for CompileConfig {
-    /// Creates a default `CompileConfig` that applies the default set of optimizations and linters
+    /// Creates a default `CompileConfig` that applies the default set of optimizers and linters
     fn default() -> CompileConfig {
         CompileConfig {
-            trans: vec![transform::globalwrite::run],
+            trans: vec![
+                transform::globalwrite::run,
+                transform::fold::run,
+            ],
         }
     }
 }

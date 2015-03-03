@@ -9,6 +9,7 @@ extern crate phf;
 
 pub mod compiler;
 
+pub mod op;
 pub mod opcode;
 pub mod program;
 pub mod value;
