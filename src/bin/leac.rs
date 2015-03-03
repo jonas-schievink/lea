@@ -6,6 +6,7 @@ extern crate lea;
 
 use std::env;
 use std::fmt;
+use std::default::Default;
 use std::old_io::{stdio, File};
 
 use lea::compiler::*;
@@ -32,7 +33,7 @@ fn print_usage() {
 
 fn compile(code: &str, filename: &str) {
     let mut p = Program::new();
-    match compile_str(&mut p, code, filename) {
+    match compile_str(&mut p, code, filename, &CompileConfig::default()) {
         Err(e) => match e {
             ErrParse(err) => {
                 printerr!("parse error: {}", err.format(code.as_slice(), filename));
@@ -51,9 +52,14 @@ fn compile(code: &str, filename: &str) {
                 return;
             },
         },
-        Ok(_output) => {
-            // TODO
-            return;
+        Ok(output) => {
+            let warns = output.get_warns();
+            if warns.len() > 0 {
+                println!("{} warnings:", warns.len());
+                for w in warns {
+                    println!("{}", w.format(code, filename));
+                }
+            }
         }
     }
 }
@@ -91,7 +97,9 @@ pub fn main() {
 
     let f = inputarg.unwrap();
     if f.as_slice() == "-" {
-        compile(stdio::stdin_raw().read_to_string().unwrap().as_slice(), "<stdin>");
+        let code = stdio::stdin_raw().read_to_string().unwrap();
+        println!("");   // print newline to seperate leac output from source input
+        compile(code.as_slice(), "<stdin>");
     } else {
         let code = match File::open(&Path::new(f.clone())).read_to_string() {
             Ok(c) => c,

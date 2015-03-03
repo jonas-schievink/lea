@@ -15,10 +15,13 @@ pub struct Span {
 }
 
 impl Span {
+    /// Creates a span from `start` to `end` (inclusive).
     pub fn new(start: usize, end: usize) -> Span {
+        assert!(start <= end);
+
         Span {
             start: start,
-            len: end - start,
+            len: end - start + 1,   // new(0,0) -> len = 1, start = 0
         }
     }
 
@@ -59,23 +62,28 @@ impl Span {
     ///
     /// In most cases, spans are contained to one line, so both values will be the same.
     pub fn get_lines(&self, code: &str) -> (usize, usize) {
-        let mut pos = 0;
-        let mut lineno = 0;
-        let mut start = 0;
+        let mut first = 0;
+        let mut start = self.start;
+        let mut len_left = self.len;
+        let mut lineno = 1;
         for line in code.lines() {
+            if line.len() + 1 > start {
+                if len_left == self.len { first = lineno; }
+                len_left -= cmp::min(line.len(), len_left);
+
+                if len_left == 0 { break; }   // whole span printed, done
+            }
+            start -= cmp::min(line.len() + 1, start);
             lineno += 1;
-            pos += line.len() + 1;
-            if pos > self.start { start = lineno; }
-            if pos > self.start + self.len { return (start, lineno); }
         }
 
-        panic!("self.pos > code.len()");
+        (first, lineno)
     }
 }
 
 impl Default for Span {
     fn default() -> Span {
-        Span::new(0, 0)
+        Span::new(0, 0)     // first char only (length: 1)
     }
 }
 
@@ -133,8 +141,32 @@ impl <T: PartialEq> PartialEq for Spanned<T> {
     }
 }
 
-/// Helper method that creates a Spanned<T>
+/// Helper method that creates a Spanned<T> that extends from `start` until the character before
+/// `end` (unlike `Span::new`).
 /// Used by the PEG parser.
 pub fn mkspanned<T>(t: T, start: usize, end: usize) -> Spanned<T> {
-    Spanned::new(Span::new(start, end), t)
+    //assert!(start < end);
+    Spanned::new(Span::new(start, end - 1), t)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test(span: Span, code: &str, expect: &str) {
+        assert_eq!(span.format(code, "A"), expect);
+    }
+
+    #[test]
+    fn span_format() {
+        test(Span::new(0, 0), "Aaa", "A:1   Aaa\n      ^");
+        test(Span::new(3, 3), "a\naAa", "A:2   aAa\n       ^");
+        test(Span::new(1, 1), "aA", "A:1   aA\n       ^");
+    }
+
+    #[test] #[should_fail]
+    fn span_inv() {
+        // span outside of source code
+        test(Span::new(4, 4), "aaa", "A:1   aaa\n         ^");
+    }
 }

@@ -1,6 +1,11 @@
 #![feature(plugin, core, old_io, io, collections)]
 
 #![plugin(peg_syntax_ext)]
+#![plugin(phf_macros)]
+
+#![unstable]
+
+extern crate phf;
 
 pub mod compiler;
 

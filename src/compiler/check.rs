@@ -6,6 +6,7 @@ use super::ast::*;
 use super::visit::*;
 use super::span::Span;
 
+#[derive(Clone, Debug)]
 pub struct CheckError {
     pub msg: &'static str,
     pub detail: Option<String>,
