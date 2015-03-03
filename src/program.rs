@@ -49,6 +49,16 @@ pub struct Program {
     pub consts: Vec<Value>,
 }
 
+impl Program {
+    /// Creates an empty program
+    pub fn new() -> Program {
+        Program {
+            funcs: vec![],
+            consts: vec![],
+        }
+    }
+}
+
 
 //////// Runtime types below ////////
 

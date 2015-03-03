@@ -1,5 +1,17 @@
 # Lea - A sane Lua-based language written in Rust
 
+**Note: This is a work-in-progress. Nothing runs yet.**
+
+Lea is a programming language derived from Lua 5.3. Lea offers several slight changes to the syntax , making it more familiar, as well as a reworked library that makes programs safer and offers much more functionality.
+
+For `.lua` files, Lea offers a *compatibility mode* that aims to act as a drop-in replacement for the reference Lua interpreter.
+
+When used in the "default" mode (with the Lea modifications enabled), all Lua-code should still compile and run. The compiler will warn you when any deprecated Lua-syntax is used.
+
+The replacement standard library is a superset of the Lua library, meaning that all Lua code should still work with it. It will contain an FFI, which allows integrating external libraries without writing a single line of C or Rust code (everything can be done in Lea).
+
+The following features / changes are made by Lea (note that these are - of course - not objectively better, but merely resemble my own opinion):
+
 * `!=` to replace `~=`
 * Integer type (Lua 5.3 has this too)
 * Replace "word" operators with commonly used symbols (`and` -> `&&`, `or` -> `||`, ...)
@@ -48,9 +60,11 @@ Like many changes, this change is made to make Lua more similar to C-like langua
 
 Lua provides one central data structure: Tables. Tables have an "array part" which stores values linearly in memory. They also have a "hash part" that works like a hash table: You can store key-value pairs and look up the value if you have its key.
 
-This makes Lua's design very simple and yet flexible: Tables can be used for namespaces (thanks you the `.` access syntax sugar) and to store data the program works with. They can be used as building blocks for more complicated data structures, if needed.
+This makes Lua's design very simple and yet flexible: Tables can be used for namespaces (thanks to the `.` access syntax sugar) and to store data the program works with. They can be used as building blocks for more complicated data structures, if needed.
 
-Lea will provide a table type that is used like the hash part of Lua's tables (an associative array). It also provides a distinct array type that stores an ordered list of values indexed by integers starting at 0 (see below).
+Lea will provide a table type that can be used like Lua's tables: It supports metatables, weak reference modes, and will automatically augment its array part.
+
+It also provides a distinct array type that stores an ordered list of values indexed by integers starting at 0 (see below). The array type is simpler and more lightweight than the table type (no support for metatables and other table features).
 
 The distinct array type will be subject to a few optimizations. Dynamically typed languages usually implement arrays in a way that allows the user to store mixed types. The array has to store the type of every single element, which is quite costly is terms of memory. As long as all elements are of the same type, the type would only need to be stored once. Additionally, this allows the use of special data layouts depending on the element type:
 

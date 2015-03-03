@@ -8,9 +8,8 @@ use std::env;
 use std::fmt;
 use std::old_io::{stdio, File};
 
-use lea::compiler::parser::parse_main;
-use lea::compiler::check;
-use lea::compiler::resolve;
+use lea::compiler::*;
+use lea::program::Program;
 
 macro_rules! printerr {
     ($($arg:tt)*) => {
@@ -31,40 +30,31 @@ fn print_usage() {
     println!("When the compiler is done, this will actually compile the source code.");
 }
 
-fn read_and_compile<T: Reader>(file: &mut T, filename: &str) {
-    match file.read_to_string() {
-        Err(err) => {
-            printerr!("error opening file: {}", err);
+fn compile(code: &str, filename: &str) {
+    let mut p = Program::new();
+    match compile_str(&mut p, code, filename) {
+        Err(e) => match e {
+            ErrParse(err) => {
+                printerr!("parse error: {}", err.format(code.as_slice(), filename));
+                return;
+            },
+            ErrCheck(errs) => {
+                let mut errstr = String::new();
+                let mut i = 1;
+                for err in &errs {
+                    errstr.push_str("error: ");
+                    errstr.push_str(err.format(code.as_slice(), filename).as_slice());
+                    if i < errs.len() - 1 { errstr.push_str("\n"); }
+                    i += 1;
+                }
+                printerr!("{}", errstr);
+                return;
+            },
+        },
+        Ok(_output) => {
+            // TODO
             return;
-        },
-        Ok(source) => {
-            match parse_main(source.as_slice()) {
-                Err(err) => {
-                    printerr!("parse error: {}", err.format(source.as_slice(), filename));
-                    return;
-                },
-                Ok(mut main) => {
-                    match check::check_func(&mut main) {
-                        Err(errs) => {
-                            let mut errstr = String::new();
-                            let mut i = 1;
-                            for err in &errs {
-                                errstr.push_str("error: ");
-                                errstr.push_str(err.format(source.as_slice(), filename).as_slice());
-                                if i < errs.len() - 1 { errstr.push_str("\n"); }
-                                i += 1;
-                            }
-                            printerr!("{}", errstr);
-                            return;
-                        },
-                        Ok(()) => {
-                            // Resolution cannot fail
-                            resolve::resolve_func(&mut main);
-                        },
-                    }
-                },
-            }
-        },
+        }
     }
 }
 
@@ -101,8 +91,16 @@ pub fn main() {
 
     let f = inputarg.unwrap();
     if f.as_slice() == "-" {
-        read_and_compile(&mut stdio::stdin_raw(), "<stdin>");
+        compile(stdio::stdin_raw().read_to_string().unwrap().as_slice(), "<stdin>");
     } else {
-        read_and_compile(&mut File::open(&Path::new(f.clone())), f.as_slice());
+        let code = match File::open(&Path::new(f.clone())).read_to_string() {
+            Ok(c) => c,
+            Err(err) => {
+                printerr!("error reading file {}: {}", f, err);
+                return;
+            }
+        };
+
+        compile(code.as_slice(), f.as_slice());
     }
 }

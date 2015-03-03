@@ -80,7 +80,7 @@ impl Visitor for Checker {
             EVarArgs => {
                 if !self.vararg_func {
                     self.errs.push(CheckError {
-                        msg: "Use of `...` outside varargs function",
+                        msg: "Use of ... outside varargs function",
                         detail: None,
                         span: e.span,
                     });
