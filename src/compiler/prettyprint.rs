@@ -68,7 +68,7 @@ impl <'a, 'b, W: Writer> PrettyPrinter<'a, 'b, W> {
 
     /// Prints the parameter list and the body of the given function
     #[allow(unused_must_use)]
-    fn print_funcbody(&mut self, f: &mut Function) {
+    fn print_funcbody(&mut self, mut f: Function) -> Function {
         write!(self.writer, "(");
         for i in range(0, f.params.len()) {
             write!(self.writer, "{}", &f.params[i]);
@@ -89,42 +89,40 @@ impl <'a, 'b, W: Writer> PrettyPrinter<'a, 'b, W> {
         // TODO Decide if the function requires multiple lines
 
         self.indent();
-        for stmt in &mut f.body.stmts {
-            self.visit_stmt(stmt);
-        }
+        f = walk_func(f, self);
         self.unindent();
 
         self.print_indent();
         write!(self.writer, "end");
+
+        f
     }
 
     /// Prints a function call
     #[allow(unused_must_use)]
-    fn print_call(&mut self, c: &mut Call) {
-        let Call{ref mut callee, ref mut argv} = *c;
-
-        self.visit_expr(callee);
+    fn print_call(&mut self, mut c: Call) -> Call {
+        c.callee = Box::new(self.visit_expr(*c.callee));
         self.writer.write_str("(");
 
-        for i in range(0, argv.len()) {
-            self.visit_expr(&mut argv[i]);
-
-            if i < argv.len() - 1 {
-                self.writer.write_str(", ");
-            }
-        }
+        let mut first = true;
+        c.argv = c.argv.into_iter().map(|arg| {
+            if first { first = false; } else { self.writer.write_str(", "); }
+            self.visit_expr(arg)
+        }).collect();
 
         self.writer.write_str(")");
+
+        c
     }
 }
 
 impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
     #[allow(unused_must_use)]   // Possibly Rust's fault
-    fn visit_stmt(&mut self, stmt: &mut Stmt) {
+    fn visit_stmt(&mut self, mut stmt: Stmt) -> Stmt {
         self.print_indent();
 
-        match stmt.value {
-            SDecl(ref names, ref mut vals) => {
+        stmt.value = match stmt.value {
+            SDecl(names, mut vals) => {
                 write!(self.writer, "local ");
                 for i in range(0, names.len()) {
                     let name = &names[i];
@@ -138,135 +136,133 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
                 if vals.len() > 0 {
                     write!(self.writer, " = ");
 
-                    for i in range(0, vals.len()) {
-                        self.visit_expr(&mut vals[i]);
+                    let mut first = true;
+                    vals = vals.into_iter().map(|val| {
+                        if first { first = false; } else { write!(self.writer, ", "); }
+                        self.visit_expr(val)
+                    }).collect();
+                }
 
-                        if i < vals.len() - 1 {
-                            write!(self.writer, ", ");
-                        }
-                    }
-                }
+                SDecl(names, vals)
             },
-            SAssign(ref mut vars, ref mut vals) => {
-                for i in range(0, vars.len()) {
-                    self.visit_var(&mut vars[i]);
-                    if i < vars.len() - 1 {
-                        write!(self.writer, ", ");
-                    }
-                }
+            SAssign(mut vars, mut vals) => {
+                let mut first = true;
+                vars = vars.into_iter().map(|var| {
+                    if first { first = false; } else { write!(self.writer, ", "); }
+                    self.visit_var(var)
+                }).collect();
 
                 write!(self.writer, " = ");
 
-                for i in range(0, vals.len()) {
-                    self.visit_expr(&mut vals[i]);
-                    if i < vals.len() - 1 {
-                        write!(self.writer, ", ");
-                    }
-                }
+                let mut first = true;
+                vals = vals.into_iter().map(|val| {
+                    if first { first = false; } else { write!(self.writer, ", "); }
+                    self.visit_expr(val)
+                }).collect();
+
+                SAssign(vars, vals)
             },
-            SDo(ref mut block) => {
+            SDo(mut block) => {
                 write!(self.writer, "do{}", self.lineend);
                 self.indent();
-
-                for stmt in &mut block.stmts {
-                    self.visit_stmt(stmt);
-                }
-
+                block = self.visit_block(block);
                 self.unindent();
                 write!(self.writer, "end{}", self.lineend);
+
+                SDo(block)
             },
-            SReturn(ref mut vals) => {
+            SReturn(mut vals) => {
                 write!(self.writer, "return");
                 if vals.len() > 0 { write!(self.writer, " "); }
 
-                for i in range(0, vals.len()) {
-                    self.visit_expr(&mut vals[i]);
+                let mut first = true;
+                vals = vals.into_iter().map(|val| {
+                    if first { first = false; } else { write!(self.writer, ", "); }
+                    self.visit_expr(val)
+                }).collect();
 
-                    if i < vals.len() - 1 {
-                        write!(self.writer, ", ");
-                    }
-                }
+                SReturn(vals)
             },
-            SCall(ref mut c) => {
-                self.print_call(c);
+            SCall(mut c) => {
+                c = self.print_call(c);
+                SCall(c)
             },
-            SFunc(ref mut var, ref mut f) => {
+            SFunc(mut var, mut f) => {
                 write!(self.writer, "function ");
-                self.visit_var(var);
-
-                self.print_funcbody(f);
+                var = self.visit_var(var);
+                f = self.print_funcbody(f);
+                SFunc(var, f)
             },
-            SLFunc(ref name, ref mut f) => {
+            SLFunc(name, mut f) => {
                 write!(self.writer, "local function {}", name);
-                self.print_funcbody(f);
+                f = self.print_funcbody(f);
+                SLFunc(name, f)
             },
-            SIf {ref mut cond, ref mut body, ref mut el} => {
+            SIf {mut cond, mut body, mut el} => {
                 write!(self.writer, "if ");
-                self.visit_expr(cond);
+                cond = self.visit_expr(cond);
                 write!(self.writer, " then{}", self.lineend);
 
                 self.indent();
-                for stmt in &mut body.stmts {
-                    self.visit_stmt(stmt);
-                }
+                body = self.visit_block(body);
                 self.unindent();
 
-                let els = &mut el.stmts;
-                if els.len() > 0 {
+                // TODO handle elseif
+                if el.stmts.len() > 0 {
                     write!(self.writer, "else");
                     self.indent();
-                    for stmt in els {
-                        self.visit_stmt(stmt);
-                    }
+                    el = walk_block(el, self);
                     self.unindent();
                 }
 
                 write!(self.writer, "end");
+
+                SIf {cond: cond, body: body, el: el}
             },
-            SWhile {ref mut cond, ref mut body} => {
+            SWhile {mut cond, mut body} => {
                 write!(self.writer, "while ");
-                self.visit_expr(cond);
+                cond = self.visit_expr(cond);
                 write!(self.writer, " do{}", self.lineend);
                 self.indent();
-                for stmt in &mut body.stmts {
-                    self.visit_stmt(stmt);
-                }
+                body = self.visit_block(body);
                 self.unindent();
                 write!(self.writer, "end");
+
+                SWhile {cond: cond, body: body}
             },
-            SRepeat {ref mut abort_on, ref mut body} => {
+            SRepeat {mut abort_on, mut body} => {
                 write!(self.writer, "repeat{}", self.lineend);
                 self.indent();
-                for stmt in &mut body.stmts {
-                    self.visit_stmt(stmt);
-                }
+                body = self.visit_block(body);
                 self.unindent();
                 write!(self.writer, "until ");
-                self.visit_expr(abort_on);
+                abort_on = self.visit_expr(abort_on);
+
+                SRepeat {abort_on: abort_on, body: body}
             },
-            SFor {ref var, ref mut start, ref mut step, ref mut end, ref mut body, ..} => {
+            SFor {var, mut start, mut step, mut end, mut body} => {
                 write!(self.writer, "for {} = ", var);
-                self.visit_expr(start);
+                start = self.visit_expr(start);
                 write!(self.writer, ", ");
-                self.visit_expr(end);
+                end = self.visit_expr(end);
 
                 match step.value {
                     ELit(TInt(1)) => {},    // default step, ignore
                     _ => {
                         write!(self.writer, ", ");
-                        self.visit_expr(step);
+                        step = self.visit_expr(step);
                     },
                 }
 
                 write!(self.writer, " do{}", self.lineend);
                 self.indent();
-                for stmt in &mut body.stmts {
-                    self.visit_stmt(stmt);
-                }
+                body = self.visit_block(body);
                 self.unindent();
                 write!(self.writer, "end");
+
+                SFor {var: var, start: start, step: step, end: end, body: body}
             },
-            SForIn {ref vars, ref mut iter, ref mut body, ..} => {
+            SForIn {vars, mut iter, mut body} => {
                 write!(self.writer, "for ");
                 for i in range(0, vars.len()) {
                     write!(self.writer, "{}", &vars[i]);
@@ -276,118 +272,121 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
                     }
                 }
                 write!(self.writer, " in ");
-                for i in range(0, iter.len()) {
-                    self.visit_expr(&mut iter[i]);
-
-                    if i < vars.len() - 1 {
-                        write!(self.writer, ", ");
-                    }
-                }
+                let mut first = true;
+                iter = iter.into_iter().map(|val| {
+                    if first { first = false; } else { write!(self.writer, ", "); }
+                    self.visit_expr(val)
+                }).collect();
                 write!(self.writer, " do{}", self.lineend);
                 self.indent();
-                for stmt in &mut body.stmts {
-                    self.visit_stmt(stmt);
-                }
+                body = self.visit_block(body);
                 self.unindent();
                 write!(self.writer, "end");
+
+                SForIn {vars: vars, iter: iter, body: body}
             },
             SBreak => {
                 write!(self.writer, "break{}", self.lineend);
+                SBreak
             },
-        }
+        };
 
         write!(self.writer, "{}", self.lineend);
+        stmt
     }
 
     #[allow(unused_must_use)]
-    fn visit_expr(&mut self, expr: &mut Expr) {
-        match expr.value {
-            ERawOp(ref mut lhs, ref mut rest) => {
-                self.visit_expr(lhs);
+    fn visit_expr(&mut self, mut expr: Expr) -> Expr {
+        expr.value = match expr.value {
+            ERawOp(mut lhs, mut rest) => {
+                lhs = Box::new(self.visit_expr(*lhs));
 
-                for t in rest {
-                    let (op, ref mut r) = *t;
+                rest = rest.into_iter().map(|(op, r)| {
                     write!(self.writer, " {} ", op);
-                    self.visit_expr(r);
-                }
-            },
-            EBinOp(ref mut lhs, op, ref mut rhs) => {
-                let prec = op.get_precedence();
-                let mut left_paren = false;     // Add parentheses to lhs
-                let mut right_paren = false;    // Add parentheses to rhs
+                    (op, self.visit_expr(r))
+                }).collect();
 
-                // Add parentheses if the precedence of lhs is lower / rhs is higher
+                ERawOp(lhs, rest)
+            },
+            EBinOp(mut lhs, op, mut rhs) => {
+                let prec = op.get_precedence();
+                let mut left_paren = false;     // add parentheses around lhs
+                let mut right_paren = false;    // add parentheses around rhs
+
+                // add parentheses if the precedence of lhs is lower / rhs is higher
                 match lhs.value {
                     EBinOp(_, lop, _) => {
                         if lop.get_precedence() < prec { left_paren = true; }
                     },
-                    _ => {},    // No need for parentheses
+                    _ => {},
                 }
                 match rhs.value {
                     EBinOp(_, rop, _) => {
                         if rop.get_precedence() > prec { right_paren = true; }
                     }
-                    _ => {},    // No need for parentheses
+                    _ => {},
                 }
 
                 if left_paren { write!(self.writer, "("); }
-                self.visit_expr(lhs);
+                lhs = Box::new(self.visit_expr(*lhs));
                 if left_paren { write!(self.writer, ")"); }
 
                 write!(self.writer, " {} ", op);
 
                 if right_paren { write!(self.writer, "("); }
-                self.visit_expr(rhs);
+                rhs = Box::new(self.visit_expr(*rhs));
                 if right_paren { write!(self.writer, ")"); }
+
+                EBinOp(lhs, op, rhs)
             },
-            EUnOp(op, ref mut operand) => {
+            EUnOp(op, mut operand) => {
                 match operand.value {
                     EBinOp(..) => {
                         write!(self.writer, "{}(", op);
-                        self.visit_expr(operand);
+                        operand = Box::new(self.visit_expr(*operand));
                         write!(self.writer, ")");
                     }
                     _ => {
                         write!(self.writer, "{}", op);
-                        self.visit_expr(operand);
+                        operand = Box::new(self.visit_expr(*operand));
                     }
-                }
-            },
-            EVar(ref mut var) => {
-                self.visit_var(var);
-            },
-            ECall(ref mut c) => {
-                self.print_call(c);
-            },
-            EFunc(ref mut f) => {
-                let _Function {ref mut body, ref params, varargs, ..} = f.value;
+                };
 
+                EUnOp(op, operand)
+            },
+            EVar(mut var) => {
+                var = self.visit_var(var);
+                EVar(var)
+            },
+            ECall(mut c) => {
+                c = self.print_call(c);
+                ECall(c)
+            },
+            EFunc(mut f) => {
                 write!(self.writer, "function(");
-                for i in range(0, params.len()) {
-                    write!(self.writer, "{}", &params[i]);
-
-                    if i < params.len() - 1 {
-                        write!(self.writer, ", ");
-                    }
-                }
-                if varargs { write!(self.writer, "..."); }
+                let mut first = true;
+                f.value.params.iter().map(|param| {
+                    if first { first = false; } else { write!(self.writer, ", "); }
+                    write!(self.writer, "{}", &param);
+                });
+                if f.value.varargs { write!(self.writer, "..."); }
                 writeln!(self.writer, ")");
                 // TODO Decide if the function requires multiple lines
 
                 self.indent();
-                for stmt in &mut body.stmts {
-                    self.visit_stmt(stmt);
-                }
+                f.value.body = self.visit_block(f.value.body);
                 self.unindent();
 
                 self.print_indent();
                 write!(self.writer, "end");
+
+                EFunc(f)
             },
-            ETable(ref mut pairs) => {
+            ETable(mut pairs) => {
                 self.writer.write_str("{");
                 self.indent();
 
-                for &mut (ref mut key, ref mut val) in pairs {
+                pairs = pairs.into_iter().map(|(mut key, mut val)| {
                     self.print_indent();
 
                     let mut key_full = true;    // Print the key in "[expr] = " notation
@@ -407,49 +406,57 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
 
                     if key_full {
                         self.writer.write_str("[");
-                        self.visit_expr(key);
+                        key = self.visit_expr(key);
                         self.writer.write_str("]");
                     }
 
                     self.writer.write_str(" = ");
-                    self.visit_expr(val);
+                    val = self.visit_expr(val);
                     write!(self.writer, ",{}", self.lineend);
-                }
+
+                    (key, val)
+                }).collect();
 
                 self.unindent();
                 self.print_indent();
                 self.writer.write_str("}");
+
+                ETable(pairs)
             },
-            EArray(ref mut exprs) => {
+            EArray(mut exprs) => {
                 write!(self.writer, "[");
 
-                for i in range(0, exprs.len()) {
-                    self.visit_expr(&mut exprs[i]);
-
-                    if i < exprs.len() - 1 {
-                        write!(self.writer, ", ");
-                    }
-                }
+                let mut first = true;
+                exprs = exprs.into_iter().map(|e| {
+                    if first { first = false; } else { write!(self.writer, ", "); }
+                    self.visit_expr(e)
+                }).collect();
 
                 write!(self.writer, "]");
+                EArray(exprs)
             },
             EVarArgs => {
                 write!(self.writer, "...");
+                EVarArgs
             },
-            ELit(ref lit) => {
-                match *lit {
+            ELit(lit) => {
+                match lit {
                     TInt(i) => write!(self.writer, "{}", i),
                     TFloat(f) => write!(self.writer, "{}", f),
                     TStr(ref s) => write!(self.writer, "{}", s),
                     TBool(b) => write!(self.writer, "{}", b),
                     TNil => write!(self.writer, "nil"),
                 };
+
+                ELit(lit)
             },
-        }
+        };
+
+        expr
     }
 
     #[allow(unused_must_use)]
-    fn visit_var(&mut self, var: &mut Variable) {
+    fn visit_var(&mut self, mut var: Variable) -> Variable {
         match var.value {
             VNamed(ref s) | VGlobal(ref s) | VResGlobal(_, ref s) => {
                 write!(self.writer, "{}", s);
@@ -458,17 +465,26 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
                 // TODO resolve name
                 panic!("VLocal not supported in pretty-printer");
             },
-            VIndex(ref mut var, ref mut expr) => {
-                self.visit_var(var);
-                write!(self.writer, "[");
-                self.visit_expr(expr);
-                write!(self.writer, "]");
-            },
-            VDotIndex(ref mut var, ref strn) => {
-                self.visit_var(var);
-                write!(self.writer, ".{}", strn);
-            },
+            _ => {
+                var.value = match var.value {
+                    VIndex(mut var, mut expr) => {
+                        var = Box::new(self.visit_var(*var));
+                        write!(self.writer, "[");
+                        expr = Box::new(self.visit_expr(*expr));
+                        write!(self.writer, "]");
+                        VIndex(var, expr)
+                    },
+                    VDotIndex(mut var, strn) => {
+                        var = Box::new(self.visit_var(*var));
+                        write!(self.writer, ".{}", strn);
+                        VDotIndex(var, strn)
+                    },
+                    _ => { return var; }
+                };
+            }
         };
+
+        var
     }
 }
 
@@ -479,32 +495,30 @@ mod tests {
     use compiler::visit::walk_block;
     use compiler::ast::Block;
 
-    fn print_block(block: &mut Block) -> String {
+    fn print_block(mut block: Block) -> (Block, String) {
         let mut v = Vec::new();
 
         {
             let mut pp = PrettyPrinter::new(&mut v);
-            walk_block(block, &mut pp);
+            block = walk_block(block, &mut pp);
         }
 
-        String::from_utf8(v).unwrap()
+        (block, String::from_utf8(v).unwrap())
     }
 
     fn print(code: &str) -> String {
-        let mut block = block(code).unwrap();
-
-        print_block(&mut block)
+        print_block(block(code).unwrap()).1
     }
 
     fn test(code: &str, expect: &str) {
-        assert_eq!(print(&code[1..]), &expect[1..]);
+        assert_eq!(print(&code[1..]), &expect[1..]);    // strip the \n at the start
     }
 
-    /// Parses and prints the given source code. Then parses tihe print result and asserts that the
-    /// two syntax trees are the same.
+    /// Parses and prints the given source code. Then parses the print result and asserts that the
+    /// two syntax trees are equal.
     fn test_auto(code: &str) {
-        let mut expblock = block(code).unwrap();
-        let printed = print_block(&mut expblock);
+        let expblock = block(code).unwrap();
+        let (expblock, printed) = print_block(expblock);
 
         let newblock = block(printed.as_slice()).unwrap();
 

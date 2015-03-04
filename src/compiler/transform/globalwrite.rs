@@ -10,10 +10,10 @@ struct GlobalWrite {
 }
 
 impl Visitor for GlobalWrite {
-    fn visit_stmt(&mut self, s: &mut Stmt) {
-        match s.value {
-            SAssign(ref mut targets, _) => {
-                for v in targets {
+    fn visit_stmt(&mut self, mut s: Stmt) -> Stmt {
+        s.value = match s.value {
+            SAssign(targets, values) => {
+                for v in &targets {
                     match v.value {
                         VResGlobal(_, ref name) => {
                             self.warns.push(Warning::new(v.span, format!("write to global variable \"{}\" (you should prefer locals)", name)));
@@ -21,19 +21,21 @@ impl Visitor for GlobalWrite {
                         _ => {},
                     };
                 }
+
+                SAssign(targets, values)
             },
-            _ => {
-                walk_stmt(s, self);
-            }
+            _ => { return walk_stmt(s, self) },
         };
+
+        s
     }
 }
 
-pub fn run(main: &mut Function) -> Vec<Warning> {
+pub fn run(mut main: Function) -> (Function, Vec<Warning>) {
     let mut v = GlobalWrite {
         warns: vec![],
     };
 
-    walk_block(&mut main.body, &mut v);
-    v.warns
+    main = walk_func(main, &mut v);
+    (main, v.warns)
 }

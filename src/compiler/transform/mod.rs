@@ -8,7 +8,7 @@ pub mod globalwrite;
 pub mod fold;
 
 
-pub type Transform = fn(&mut Function) -> Vec<Warning>;
+pub type Transform = fn(Function) -> (Function, Vec<Warning>);
 
 // TODO add cmd line switches so these mapping aren't useless
 pub static TRANSFORMS: ::phf::Map<&'static str, Transform> = phf_map! {

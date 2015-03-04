@@ -54,7 +54,7 @@ struct Checker {
 }
 
 impl Visitor for Checker {
-    fn visit_stmt(&mut self, s: &mut Stmt) {
+    fn visit_stmt(&mut self, mut s: Stmt) -> Stmt {
         match s.value {
             SBreak => {
                 if self.looplvl == 0 {
@@ -67,16 +67,16 @@ impl Visitor for Checker {
             },
             SFor{..} | SWhile{..} | SRepeat{..} => {
                 self.looplvl += 1;
-                walk_stmt(s, self);
+                s = walk_stmt(s, self);
                 self.looplvl -= 1;
             },
-            _ => {
-                walk_stmt(s, self);
-            },
-        }
+            _ => { return walk_stmt(s, self); },
+        };
+
+        s
     }
 
-    fn visit_expr(&mut self, e: &mut Expr) {
+    fn visit_expr(&mut self, e: Expr) -> Expr {
         match e.value {
             EVarArgs => {
                 if !self.vararg_func {
@@ -88,31 +88,37 @@ impl Visitor for Checker {
                 }
             },
             _ => {},
-        }
+        };
+
+        e
     }
 
-    fn visit_func(&mut self, func: &mut Function) {
-        if let Err(ref mut new_errs) = check_func(func) {
-            self.errs.append(new_errs);
-        }
+    fn visit_func(&mut self, func: Function) -> Function {
+        let (func, res) = check_func(func);
+        if let Err(mut new_errs) = res {
+            self.errs.append(&mut new_errs);
+        };
+
+        func
     }
 }
 
 /// Checks that the passed function contains only valid statements.
 ///
 /// Returns a non-empty `Vec<CheckError>` if any errors were found.
-pub fn check_func(func: &mut Function) -> Result<(), Vec<CheckError>> {
+pub fn check_func(mut func: Function) -> (Function, Result<(), Vec<CheckError>>) {
     let mut ch = Checker {
         errs: vec![],
         vararg_func: func.value.varargs,
         looplvl: 0,
     };
-    walk_block(&mut func.body, &mut ch);
+
+    func = walk_func(func, &mut ch);
 
     if ch.errs.len() == 0 {
-        Ok(())
+        (func, Ok(()))
     } else {
-        Err(ch.errs)
+        (func, Err(ch.errs))
     }
 }
 
@@ -123,13 +129,13 @@ mod tests {
 
     #[test]
     fn test() {
-        assert!(check_func(&mut parse_main("break").unwrap()).is_err());
-        assert!(check_func(&mut parse_main("for i=0,1 do break end").unwrap()).is_ok());
-        assert!(check_func(&mut parse_main("i = ...").unwrap()).is_ok());
-        assert!(check_func(&mut parse_main(r#"
+        assert!(check_func(parse_main("break").unwrap()).1.is_err());
+        assert!(check_func(parse_main("for i=0,1 do break end").unwrap()).1.is_ok());
+        assert!(check_func(parse_main("i = ...").unwrap()).1.is_ok());
+        assert!(check_func(parse_main(r#"
 function f(a)
     a = ...
 end
-"#).unwrap()).is_err());
+"#).unwrap()).1.is_err());
     }
 }

@@ -9,7 +9,6 @@ use super::visit::*;
 use super::span::{Span, Spanned};
 use program::UpvalDesc;
 
-use std::mem;
 use std::collections::HashMap;
 use std::default::Default;
 
@@ -139,14 +138,14 @@ impl Resolver {
     }
 
     /// Resolves a block and declares a list of locals inside of it
-    fn resolve_block(&mut self, b: &mut Block, locals: Vec<String>) {
+    fn resolve_block(&mut self, mut b: Block, locals: Vec<String>) -> Block {
         let level = self.funcs.len() - 1;
         self.funcs[level].scopes.push(vec![]);
         for name in locals {
             self.add_local(name);
         }
 
-        walk_block(b, self);
+        b = walk_block(b, self);
 
         let data = &mut self.funcs[level];
         let scope = data.scopes.pop().unwrap();
@@ -154,6 +153,8 @@ impl Resolver {
             let name = &data.locals[id];
             b.localmap.insert(name.clone(), id);
         }
+
+        b
     }
 
     /// Resolves the given named variable
@@ -177,67 +178,63 @@ impl Resolver {
 }
 
 impl Visitor for Resolver {
-    fn visit_stmt(&mut self, s: &mut Stmt) {
-        match s.value {
-            SDecl(ref mut names, ref mut exprs) => {
-                for expr in exprs {
-                    walk_expr(expr, self);
-                }
+    fn visit_stmt(&mut self, mut s: Stmt) -> Stmt {
+        s.value = match s.value {
+            SDecl(names, mut exprs) => {
+                exprs = exprs.into_iter().map(|e| walk_expr(e, self)).collect();
 
-                for name in names {
+                for name in &names {
                     self.add_local(name.clone());
                 }
+
+                SDecl(names, exprs)
             },
-            SLFunc(ref mut name, ref mut f) => {
+            SLFunc(name, mut f) => {
                 self.add_local(name.clone());
-                self.visit_func(f);
+                f = self.visit_func(f);
+                SLFunc(name, f)
             },
-            SFor{ref var, ref mut body, ..} => {
-                self.resolve_block(body, vec![var.clone()]);
+            SFor{var, start, step, end, mut body} => {
+                body = self.resolve_block(body, vec![var.clone()]);
+                SFor{var: var, start: start, step: step, end: end, body: body}
             },
-            SForIn{ref vars, ref mut body, ..} => {
-                self.resolve_block(body, vars.clone());
+            SForIn{vars, iter, mut body} => {
+                body = self.resolve_block(body, vars.clone());
+                SForIn{vars: vars, iter: iter, body: body}
             },
-            _ => {
-                walk_stmt(s, self);
-            }
+            _ => { return walk_stmt(s, self); },
+        };
+
+        s
+    }
+
+    fn visit_var(&mut self, mut v: Variable) -> Variable {
+        if let VNamed(name) = v.value {
+            v.value = self.resolve_var(&name, v.span);
+            v
+        } else {
+            walk_var(v, self)
         }
     }
 
-    fn visit_var(&mut self, v: &mut Variable) {
-        {
-            let ref mut var = v.value;
-
-            if let VNamed(..) = *var {
-                let newvar = if let VNamed(ref name) = *var {
-                    self.resolve_var(name, v.span)
-                } else { unreachable!(); };
-
-                mem::replace(var, newvar);
-                return;
-            }
-        }
-
-        walk_var(v, self);
+    fn visit_block(&mut self, b: Block) -> Block {
+        self.resolve_block(b, vec![])
     }
 
-    fn visit_block(&mut self, b: &mut Block) {
-        self.resolve_block(b, vec![]);
-    }
-
-    fn visit_func(&mut self, f: &mut Function) {
+    fn visit_func(&mut self, mut f: Function) -> Function {
         let mut data = FuncData::new(f.params.clone());
         if self.funcs.len() == 0 {
-            // root function, add implicit _ENV upvalue
             data.add_upval("_ENV".to_string(), UpvalDesc::Upval(0));    // the UpvalDesc is ignored
         }
 
         self.funcs.push(data);
-        self.visit_block(&mut f.value.body);
+        f.value.body = self.visit_block(f.value.body);
 
         let data = self.funcs.pop().unwrap();
         f.locals = data.locals;
         f.upvalues = data.upvals;
+
+        f
     }
 }
 
@@ -248,10 +245,10 @@ impl Visitor for Resolver {
 /// locals.
 ///
 /// This also resolves any `VGlobal` to `VResGlobal` and resolves the function environments.
-pub fn resolve_func(f: &mut Function) {
+pub fn resolve_func(f: Function) -> Function {
     Resolver {
         funcs: vec![],
-    }.visit_func(f);
+    }.visit_func(f)
 }
 
 #[cfg(test)]
@@ -288,7 +285,7 @@ do
 end
 j = i
 "#).unwrap();
-        resolve_func(&mut f);
+        f = resolve_func(f);
 
         assert_eq!(f.value.body, Block::with_locals(vec![
             Spanned::default(SAssign(
@@ -331,7 +328,7 @@ local function f()
     local function g() f = a end    // chained upvalue + normal upvalue
 end
 "#).unwrap();
-        resolve_func(&mut f);
+        f = resolve_func(f);
 
         assert_eq!(f.value, _Function {
             params: vec![],
@@ -376,7 +373,7 @@ end
     #[test]
     fn env_simple() {
         let mut f = parse_main("_ENV = 0").unwrap();
-        resolve_func(&mut f);
+        f = resolve_func(f);
 
         assert_eq!(f.value.body, Block::new(vec![
             Spanned::default(SAssign(vec![
@@ -396,7 +393,7 @@ local function f() local _ENV i = nil end
 local function g() _ENV = nil end
 local function h() local function h1() r = nil end end
 "#).unwrap();
-        resolve_func(&mut f);
+        f = resolve_func(f);
 
         assert_eq!(f.value, _Function {
             params: vec![],

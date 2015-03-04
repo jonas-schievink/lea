@@ -6,7 +6,7 @@ use compiler::ast::*;
 use compiler::span::Spanned;
 use op::*;
 
-use std::mem;
+//use std::mem;
 
 struct Folder {
     warns: Vec<Warning>,
@@ -42,40 +42,44 @@ fn fold_unop(op: UnOp, lit: &Literal) -> Option<Literal> {
 }
 
 impl Visitor for Folder {
-    fn visit_expr(&mut self, e: &mut Expr) {
-        match e.value {
-            EBinOp(ref mut lhs, op, ref mut rhs) => {
-                self.visit_expr(lhs);
-                self.visit_expr(rhs);
+    fn visit_expr(&mut self, mut e: Expr) -> Expr {
+        e.value = match e.value {
+            EBinOp(mut lhs, op, mut rhs) => {
+                // TODO fold these too
+                lhs = Box::new(self.visit_expr(*lhs));
+                rhs = Box::new(self.visit_expr(*rhs));
+                EBinOp(lhs, op, rhs)
             },
-            EUnOp(op, ref mut arg) => {
-                self.visit_expr(arg);
+            EUnOp(op, mut arg) => {
+                arg = Box::new(self.visit_expr(*arg));
 
-                if let ELit(ref lit) = arg.value {
-                    match fold_unop(op, lit) {
-                        Some(newlit) => {
-                            //mem::replace(&mut e.value, ELit(newlit));
-                        },
+                let span = arg.span;
+                if let ELit(lit) = arg.value {
+                    match fold_unop(op, &lit) {
+                        Some(newlit) => ELit(newlit),
                         None => {
                             // TODO print operand type
                             let msg = format!("invalid use of \"{}\" operator", op);
                             self.warns.push(Warning::new(e.span, msg));
+                            EUnOp(op, Box::new(Spanned::new(span, ELit(lit))))
                         }
                     }
+                } else {
+                    EUnOp(op, arg)
                 }
             },
-            _ => {
-                walk_expr(e, self);
-            }
-        }
+            _ => { return walk_expr(e, self) },
+        };
+
+        e
     }
 }
 
-pub fn run(main: &mut Function) -> Vec<Warning> {
+pub fn run(mut main: Function) -> (Function, Vec<Warning>) {
     let mut v = Folder {
         warns: vec![],
     };
 
-    walk_block(&mut main.body, &mut v);
-    v.warns
+    main = walk_func(main, &mut v);
+    (main, v.warns)
 }

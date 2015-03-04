@@ -39,7 +39,7 @@ pub fn expression(input: &str) -> Result<Expr, ParseError> {
         Err(err) => { return Err(ParseError::new(err)); },
         Ok(res) => res,
     };
-    ExprParser.visit_expr(&mut e);
+    e = ExprParser.visit_expr(e);
 
     Ok(e)
 }
@@ -50,7 +50,7 @@ pub fn statement(input: &str) -> Result<Stmt, ParseError> {
         Err(err) => { return Err(ParseError::new(err)); },
         Ok(res) => res,
     };
-    ExprParser.visit_stmt(&mut s);
+    s = ExprParser.visit_stmt(s);
 
     Ok(s)
 }
@@ -61,7 +61,7 @@ pub fn block(input: &str) -> Result<Block, ParseError> {
         Err(err) => { return Err(ParseError::new(err)); },
         Ok(res) => res,
     };
-    visit::walk_block(&mut b, &mut ExprParser);
+    b = visit::walk_block(b, &mut ExprParser);
 
     Ok(b)
 }

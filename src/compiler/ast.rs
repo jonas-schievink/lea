@@ -3,7 +3,6 @@ pub use self::_Stmt::*;
 pub use self::_Expr::*;
 pub use self::Literal::*;
 
-use std::fmt;
 use std::collections::HashMap;
 use std::default::Default;
 

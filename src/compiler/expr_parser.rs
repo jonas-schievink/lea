@@ -3,8 +3,6 @@
 //!
 //! This makes a tree out of the "raw" expressions parsed by the generated parser.
 
-use std::mem;
-
 use super::visit::*;
 use super::ast::*;
 use super::span::*;
@@ -13,8 +11,8 @@ use op::*;
 #[derive(Copy)]
 pub struct ExprParser;
 
-/// Builds a `EBinOp` node and attaches the correct span. This requires that `lhs` and `rhs` are in
-/// the right "order" concerning their spans.
+/// Builds an `EBinOp` node and attaches the correct span. This requires that `lhs` and `rhs` are
+/// in the right "order" concerning their spans.
 fn mknode(lhs: Expr, op: BinOp, rhs: Expr) -> Expr {
     let start = lhs.span.start;
     let end = rhs.span.start + rhs.span.len;
@@ -22,24 +20,17 @@ fn mknode(lhs: Expr, op: BinOp, rhs: Expr) -> Expr {
 }
 
 impl Visitor for ExprParser {
-    fn visit_expr(&mut self, expr: &mut Expr) {
-        match expr.value {
-            ERawOp(..) => {
+    fn visit_expr(&mut self, mut expr: Expr) -> Expr {
+        expr = match expr.value {
+            ERawOp(left, rest) => {
+                println!("left: {:?} ### rest: {:?}", left, rest);
+
                 let mut operands: Vec<Expr> = Vec::new();
                 let mut operators: Vec<BinOp> = Vec::new();
-                let mut rest = Vec::new();
 
-                if let ERawOp(ref mut left, ref mut old_rest) = expr.value {
-                    // take ownership of `left` and `rest` by replacing with an empty Vec<> (saves
-                    // us from copying the content). We replace the whole expr anyways, so it
-                    // doesn't matter.
-                    operands.push(mem::replace(left, mkspanned(EVarArgs, 0, 0)));
-                    mem::swap(old_rest, &mut rest);
-                } else { unreachable!(); }
+                operands.push(*left);
 
-                for pair in rest {
-                    let (op, rhs) = pair;
-
+                for (op, rhs) in rest {
                     // If the operator on the stack has higher or equal precedence, pop it, pop 2
                     // operands and build a new operand node
                     if operators.len() > 0 {
@@ -73,11 +64,11 @@ impl Visitor for ExprParser {
                 // of operator-operand pairs)
                 assert_eq!(operands.len(), 1);
 
-                mem::replace(expr, operands.pop().unwrap());
+                operands.pop().unwrap()
             },
-            _ => {},
-        }
+            _ => expr,
+        };
 
-        walk_expr(expr, self);
+        walk_expr(expr, self)
     }
 }
