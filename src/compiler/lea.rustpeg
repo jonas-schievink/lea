@@ -97,11 +97,11 @@ literal -> Spanned<Literal>
     = l:_literal { mkspanned(l, start_pos, pos) }
 
 binop -> BinOp
-    = "==" {BinOp::Eq} / "!=" {BinOp::NEq} / ">=" {BinOp::GEq} / "<=" {BinOp::LEq}
-    / ">>" {BinOp::ShiftR} / "<<" {BinOp::ShiftL} / "<" {BinOp::Less} / ">" {BinOp::Greater}
-    / "&&" {BinOp::LAnd} / "||" {BinOp::LOr} / "&" {BinOp::BAnd} / "^" {BinOp::BXor}
-    / "|" {BinOp::BOr} / "+" {BinOp::Add} / "-" {BinOp::Sub} / "*" {BinOp::Mul} / "/" {BinOp::Div}
-    / "%" {BinOp::Mod}
+    = "==" {BinOp::Eq} / "!=" {BinOp::NEq} / "~=" {BinOp::NEqLua} / ">=" {BinOp::GEq}
+    / "<=" {BinOp::LEq} / ">>" {BinOp::ShiftR} / "<<" {BinOp::ShiftL} / "<" {BinOp::Less}
+    / ">" {BinOp::Greater} / "&&" {BinOp::LAnd} / "||" {BinOp::LOr} / "&" {BinOp::BAnd}
+    / "^" {BinOp::BXor} / "|" {BinOp::BOr} / "+" {BinOp::Add} / "-" {BinOp::Sub}
+    / "*" {BinOp::Mul} / "/" {BinOp::Div} / "%" {BinOp::Mod}
 
 unop -> UnOp
     = "-" {UnOp::Negate} / "!" {UnOp::LNot} / "~" {UnOp::BNot} / "#" {UnOp::Len}
