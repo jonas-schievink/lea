@@ -2,8 +2,8 @@
 
 use std::fmt;
 
-pub use self::UnOp::*;
-pub use self::BinOp::*;
+use self::UnOp::*;
+use self::BinOp::*;
 
 /// Unary operators
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -112,7 +112,7 @@ impl BinOp {
             Pow => 11,
         }
     }
-    
+
     pub fn get_assoc(&self) -> Assoc {
         match *self {
             Pow => Assoc::Right,

@@ -18,21 +18,21 @@ struct Folder {
 /// operator's expected type. This causes a warning to be emitted.
 fn fold_unop(op: UnOp, lit: &Literal) -> Option<Literal> {
     match op {
-        Negate => match *lit { // -
+        UnOp::Negate => match *lit { // -
             TInt(i) => Some(TInt(-i)),
             TFloat(f) => Some(TFloat(-f)),
             TStr(_) | TBool(_) | TNil => None,
         },
-        LNot => match *lit { // ! / not
+        UnOp::LNot => match *lit { // ! / not
             TInt(_) | TFloat(_) | TStr(_) => Some(TBool(false)),  // all these evaluate to true
             TBool(b) => Some(TBool(!b)),
             TNil => None,
         },
-        BNot => match *lit { // ~
+        UnOp::BNot => match *lit { // ~
             TInt(i) => Some(TInt(!i)),
             TFloat(_) | TStr(_) | TBool(_) | TNil => None,
         },
-        Len => match *lit { // #
+        UnOp::Len => match *lit { // #
             TInt(_) | TFloat(_) | TBool(_) | TNil => None,
 
             // # of graphemes is the way to go
