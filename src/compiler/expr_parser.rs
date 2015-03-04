@@ -33,7 +33,9 @@ impl Visitor for ExprParser {
                     // operands and build a new operand node
                     if operators.len() > 0 {
                         let stackop = operators[operators.len() - 1];
-                        if stackop.get_precedence() >= op.get_precedence() {
+                        let stackprec = stackop.get_precedence();
+                        let opprec = op.get_precedence();
+                        if stackprec >= opprec && op.get_assoc() == Assoc::Left || stackprec > opprec && op.get_assoc() == Assoc::Right {
                             operators.pop();
                             let rhs = operands.pop().unwrap();
                             let lhs = operands.pop().unwrap();

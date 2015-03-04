@@ -201,10 +201,6 @@ mod tests {
             BinOp::Mul,
             Box::new(Spanned::default(ELit(TInt(3))))
         ));
-        assert_eq!(expression("--5").unwrap().value, EUnOp(
-            UnOp::Negate,
-            Box::new(Spanned::default(ELit(TInt(-5))))
-        ));
         assert_eq!(expression("-!~(#5)").unwrap().value, EUnOp(
             UnOp::Negate, Box::new(Spanned::default(EUnOp(
                 UnOp::LNot, Box::new(Spanned::default(EUnOp(
@@ -212,6 +208,17 @@ mod tests {
                         UnOp::Len, Box::new(Spanned::default(ELit(TInt(5))))
                     )))
                 )))
+            )))
+        ));
+        
+        // right-associativity
+        assert_eq!(expression("1^2^3").unwrap().value, EBinOp(
+            Box::new(Spanned::default(ELit(TInt(1)))),
+            BinOp::Pow,
+            Box::new(Spanned::default(EBinOp(
+                Box::new(Spanned::default(ELit(TInt(2)))),
+                BinOp::Pow,
+                Box::new(Spanned::default(ELit(TInt(3)))),
             )))
         ));
 
