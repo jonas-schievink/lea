@@ -216,12 +216,12 @@ mod tests {
         ));
 
         // This requires reversing everything because of op. precedences
-        assert_eq!(expression("9==8||7&6^5|4>>3+2*1").unwrap().value, EBinOp(
+        assert_eq!(expression("9||8==7&6^5|4>>3+2*1").unwrap().value, EBinOp(
             Box::new(Spanned::default(ELit(TInt(9)))),
-            BinOp::Eq,
+            BinOp::LOr,
             Box::new(Spanned::default(EBinOp(
                 Box::new(Spanned::default(ELit(TInt(8)))),
-                BinOp::LOr,
+                BinOp::Eq,
                 Box::new(Spanned::default(EBinOp(
                     Box::new(Spanned::default(ELit(TInt(7)))),
                     BinOp::BAnd,

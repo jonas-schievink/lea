@@ -23,8 +23,6 @@ impl Visitor for ExprParser {
     fn visit_expr(&mut self, mut expr: Expr) -> Expr {
         expr = match expr.value {
             ERawOp(left, rest) => {
-                println!("left: {:?} ### rest: {:?}", left, rest);
-
                 let mut operands: Vec<Expr> = Vec::new();
                 let mut operators: Vec<BinOp> = Vec::new();
 

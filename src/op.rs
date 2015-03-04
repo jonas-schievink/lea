@@ -23,6 +23,8 @@ pub enum BinOp {
     Div,
     Mod,
 
+    Concat,
+
     Eq,
     NEq,
     NEqLua,
@@ -62,6 +64,8 @@ impl fmt::Display for BinOp {
             Div => "/",
             Mod => "%",
 
+            Concat => "..",
+
             Eq => "==",
             NEq => "!=",
             NEqLua => "~=",
@@ -86,15 +90,17 @@ impl fmt::Display for BinOp {
 impl BinOp {
     pub fn get_precedence(&self) -> u8 {
         match *self {
-            Eq | NEq | NEqLua | LEq | GEq | Less | Greater => 0,
-            LAnd | LAndLua | LOr | LOrLua => 1,
-            BAnd => 2,
-            BXor => 3,
-            BOr => 4,
-            ShiftL => 5,
-            ShiftR => 6,
-            Add | Sub => 7,
-            Mul | Div | Mod => 8,
+            LOr | LOrLua => 0,
+            LAnd | LAndLua => 1,
+            Eq | NEq | NEqLua | LEq | GEq | Less | Greater => 2,
+            Concat => 3,
+            BAnd => 4,
+            BXor => 5,
+            BOr => 6,
+            ShiftL => 7,
+            ShiftR => 8,
+            Add | Sub => 9,
+            Mul | Div | Mod => 10,
         }
     }
 }
