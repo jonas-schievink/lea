@@ -21,6 +21,19 @@ pub enum Literal {
     TNil,
 }
 
+impl Literal {
+    /// Returns a string representation of the literal's type
+    pub fn get_type_str(&self) -> &'static str {
+        match *self {
+            TInt(_) => "integer",
+            TFloat(_) => "float",
+            TStr(_) => "string",
+            TBool(_) => "boolean",
+            TNil => "nil",
+        }
+    }
+}
+
 /// A block containing any number of statements. All blocks define a scope in which local variables
 /// can be declared.
 #[derive(Clone, Debug)]

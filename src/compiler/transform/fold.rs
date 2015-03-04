@@ -6,8 +6,6 @@ use compiler::ast::*;
 use compiler::span::Spanned;
 use op::*;
 
-//use std::mem;
-
 struct Folder {
     warns: Vec<Warning>,
 }
@@ -58,8 +56,7 @@ impl Visitor for Folder {
                     match fold_unop(op, &lit) {
                         Some(newlit) => ELit(newlit),
                         None => {
-                            // TODO print operand type
-                            let msg = format!("invalid use of \"{}\" operator", op);
+                            let msg = format!("invalid use of \"{}\" operator on literal of type \"{}\"", op, lit.get_type_str());
                             self.warns.push(Warning::new(e.span, msg));
                             EUnOp(op, Box::new(Spanned::new(span, ELit(lit))))
                         }
