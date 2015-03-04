@@ -22,6 +22,7 @@ pub enum BinOp {
     Mul,
     Div,
     Mod,
+    Pow,
 
     Concat,
 
@@ -44,6 +45,12 @@ pub enum BinOp {
     ShiftR,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum Assoc {
+    Left,
+    Right,
+}
+
 impl fmt::Display for UnOp {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         fmt.write_str(match *self {
@@ -63,6 +70,7 @@ impl fmt::Display for BinOp {
             Mul => "*",
             Div => "/",
             Mod => "%",
+            Pow => "^",
 
             Concat => "..",
 
@@ -80,7 +88,7 @@ impl fmt::Display for BinOp {
             LOrLua => "or",
             BAnd => "&",
             BOr => "|",
-            BXor => "^",
+            BXor => "~",    // compat. to Lua 5.3
             ShiftL => "<<",
             ShiftR => ">>",
         })
@@ -101,6 +109,14 @@ impl BinOp {
             ShiftR => 8,
             Add | Sub => 9,
             Mul | Div | Mod => 10,
+            Pow => 11,
+        }
+    }
+    
+    pub fn get_assoc(&self) -> Assoc {
+        match *self {
+            Pow => Assoc::Right,
+            _ => Assoc::Left,
         }
     }
 }

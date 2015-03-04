@@ -100,9 +100,9 @@ binop -> BinOp
     = "==" {BinOp::Eq} / "!=" {BinOp::NEq} / "~=" {BinOp::NEqLua} / ">=" {BinOp::GEq}
     / "<=" {BinOp::LEq} / ">>" {BinOp::ShiftR} / "<<" {BinOp::ShiftL} / "<" {BinOp::Less}
     / ">" {BinOp::Greater} / "&&" {BinOp::LAnd} / "and" {BinOp::LAndLua} / "||" {BinOp::LOr}
-    / "or" {BinOp::LOrLua} / "&" {BinOp::BAnd} / "^" {BinOp::BXor} / "|" {BinOp::BOr}
+    / "or" {BinOp::LOrLua} / "&" {BinOp::BAnd} / "~" {BinOp::BXor} / "|" {BinOp::BOr}
     / "+" {BinOp::Add} / "-" {BinOp::Sub} / "*" {BinOp::Mul} / "/" {BinOp::Div} / "%" {BinOp::Mod}
-    / ".." {BinOp::Concat}
+    / "^" {BinOp::Pow} / ".." {BinOp::Concat}
 
 unop -> UnOp
     = "-" {UnOp::Negate} / "!" {UnOp::LNot} / "~" {UnOp::BNot} / "#" {UnOp::Len}
