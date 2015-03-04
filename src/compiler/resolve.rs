@@ -228,7 +228,7 @@ impl Visitor for Resolver {
         }
 
         self.funcs.push(data);
-        f.value.body = self.visit_block(f.value.body);
+        f.body = self.visit_block(f.body);
 
         let data = self.funcs.pop().unwrap();
         f.locals = data.locals;
@@ -287,7 +287,7 @@ j = i
 "#).unwrap();
         f = resolve_func(f);
 
-        assert_eq!(f.value.body, Block::with_locals(vec![
+        assert_eq!(f.body, Block::with_locals(vec![
             Spanned::default(SAssign(
                 vec![Spanned::default(VResGlobal(Box::new(Spanned::default(VUpval(0))), "i".to_string()))],
                 vec![Spanned::default(ELit(TInt(0)))],
@@ -330,14 +330,14 @@ end
 "#).unwrap();
         f = resolve_func(f);
 
-        assert_eq!(f.value, _Function {
+        assert_eq!(f, Function {
             params: vec![],
             varargs: true,
             locals: vec!["a".to_string(), "f".to_string()],
             upvalues: vec![UpvalDesc::Upval(0)],    // `_ENV`; the UpvalDesc is ignored
             body: Block::with_locals(vec![
                 Spanned::default(SDecl(vec!["a".to_string()], vec![])),
-                Spanned::default(SLFunc("f".to_string(), Spanned::default(_Function {
+                Spanned::default(SLFunc("f".to_string(), Function {
                     params: vec![],
                     varargs: false,
                     locals: vec!["f".to_string(), "g".to_string()],
@@ -351,7 +351,7 @@ end
                         Spanned::default(SDecl(vec!["f".to_string()], vec![
                             Spanned::default(EVar(Spanned::default(VUpval(0))))
                         ])),
-                        Spanned::default(SLFunc("g".to_string(), Spanned::default(_Function {
+                        Spanned::default(SLFunc("g".to_string(), Function {
                             params: vec![],
                             varargs: false,
                             locals: vec![],
@@ -363,9 +363,9 @@ end
                                     Spanned::default(EVar(Spanned::default(VUpval(1))))
                                 ])),
                             ], Default::default(), localmap!{}),
-                        }))),
+                        })),
                     ], Default::default(), localmap!{ f: 0, g: 1 }),
-                }))),
+                })),
             ], Default::default(), localmap!{ a: 0, f: 1 }),
         });
     }
@@ -375,7 +375,7 @@ end
         let mut f = parse_main("_ENV = 0").unwrap();
         f = resolve_func(f);
 
-        assert_eq!(f.value.body, Block::new(vec![
+        assert_eq!(f.body, Block::new(vec![
             Spanned::default(SAssign(vec![
                 Spanned::default(VUpval(0))
             ], vec![
@@ -395,7 +395,7 @@ local function h() local function h1() r = nil end end
 "#).unwrap();
         f = resolve_func(f);
 
-        assert_eq!(f.value, _Function {
+        assert_eq!(f, Function {
             params: vec![],
             varargs: true,
             locals: vec!["_ENV".to_string(), "f".to_string(), "g".to_string(), "h".to_string()],
@@ -407,7 +407,7 @@ local function h() local function h1() r = nil end end
                     Spanned::default(ELit(TNil))
                 ])),
                 Spanned::default(SDecl(vec!["_ENV".to_string()], vec![])),
-                Spanned::default(SLFunc("f".to_string(), Spanned::default(_Function {
+                Spanned::default(SLFunc("f".to_string(), Function {
                     params: vec![],
                     varargs: false,
                     locals: vec!["_ENV".to_string()],
@@ -420,8 +420,8 @@ local function h() local function h1() r = nil end end
                             )),
                         ], vec![Spanned::default(ELit(TNil))])),
                     ], Default::default(), localmap!{ _ENV: 0 }),
-                }))),
-                Spanned::default(SLFunc("g".to_string(), Spanned::default(_Function {
+                })),
+                Spanned::default(SLFunc("g".to_string(), Function {
                     params: vec![],
                     varargs: false,
                     locals: vec![],
@@ -433,14 +433,14 @@ local function h() local function h1() r = nil end end
                             Spanned::default(ELit(TNil))
                         ])),
                     ], Default::default(), localmap!{}),
-                }))),
-                Spanned::default(SLFunc("h".to_string(), Spanned::default(_Function {
+                })),
+                Spanned::default(SLFunc("h".to_string(), Function {
                     params: vec![],
                     varargs: false,
                     locals: vec!["h1".to_string()],
                     upvalues: vec![UpvalDesc::Local(0)],
                     body: Block::with_locals(vec![
-                        Spanned::default(SLFunc("h1".to_string(), Spanned::default(_Function {
+                        Spanned::default(SLFunc("h1".to_string(), Function {
                             params: vec![],
                             varargs: false,
                             locals: vec![],
@@ -454,9 +454,9 @@ local function h() local function h1() r = nil end end
                                     Spanned::default(ELit(TNil)),
                                 ])),
                             ], Default::default()),
-                        }))),
+                        })),
                     ], Default::default(), localmap!{ h1: 0 }),
-                }))),
+                })),
             ], Default::default(), localmap!{ _ENV: 0, f: 1, g: 2, h: 3 }),
         });
     }

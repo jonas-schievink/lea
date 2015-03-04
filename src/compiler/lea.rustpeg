@@ -202,7 +202,7 @@ arraycons -> Vec<Expr>
 expr_special -> Expr
     = t:tablecons { mkspanned(ETable(t), start_pos, pos) }
     / a:arraycons { mkspanned(EArray(a), start_pos, pos) }
-    / "function" f:funcbody { mkspanned(EFunc(mkspanned(f, start_pos, pos)), start_pos, pos) }
+    / "function" f:funcbody { mkspanned(EFunc(f), start_pos, pos) }
 
 expr_rest -> (BinOp, Expr)
     = op:binop r:atom { (op, r) }
@@ -321,20 +321,20 @@ funcparams -> (Vec<String>, bool)
     / "(" whitespace* "..." whitespace* ")" { (Vec::new(), true) }
     / "(" whitespace* ")" { (Vec::new(), false) }
 
-funcbody -> _Function
+funcbody -> Function
     = whitespace* params:funcparams whitespace* body:block "end" {
         let (pars, varargs) = params;
-        _Function::new(pars, varargs, body)
+        Function::new(pars, varargs, body)
     }
 
 stmt_func -> Stmt
     = "function" whitespace+ name:ident f:funcbody {
-        mkspanned(SFunc(Spanned::new(name.span, VNamed(name.value.to_string())), mkspanned(f, start_pos, pos)), start_pos, pos)
+        mkspanned(SFunc(Spanned::new(name.span, VNamed(name.value.to_string())), f), start_pos, pos)
     }
 
 stmt_lfunc -> Stmt
     = "local" whitespace+ "function" whitespace+ name:ident f:funcbody {
-        mkspanned(SLFunc(name.value.to_string(), mkspanned(f, start_pos, pos)), start_pos, pos)
+        mkspanned(SLFunc(name.value.to_string(), f), start_pos, pos)
     }
 
 stmt_inner -> Stmt

@@ -5,7 +5,7 @@ peg_file! parse("lea.rustpeg");
 pub use self::parse::{ident, literal};
 
 use super::ast::*;
-use super::span::{Span, Spanned};
+use super::span::Span;
 use super::visit;
 use super::visit::Visitor;
 use super::expr_parser::ExprParser;
@@ -71,7 +71,7 @@ pub fn block(input: &str) -> Result<Block, ParseError> {
 pub fn parse_main(input: &str) -> Result<Function, ParseError> {
     let blk = try!(block(input));
 
-    Ok(Spanned::new(blk.span, _Function::new(vec![], true, blk)))
+    Ok(Function::new(vec![], true, blk))
 }
 
 /// Parses a raw expression. This only runs the PEG parser, not the dedicated expression parser.
@@ -298,15 +298,15 @@ mod tests {
         ]));
 
         assert_eq!(expression("function()end").unwrap().value,
-            EFunc(Spanned::default(_Function {
+            EFunc(Function {
                 params: vec![],
                 locals: vec![],
                 upvalues: vec![],
                 varargs: false,
                 body: Block::new(vec![], Default::default()),
-        })));
+        }));
         assert_eq!(expression("function(i, j, ...) break end").unwrap().value,
-            EFunc(Spanned::default(_Function {
+            EFunc(Function {
                 params: vec!["i".to_string(), "j".to_string()],
                 locals: vec![],
                 upvalues: vec![],
@@ -314,7 +314,7 @@ mod tests {
                 body: Block::new(vec![
                     Spanned::default(SBreak),
                 ], Default::default()),
-        })));
+        }));
 
         assert!(expression("function(...)end").is_ok());
     }
@@ -377,24 +377,24 @@ mod tests {
         ]));
 
         assert_eq!(statement("local\nfunction\nt()\nend").unwrap().value, SLFunc("t".to_string(),
-            Spanned::default(_Function {
+            Function {
                 params: vec![],
                 locals: vec![],
                 upvalues: vec![],
                 varargs: false,
                 body: Block::new(vec![], Default::default()),
-            })
+            }
         ));
 
         assert_eq!(statement("function f(i,j) end").unwrap().value, SFunc(
             Spanned::default(VNamed("f".to_string())),
-            Spanned::default(_Function {
+            Function {
                 params: vec!["i".to_string(), "j".to_string()],
                 locals: vec![],
                 upvalues: vec![],
                 varargs: false,
                 body: Block::new(vec![], Default::default()),
-            })
+            }
         ));
 
         assert!(statement("function f(i,) end").is_err());
@@ -520,7 +520,7 @@ mod tests {
                 Spanned::default(ELit(TInt(2))),
                 Spanned::default(ELit(TInt(1)))
             ])),
-            Spanned::default(SFunc(Spanned::default(VNamed("f".to_string())), Spanned::default(_Function {
+            Spanned::default(SFunc(Spanned::default(VNamed("f".to_string())), Function {
                 params: vec!["g".to_string()],
                 locals: vec![],
                 upvalues: vec![],
@@ -528,7 +528,7 @@ mod tests {
                 body: Block::new(vec![
                     Spanned::default(SDo(Block::new(vec![], Default::default())))
                 ], Default::default()),
-            }))),
+            })),
         ], Default::default()));
     }
 }

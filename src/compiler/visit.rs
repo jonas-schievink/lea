@@ -19,7 +19,7 @@ pub trait Visitor : Sized {
         walk_block(block, self)
     }
     fn visit_func(&mut self, mut func: Function) -> Function {
-        func.value.body = self.visit_block(func.value.body);
+        func.body = self.visit_block(func.body);
         func
     }
 }

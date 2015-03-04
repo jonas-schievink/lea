@@ -365,16 +365,16 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
             EFunc(mut f) => {
                 write!(self.writer, "function(");
                 let mut first = true;
-                f.value.params.iter().map(|param| {
+                f.params.iter().map(|param| {
                     if first { first = false; } else { write!(self.writer, ", "); }
                     write!(self.writer, "{}", &param);
                 });
-                if f.value.varargs { write!(self.writer, "..."); }
+                if f.varargs { write!(self.writer, "..."); }
                 writeln!(self.writer, ")");
                 // TODO Decide if the function requires multiple lines
 
                 self.indent();
-                f.value.body = self.visit_block(f.value.body);
+                f.body = self.visit_block(f.body);
                 self.unindent();
 
                 self.print_indent();

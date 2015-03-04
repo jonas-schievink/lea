@@ -109,7 +109,7 @@ impl Visitor for Checker {
 pub fn check_func(mut func: Function) -> (Function, Result<(), Vec<CheckError>>) {
     let mut ch = Checker {
         errs: vec![],
-        vararg_func: func.value.varargs,
+        vararg_func: func.varargs,
         looplvl: 0,
     };
 

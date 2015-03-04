@@ -68,7 +68,7 @@ pub struct Call {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct _Function {
+pub struct Function {
     /// Parameters this function takes. Each one also declares a local in the body block.
     pub params: Vec<String>,
     /// Vector of all locals declared in blocks inside this function (multiple with same name
@@ -80,9 +80,9 @@ pub struct _Function {
     pub upvalues: Vec<UpvalDesc>,
 }
 
-impl _Function {
-    pub fn new(params: Vec<String>, varargs: bool, body: Block) -> _Function {
-        _Function {
+impl Function {
+    pub fn new(params: Vec<String>, varargs: bool, body: Block) -> Function {
+        Function {
             params: params,
             locals: vec![],
             varargs: varargs,
@@ -225,5 +225,4 @@ pub enum _Expr {
 
 pub type Expr = Spanned<_Expr>;
 pub type Stmt = Spanned<_Stmt>;
-pub type Function = Spanned<_Function>;
 pub type Variable = Spanned<_Variable>;
