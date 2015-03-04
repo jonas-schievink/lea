@@ -32,7 +32,9 @@ pub enum BinOp {
     Greater,
 
     LAnd,
+    LAndLua,
     LOr,
+    LOrLua,
     BAnd,
     BOr,
     BXor,
@@ -69,7 +71,9 @@ impl fmt::Display for BinOp {
             Greater => ">",
 
             LAnd => "&&",
+            LAndLua => "and",
             LOr => "||",
+            LOrLua => "or",
             BAnd => "&",
             BOr => "|",
             BXor => "^",
@@ -83,7 +87,7 @@ impl BinOp {
     pub fn get_precedence(&self) -> u8 {
         match *self {
             Eq | NEq | NEqLua | LEq | GEq | Less | Greater => 0,
-            LOr | LAnd => 1,
+            LAnd | LAndLua | LOr | LOrLua => 1,
             BAnd => 2,
             BXor => 3,
             BOr => 4,

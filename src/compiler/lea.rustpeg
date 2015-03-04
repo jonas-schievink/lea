@@ -99,9 +99,9 @@ literal -> Spanned<Literal>
 binop -> BinOp
     = "==" {BinOp::Eq} / "!=" {BinOp::NEq} / "~=" {BinOp::NEqLua} / ">=" {BinOp::GEq}
     / "<=" {BinOp::LEq} / ">>" {BinOp::ShiftR} / "<<" {BinOp::ShiftL} / "<" {BinOp::Less}
-    / ">" {BinOp::Greater} / "&&" {BinOp::LAnd} / "||" {BinOp::LOr} / "&" {BinOp::BAnd}
-    / "^" {BinOp::BXor} / "|" {BinOp::BOr} / "+" {BinOp::Add} / "-" {BinOp::Sub}
-    / "*" {BinOp::Mul} / "/" {BinOp::Div} / "%" {BinOp::Mod}
+    / ">" {BinOp::Greater} / "&&" {BinOp::LAnd} / "and" {BinOp::LAndLua} / "||" {BinOp::LOr}
+    / "or" {BinOp::LOrLua} / "&" {BinOp::BAnd} / "^" {BinOp::BXor} / "|" {BinOp::BOr}
+    / "+" {BinOp::Add} / "-" {BinOp::Sub} / "*" {BinOp::Mul} / "/" {BinOp::Div} / "%" {BinOp::Mod}
 
 unop -> UnOp
     = "-" {UnOp::Negate} / "!" {UnOp::LNot} / "~" {UnOp::BNot} / "#" {UnOp::Len}
