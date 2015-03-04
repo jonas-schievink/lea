@@ -140,8 +140,11 @@ variable -> Variable
 callargs -> Vec<Expr>
     = whitespace* "(" args:expression ** listsep whitespace* ")" { args }
 
+methodname -> Spanned<&'input str>
+    = ":" ident
+
 call -> Call
-    = v:variable args:callargs+ {
+    = v:variable name:methodname? args:callargs+ {
         fn get_arg_span(start: usize, args: &Vec<Expr>) -> Span {
             let mut end: usize = start;
 
@@ -154,16 +157,16 @@ call -> Call
 
         let mut it = args.into_iter();
         let first_args = it.next().unwrap();
-        let mut what = Spanned::new(get_arg_span(v.span.start, &first_args), Call {
-            callee: Box::new(Spanned::new(v.span, EVar(v))),
-            argv: first_args,
+        let span = v.span.clone();
+        let callee = Box::new(Spanned::new(v.span, EVar(v)));
+        let mut what = Spanned::new(get_arg_span(span.start, &first_args), match name {
+            None => SimpleCall(callee, first_args),
+            Some(name) => MethodCall(callee, Spanned::new(name.span, name.to_string()), first_args),
         });
 
         for list in it {
-            what = Spanned::new(get_arg_span(what.span.start, &list), Call {
-                callee: Box::new(Spanned::new(what.span, ECall(what.value))),
-                argv: list,
-            });
+            what = Spanned::new(get_arg_span(what.span.start, &list),
+                SimpleCall(Box::new(Spanned::new(what.span, ECall(what.value))), list));
         }
 
         what.value

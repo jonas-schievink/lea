@@ -2,6 +2,7 @@ pub use self::_Variable::*;
 pub use self::_Stmt::*;
 pub use self::_Expr::*;
 pub use self::Literal::*;
+pub use self::Call::*;
 
 use std::collections::HashMap;
 use std::default::Default;
@@ -62,9 +63,11 @@ impl PartialEq for Block {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct Call {
-    pub callee: Box<Expr>,
-    pub argv: Vec<Expr>,
+pub enum Call {
+    SimpleCall(Box<Expr>, Vec<Expr>),
+
+    /// some.thing:name(...) - passes `some.thing` as the first argument
+    MethodCall(Box<Expr>, Spanned<String>, Vec<Expr>),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -153,6 +156,9 @@ pub enum _Stmt {
 
     /// Assign function to named variable (`function XY(...) ... end`)
     SFunc(Variable, Function),
+
+    /// function some.thing:name() ... end
+    SMethod(Variable, String, Function),
 
     /// Assign function to newly declared local (`local function XY(...) ... end`)
     SLFunc(String, Function),

@@ -323,24 +323,24 @@ mod tests {
     fn call() {
         assert!(expression("f(1)").is_ok());
         assert_eq!(statement("f(1, 2)"), statement("f ( 1 , 2 )"));
-        assert_eq!(statement("f ( 1 , 2 )").unwrap().value, SCall(Call {
-            callee: Box::new(Spanned::default(EVar(Spanned::default(VNamed("f".to_string()))))),
-            argv: vec![
+        assert_eq!(statement("f ( 1 , 2 )").unwrap().value, SCall(SimpleCall(
+            Box::new(Spanned::default(EVar(Spanned::default(VNamed("f".to_string()))))),
+            vec![
                 Spanned::default(ELit(TInt(1))),
                 Spanned::default(ELit(TInt(2))),
             ],
-        }));
-        assert_eq!(expression("f()").unwrap().value, ECall(Call {
-            callee: Box::new(Spanned::default(EVar(Spanned::default(VNamed("f".to_string()))))),
-            argv: vec![],
-        }));
-        assert_eq!(expression("f()()").unwrap().value, ECall(Call {
-            callee: Box::new(Spanned::default(ECall(Call {
-                callee: Box::new(Spanned::default(EVar(Spanned::default(VNamed("f".to_string()))))),
-                argv: vec![],
-            }))),
-            argv: vec![],
-        }));
+        )));
+        assert_eq!(expression("f()").unwrap().value, ECall(SimpleCall(
+            Box::new(Spanned::default(EVar(Spanned::default(VNamed("f".to_string()))))),
+            vec![],
+        )));
+        assert_eq!(expression("f()()").unwrap().value, ECall(SimpleCall(
+            Box::new(Spanned::default(ECall(SimpleCall(
+                Box::new(Spanned::default(EVar(Spanned::default(VNamed("f".to_string()))))),
+                vec![],
+            )))),
+            vec![],
+        )));
 
         assert!(expression("f(1,2,)").is_err());
         assert!(expression("f(,1)").is_err());

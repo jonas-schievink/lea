@@ -60,15 +60,25 @@ pub fn walk_stmt<V: Visitor>(mut stmt: Stmt, visitor: &mut V) -> Stmt {
             vals = vals.map_in_place(|val| visitor.visit_expr(val));
             SReturn(vals)
         },
-        SCall(Call{mut callee, mut argv}) => {
+        SCall(SimpleCall(mut callee, mut argv)) => {
             callee = Box::new(visitor.visit_expr(*callee));
             argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
-            SCall(Call{callee: callee, argv: argv})
+            SCall(SimpleCall(callee, argv))
+        },
+        SCall(MethodCall(mut callee, name, mut argv)) => {
+            callee = Box::new(visitor.visit_expr(*callee));
+            argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
+            SCall(MethodCall(callee, name, argv))
         },
         SFunc(mut var, mut func) => {
             var = visitor.visit_var(var);
             func = visitor.visit_func(func);
             SFunc(var, func)
+        },
+        SMethod(mut var, name, mut func) => {
+            var = visitor.visit_var(var);
+            func = visitor.visit_func(func);
+            SMethod(var, name, func)
         },
         SLFunc(name, mut func) => {
             func = visitor.visit_func(func);
@@ -129,10 +139,15 @@ pub fn walk_expr<V: Visitor>(mut expr: Expr, visitor: &mut V) -> Expr {
             var = visitor.visit_var(var);
             EVar(var)
         },
-        ECall(Call{mut callee, mut argv}) => {
+        ECall(SimpleCall(mut callee, mut argv)) => {
             callee = Box::new(visitor.visit_expr(*callee));
             argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
-            ECall(Call {callee: callee, argv: argv})
+            ECall(SimpleCall(callee, argv))
+        },
+        ECall(MethodCall(mut callee, name, mut argv)) => {
+            callee = Box::new(visitor.visit_expr(*callee));
+            argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
+            ECall(MethodCall(callee, name, argv))
         },
         EFunc(mut func) => {
             func = visitor.visit_func(func);

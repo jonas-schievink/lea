@@ -98,19 +98,36 @@ impl <'a, 'b, W: Writer> PrettyPrinter<'a, 'b, W> {
         f
     }
 
-    /// Prints a function call
     #[allow(unused_must_use)]
-    fn print_call(&mut self, mut c: Call) -> Call {
-        c.callee = Box::new(self.visit_expr(*c.callee));
+    fn print_call_args(&mut self, mut argv: Vec<Expr>) -> Vec<Expr> {
         self.writer.write_str("(");
 
         let mut first = true;
-        c.argv = c.argv.into_iter().map(|arg| {
+        argv = argv.map_in_place(|arg| {
             if first { first = false; } else { self.writer.write_str(", "); }
             self.visit_expr(arg)
-        }).collect();
+        });
 
         self.writer.write_str(")");
+        argv
+    }
+
+    /// Prints a function call
+    #[allow(unused_must_use)]
+    fn print_call(&mut self, mut c: Call) -> Call {
+        c = match c {
+            SimpleCall(mut callee, mut argv) => {
+                callee = Box::new(self.visit_expr(*callee));
+                argv = self.print_call_args(argv);
+                SimpleCall(callee, argv)
+            },
+            MethodCall(mut callee, name, mut argv) => {
+                callee = Box::new(self.visit_expr(*callee));
+                write!(self.writer, ":{}", name.value);
+                argv = self.print_call_args(argv);
+                MethodCall(callee, name, argv)
+            },
+        };
 
         c
     }
@@ -192,6 +209,13 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
                 var = self.visit_var(var);
                 f = self.print_funcbody(f);
                 SFunc(var, f)
+            },
+            SMethod(mut var, name, mut f) => {
+                write!(self.writer, "function ");
+                var = self.visit_var(var);
+                write!(self.writer, ":{}", name);
+                f = self.print_funcbody(f);
+                SMethod(var, name, f)
             },
             SLFunc(name, mut f) => {
                 write!(self.writer, "local function {}", name);
