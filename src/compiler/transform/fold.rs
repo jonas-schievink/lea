@@ -6,36 +6,112 @@ use compiler::ast::*;
 use compiler::span::Spanned;
 use op::*;
 
+use std::num::{Int, Float};
+
 struct Folder {
     warns: Vec<Warning>,
 }
 
+fn unary_err(op: UnOp, lit: &Literal) -> String {
+    format!("attempt to apply unary {} to type \"{}\"", op, lit.get_type_str())
+}
+
+fn bin_err(lhs: &Literal, op: BinOp, rhs: &Literal) -> String {
+    format!("attempt to apply binary {} to {} and {}", op, lhs.get_type_str(), rhs.get_type_str())
+}
+
 /// Tries to fold a unary operator applied to a literal.
 ///
-/// Returns `Some(Literal)` on success and `None` if the type of the literal mismatched the
-/// operator's expected type. This causes a warning to be emitted.
-fn fold_unop(op: UnOp, lit: &Literal) -> Option<Literal> {
+/// Returns `Ok(Literal)` on success and `Err(String)` with an appropriate error message if the
+/// type of the literal mismatched the operator's expected type or domain. This causes a warning to
+/// be emitted.
+fn fold_unop(op: UnOp, lit: &Literal) -> Result<Literal, String> {
     match op {
         UnOp::Negate => match *lit { // -
-            TInt(i) => Some(TInt(-i)),
-            TFloat(f) => Some(TFloat(-f)),
-            TStr(_) | TBool(_) | TNil => None,
+            TInt(i) => Ok(TInt(-i)),
+            TFloat(f) => Ok(TFloat(-f)),
+            TStr(_) | TBool(_) | TNil => Err(unary_err(op, lit)),
         },
         UnOp::LNot => match *lit { // ! / not
-            TInt(_) | TFloat(_) | TStr(_) => Some(TBool(false)),  // all these evaluate to true
-            TBool(b) => Some(TBool(!b)),
-            TNil => None,
+            TInt(_) | TFloat(_) | TStr(_) => Ok(TBool(false)),  // all these evaluate to true
+            TBool(b) => Ok(TBool(!b)),
+            TNil => Err(unary_err(op, lit)),
         },
         UnOp::BNot => match *lit { // ~
-            TInt(i) => Some(TInt(!i)),
-            TFloat(_) | TStr(_) | TBool(_) | TNil => None,
+            TInt(i) => Ok(TInt(!i)),
+            TFloat(_) | TStr(_) | TBool(_) | TNil => Err(unary_err(op, lit)),
         },
         UnOp::Len => match *lit { // #
-            TInt(_) | TFloat(_) | TBool(_) | TNil => None,
+            TInt(_) | TFloat(_) | TBool(_) | TNil => Err(unary_err(op, lit)),
 
             // # of graphemes is the way to go
-            TStr(ref s) => Some(TInt(s.as_slice().graphemes(true).count() as i64)),
+            TStr(ref s) => Ok(TInt(s.as_slice().graphemes(true).count() as i64)),
         },
+    }
+}
+
+/// `fold_unop` for binary operators
+fn fold_binop(lhs: &Literal, op: BinOp, rhs: &Literal) -> Result<Literal, String> {
+    match op {
+        BinOp::Add => match (lhs, rhs) {
+            (&TInt(i), &TInt(j)) => Ok(TInt(i+j)),
+            (&TInt(i), &TFloat(j)) => Ok(TFloat(i as f64+j)),
+            (&TFloat(i), &TInt(j)) => Ok(TFloat(i+j as f64)),
+            (&TFloat(i), &TFloat(j)) => Ok(TFloat(i+j)),
+            _ => Err(bin_err(lhs, op, rhs)),
+        },
+        BinOp::Sub => match (lhs, rhs) {
+            (&TInt(i), &TInt(j)) => Ok(TInt(i-j)),
+            (&TInt(i), &TFloat(j)) => Ok(TFloat(i as f64-j)),
+            (&TFloat(i), &TInt(j)) => Ok(TFloat(i-j as f64)),
+            (&TFloat(i), &TFloat(j)) => Ok(TFloat(i-j)),
+            _ => Err(bin_err(lhs, op, rhs)),
+        },
+        BinOp::Mul => match (lhs, rhs) {
+            (&TInt(i), &TInt(j)) => Ok(TInt(i*j)),
+            (&TInt(i), &TFloat(j)) => Ok(TFloat(i as f64*j)),
+            (&TFloat(i), &TInt(j)) => Ok(TFloat(i*j as f64)),
+            (&TFloat(i), &TFloat(j)) => Ok(TFloat(i*j)),
+            _ => Err(bin_err(lhs, op, rhs)),
+        },
+        BinOp::Div => match (lhs, rhs) {
+            (&TInt(i), &TInt(j)) => Ok(TInt(i/j)),
+            (&TInt(i), &TFloat(j)) => Ok(TFloat(i as f64/j)),
+            (&TFloat(i), &TInt(j)) => Ok(TFloat(i/j as f64)),
+            (&TFloat(i), &TFloat(j)) => Ok(TFloat(i/j)),
+            _ => Err(bin_err(lhs, op, rhs)),
+        },
+        BinOp::Mod => match (lhs, rhs) {
+            (&TInt(i), &TInt(j)) => Ok(TInt(i%j)),
+            (&TInt(i), &TFloat(j)) => Ok(TFloat(i as f64%j)),
+            (&TFloat(i), &TInt(j)) => Ok(TFloat(i%j as f64)),
+            (&TFloat(i), &TFloat(j)) => Ok(TFloat(i%j)),
+            _ => Err(bin_err(lhs, op, rhs)),
+        },
+        BinOp::Pow => match (lhs, rhs) {
+            (&TInt(i), &TInt(j)) => {
+                if j > u32::max_value() as i64 {
+                    Err(format!("exponent {} is out of range", j))
+                } else {
+                    Ok(TInt(i.pow(j as u32)))
+                }
+            },
+            (&TInt(i), &TFloat(j)) => {
+                Ok(TFloat((i as f64).powf(j)))
+            },
+            (&TFloat(i), &TInt(j)) => {
+                if j > i32::max_value() as i64 {
+                    Err(format!("exponent {} is out of range", j))
+                } else {
+                    Ok(TFloat(i.powi(j as i32)))
+                }
+            },
+            (&TFloat(i), &TFloat(j)) => {
+                Ok(TFloat(i.powf(j)))
+            },
+            _ => Err(bin_err(lhs, op, rhs)),
+        },
+        _ => Err(bin_err(lhs, op, rhs)),
     }
 }
 
@@ -46,7 +122,24 @@ impl Visitor for Folder {
                 // TODO fold these too
                 lhs = Box::new(self.visit_expr(*lhs));
                 rhs = Box::new(self.visit_expr(*rhs));
-                EBinOp(lhs, op, rhs)
+
+                let lspan = lhs.span;
+                let rspan = rhs.span;
+                if let ELit(lit_lhs) = lhs.value {
+                    if let ELit(lit_rhs) = rhs.value {
+                        match fold_binop(&lit_lhs, op, &lit_rhs) {
+                            Ok(newlit) => ELit(newlit),
+                            Err(msg) => {
+                                self.warns.push(Warning::new(e.span, msg));
+                                EBinOp(Box::new(Spanned::new(lspan, ELit(lit_lhs))), op, Box::new(Spanned::new(rspan, ELit(lit_rhs))))
+                            }
+                        }
+                    } else {
+                        EBinOp(Box::new(Spanned::new(lspan, ELit(lit_lhs))), op, rhs)
+                    }
+                } else {
+                    EBinOp(lhs, op, rhs)
+                }
             },
             EUnOp(op, mut arg) => {
                 arg = Box::new(self.visit_expr(*arg));
@@ -54,9 +147,8 @@ impl Visitor for Folder {
                 let span = arg.span;
                 if let ELit(lit) = arg.value {
                     match fold_unop(op, &lit) {
-                        Some(newlit) => ELit(newlit),
-                        None => {
-                            let msg = format!("invalid use of \"{}\" operator on literal of type \"{}\"", op, lit.get_type_str());
+                        Ok(newlit) => ELit(newlit),
+                        Err(msg) => {
                             self.warns.push(Warning::new(e.span, msg));
                             EUnOp(op, Box::new(Spanned::new(span, ELit(lit))))
                         }
@@ -100,6 +192,7 @@ mod tests {
 
     #[test]
     fn basic() {
-        test("return -0", "return 0");
+        test("return -0, -4.5, #\"TEST\"", "return 0, -4.5, 4");
+        test("return 1-1+3*(1-1)/1^1+1", "return 1");
     }
 }

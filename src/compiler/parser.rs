@@ -210,16 +210,20 @@ mod tests {
                 )))
             )))
         ));
-        
+
         // right-associativity
-        assert_eq!(expression("1^2^3").unwrap().value, EBinOp(
-            Box::new(Spanned::default(ELit(TInt(1)))),
-            BinOp::Pow,
+        assert_eq!(expression("1^2^3+4").unwrap().value, EBinOp(
             Box::new(Spanned::default(EBinOp(
-                Box::new(Spanned::default(ELit(TInt(2)))),
+                Box::new(Spanned::default(ELit(TInt(1)))),
                 BinOp::Pow,
-                Box::new(Spanned::default(ELit(TInt(3)))),
-            )))
+                Box::new(Spanned::default(EBinOp(
+                    Box::new(Spanned::default(ELit(TInt(2)))),
+                    BinOp::Pow,
+                    Box::new(Spanned::default(ELit(TInt(3)))),
+                )))
+            ))),
+            BinOp::Add,
+            Box::new(Spanned::default(ELit(TInt(4)))),
         ));
 
         // This requires reversing everything because of op. precedences

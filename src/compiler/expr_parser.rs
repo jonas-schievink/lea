@@ -29,22 +29,22 @@ impl Visitor for ExprParser {
                 operands.push(*left);
 
                 for (op, rhs) in rest {
-                    // If the operator on the stack has higher or equal precedence, pop it, pop 2
-                    // operands and build a new operand node
-                    if operators.len() > 0 {
+                    // While the operator on the stack has higher or equal precedence, pop it, pop
+                    // 2 operands and replace the operands with a newly built operand node
+                    while operators.len() > 0 {
                         let stackop = operators[operators.len() - 1];
                         let stackprec = stackop.get_precedence();
                         let opprec = op.get_precedence();
-                        if stackprec >= opprec && op.get_assoc() == Assoc::Left || stackprec > opprec && op.get_assoc() == Assoc::Right {
+                        if opprec < stackprec || (opprec == stackprec && op.get_assoc() == Assoc::Left) {
                             operators.pop();
                             let rhs = operands.pop().unwrap();
                             let lhs = operands.pop().unwrap();
 
                             operands.push(mknode(lhs, stackop, rhs));
-                        }
+                        } else { break; }
                     }
 
-                    // Can't build node, put the new operator and operand on the stack
+                    // Always the new operator and operand on the stack
                     operators.push(op);
                     operands.push(rhs);
                 }
