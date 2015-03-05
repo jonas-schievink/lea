@@ -80,3 +80,26 @@ pub fn run(mut main: Function) -> (Function, Vec<Warning>) {
     main = walk_func(main, &mut v);
     (main, v.warns)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use compiler::*;
+
+    /// Parses and folds `raw`, then parses `folded`. Asserts that the ASTs are equal.
+    fn test(raw: &str, folded: &str) {
+        let mut conf = CompileConfig::empty();
+        conf.add_transform(run, LintMode::Warn);
+
+        let main = parse_and_resolve(raw).unwrap();
+        let (main, _warns) = apply_transforms(main, &conf).unwrap();
+        let expected = parse_and_resolve(folded).unwrap();
+
+        assert_eq!(main, expected);
+    }
+
+    #[test]
+    fn basic() {
+        test("return -0", "return 0");
+    }
+}

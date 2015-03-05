@@ -51,6 +51,14 @@ fn compile(code: &str, filename: &str) {
                 printerr!("{}", errstr);
                 return;
             },
+            ErrLint(warns) => {
+                let mut first = true;
+                for w in warns {
+                    if first { first = false; } else { printerr!("\n"); }
+                    printerr!("warning as error: {}", w.format(code.as_slice(), filename).as_slice());
+                }
+                return;
+            },
         },
         Ok(output) => {
             let warns = output.get_warns();
