@@ -1,13 +1,15 @@
 //! The Lea compiler command line frontend
 
-#![feature(core, old_io, old_path)]
+#![feature(core, old_io, io, fs, old_path)]
 
 extern crate lea;
 
 use std::env;
 use std::fmt;
 use std::default::Default;
-use std::old_io::{stdio, File};
+use std::old_io::stdio;
+use std::io::Read;
+use std::fs::File;
 
 use lea::compiler::*;
 use lea::program::Program;
@@ -72,6 +74,25 @@ fn compile(code: &str, filename: &str) {
     }
 }
 
+fn compile_file(filename: &str) {
+    match File::open(&Path::new(filename.clone())) {
+        Ok(mut file) => {
+            let mut code = String::new();
+            match file.read_to_string(&mut code) {
+                Ok(()) => {
+                    compile(code.as_slice(), filename.as_slice());
+                },
+                Err(err) => {
+                    printerr!("error reading file \"{}\": {}", filename, err);
+                }
+            }
+        },
+        Err(err) => {
+            printerr!("error opening file \"{}\": {}", filename, err);
+        }
+    };
+}
+
 pub fn main() {
     let mut iter = env::args();
     let mut inputarg: Option<String> = None;
@@ -109,14 +130,6 @@ pub fn main() {
         println!("");   // print newline to seperate leac output from source input
         compile(code.as_slice(), "<stdin>");
     } else {
-        let code = match File::open(&Path::new(f.clone())).read_to_string() {
-            Ok(c) => c,
-            Err(err) => {
-                printerr!("error reading file {}: {}", f, err);
-                return;
-            }
-        };
-
-        compile(code.as_slice(), f.as_slice());
+        compile_file(f.as_slice());
     }
 }
