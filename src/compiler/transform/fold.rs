@@ -20,6 +20,14 @@ fn bin_err(lhs: &Literal, op: BinOp, rhs: &Literal) -> String {
     format!("attempt to apply binary {} to {} and {}", op, lhs.get_type_str(), rhs.get_type_str())
 }
 
+/// Folds a literal used as a truth value (eg. as an if condition or in a logical operator).
+fn fold_truth(lit: &Literal) -> bool {
+    match *lit {
+        TInt(_) | TFloat(_) | TStr(_) | TBool(true) => true,
+        TBool(false) | TNil => false,
+    }
+}
+
 /// Tries to fold a unary operator applied to a literal.
 ///
 /// Returns `Ok(Literal)` on success and `Err(String)` with an appropriate error message if the
@@ -116,6 +124,11 @@ fn fold_binop(lhs: &Literal, op: BinOp, rhs: &Literal) -> Result<Literal, String
             (&TInt(i), &TFloat(j)) => Ok(TStr(format!("{}{}", i, j))),
             (&TFloat(i), &TInt(j)) => Ok(TStr(format!("{}{}", i, j))),
             (&TFloat(i), &TFloat(j)) => Ok(TStr(format!("{}{}", i, j))),
+            (&TStr(ref s), &TInt(i)) => Ok(TStr(format!("{}{}", s, i))),
+            (&TInt(i), &TStr(ref s)) => Ok(TStr(format!("{}{}", i, s))),
+            (&TStr(ref s), &TFloat(f)) => Ok(TStr(format!("{}{}", s, f))),
+            (&TFloat(f), &TStr(ref s)) => Ok(TStr(format!("{}{}", f, s))),
+            (&TStr(ref a), &TStr(ref b)) => Ok(TStr(format!("{}{}", a, b))),
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::Eq | BinOp::NEq | BinOp::NEqLua => {
@@ -162,6 +175,20 @@ fn fold_binop(lhs: &Literal, op: BinOp, rhs: &Literal) -> Result<Literal, String
             (&TFloat(i), &TFloat(j)) => Ok(TBool(i > j)),
             (&TStr(ref a), &TStr(ref b)) => Ok(TBool(a > b)),
             _ => Err(bin_err(lhs, op, rhs)),
+        },
+        BinOp::LAnd | BinOp::LAndLua => {
+            if fold_truth(lhs) {
+                Ok(rhs.clone())
+            } else {
+                Ok(lhs.clone())
+            }
+        },
+        BinOp::LOr | BinOp::LOrLua => {
+            if fold_truth(lhs) {
+                Ok(lhs.clone())
+            } else {
+                Ok(rhs.clone())
+            }
         },
         _ => Err(bin_err(lhs, op, rhs)),
     }
