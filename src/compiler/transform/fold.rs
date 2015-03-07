@@ -7,6 +7,7 @@ use compiler::span::Spanned;
 use op::*;
 
 use std::num::{Int, Float};
+use std::i64::BITS;
 
 struct Folder {
     warns: Vec<Warning>,
@@ -190,7 +191,34 @@ fn fold_binop(lhs: &Literal, op: BinOp, rhs: &Literal) -> Result<Literal, String
                 Ok(rhs.clone())
             }
         },
-        _ => Err(bin_err(lhs, op, rhs)),
+        BinOp::BAnd => match (lhs, rhs) {
+            (&TInt(i), &TInt(j)) => Ok(TInt(i & j)),
+            _ => Err(bin_err(lhs, op, rhs)),
+        },
+        BinOp::BOr => match (lhs, rhs) {
+            (&TInt(i), &TInt(j)) => Ok(TInt(i | j)),
+            _ => Err(bin_err(lhs, op, rhs)),
+        },
+        BinOp::BXor => match (lhs, rhs) {
+            (&TInt(i), &TInt(j)) => Ok(TInt(i ^ j)),
+            _ => Err(bin_err(lhs, op, rhs)),
+        },
+        BinOp::ShiftL => match (lhs, rhs) {
+            (&TInt(i), &TInt(j)) => if j <= BITS as i64 {
+                Ok(TInt(i << j))
+            } else {
+                Ok(TInt(0))
+            },
+            _ => Err(bin_err(lhs, op, rhs)),
+        },
+        BinOp::ShiftR => match (lhs, rhs) {
+            (&TInt(i), &TInt(j)) => if j <= BITS as i64 {
+                Ok(TInt(i >> j))
+            } else {
+                Ok(TInt(0))
+            },
+            _ => Err(bin_err(lhs, op, rhs)),
+        },
     }
 }
 
@@ -198,7 +226,6 @@ impl Visitor for Folder {
     fn visit_expr(&mut self, mut e: Expr) -> Expr {
         e.value = match e.value {
             EBinOp(mut lhs, op, mut rhs) => {
-                // TODO fold these too
                 lhs = Box::new(self.visit_expr(*lhs));
                 rhs = Box::new(self.visit_expr(*rhs));
 
