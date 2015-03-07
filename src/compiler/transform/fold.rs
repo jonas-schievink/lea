@@ -41,7 +41,7 @@ fn fold_unop(op: UnOp, lit: &Literal) -> Result<Literal, String> {
             TFloat(f) => Ok(TFloat(-f)),
             TStr(_) | TBool(_) | TNil => Err(unary_err(op, lit)),
         },
-        UnOp::LNot => match *lit { // ! / not
+        UnOp::LNot | UnOp::LNotLua => match *lit { // ! / not
             TInt(_) | TFloat(_) | TStr(_) => Ok(TBool(false)),  // all these evaluate to true
             TBool(b) => Ok(TBool(!b)),
             TNil => Err(unary_err(op, lit)),
@@ -53,8 +53,9 @@ fn fold_unop(op: UnOp, lit: &Literal) -> Result<Literal, String> {
         UnOp::Len => match *lit { // #
             TInt(_) | TFloat(_) | TBool(_) | TNil => Err(unary_err(op, lit)),
 
-            // # of graphemes is the way to go
-            TStr(ref s) => Ok(TInt(s.as_slice().graphemes(true).count() as i64)),
+            // TODO # of graphemes is probably the way to go, but incompat. to Lua
+            //TStr(ref s) => Ok(TInt(s.as_slice().graphemes(true).count() as i64)),
+            TStr(ref s) => Ok(TInt(s.len() as i64)),
         },
     }
 }
@@ -204,18 +205,30 @@ fn fold_binop(lhs: &Literal, op: BinOp, rhs: &Literal) -> Result<Literal, String
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::ShiftL => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => if j <= BITS as i64 {
-                Ok(TInt(i << j))
-            } else {
-                Ok(TInt(0))
+            (&TInt(i), &TInt(j)) => {
+                if j < 0 {
+                    fold_binop(lhs, BinOp::ShiftR, &TInt(-j))
+                } else {
+                    if j <= BITS as i64 {
+                        Ok(TInt(i << j))
+                    } else {
+                        Ok(TInt(0))
+                    }
+                }
             },
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::ShiftR => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => if j <= BITS as i64 {
-                Ok(TInt(i >> j))
-            } else {
-                Ok(TInt(0))
+            (&TInt(i), &TInt(j)) => {
+                if j < 0 {
+                    fold_binop(lhs, BinOp::ShiftL, &TInt(-j))
+                } else {
+                    if j <= BITS as i64 {
+                        Ok(TInt(i >> j))
+                    } else {
+                        Ok(TInt(0))
+                    }
+                }
             },
             _ => Err(bin_err(lhs, op, rhs)),
         },
@@ -298,7 +311,15 @@ mod tests {
 
     #[test]
     fn basic() {
-        test("return -0, -4.5, #\"TEST\"", "return 0, -4.5, 4");
+        test("return -0, -4.5, #\"TEST\", ~0", "return 0, -4.5, 4, -1");
+        test("return not true, not false", "return false, true");
         test("return 1-1+3*(1-1)/1^1+1", "return 1");
+        test("return 1&&2, 1||0, false||3, true&&false", "return 2, 1, 3, false");
+        test("return false&&3||2, true&&3||2", "return 2, 3");
+        test("return 2|1, 2&3, -1~1", "return 3, 2, -2");
+        test("return !(true && (true || false))", "return false");
+        test("return 1<<2, 1>>90, 1<<90, 4>>-1", "return 4, 0, 0, 8");
     }
+
+    // TODO test warnings
 }

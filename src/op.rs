@@ -10,6 +10,7 @@ use self::BinOp::*;
 pub enum UnOp {
     Negate, // -
     LNot,   // !
+    LNotLua,// not
     BNot,   // ~
     Len,    // #
 }
@@ -56,6 +57,7 @@ impl fmt::Display for UnOp {
         fmt.write_str(match *self {
             Negate => "-",
             LNot => "!",
+            LNotLua => "not",
             BNot => "~",
             Len => "#",
         })

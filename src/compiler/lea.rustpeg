@@ -105,7 +105,8 @@ binop -> BinOp
     / "^" {BinOp::Pow} / ".." {BinOp::Concat}
 
 unop -> UnOp
-    = "-" {UnOp::Negate} / "!" {UnOp::LNot} / "~" {UnOp::BNot} / "#" {UnOp::Len}
+    = "-" {UnOp::Negate} / "!" {UnOp::LNot} / "not" {UnOp::LNotLua} / "~" {UnOp::BNot}
+    / "#" {UnOp::Len}
 
 listsep -> ()
     = whitespace* "," whitespace*
