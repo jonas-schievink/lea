@@ -29,7 +29,7 @@ fn print_err_fmt(fmt: fmt::Arguments) {
 fn print_usage() {
     println!("Usage: leac [file]");
     println!("");
-    println!("Parses and checks the given file. If an error occurs, outputs it.");
+    println!("Parses and checks the given file. If file is \"-\", reads stdin.");
     println!("When the compiler is done, this will actually compile the source code.");
 }
 
@@ -121,7 +121,9 @@ pub fn main() {
     }
 
     if let None = inputarg {
-        inputarg = Some("-".to_string());   // read stdin by default
+        printerr!("error: no input file");
+        print_usage();
+        return;
     }
 
     let f = inputarg.unwrap();
