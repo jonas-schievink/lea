@@ -1,3 +1,5 @@
+//! Lea is a scripting language derived from Lua.
+
 #![feature(plugin, core, old_io, io, collections)]
 
 #![plugin(peg_syntax_ext)]
@@ -8,7 +10,6 @@
 extern crate phf;
 
 pub mod compiler;
-
 pub mod op;
 pub mod opcode;
 pub mod program;
