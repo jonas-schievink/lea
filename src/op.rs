@@ -25,8 +25,6 @@ pub enum BinOp {
     Mod,
     Pow,
 
-    Concat,
-
     Eq,
     NEq,
     NEqLua,
@@ -44,6 +42,8 @@ pub enum BinOp {
     BXor,
     ShiftL,
     ShiftR,
+    
+    Concat,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
