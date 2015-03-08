@@ -19,7 +19,7 @@
 /// * `Ls` = `((A << 16) | Xu) as i32` signed version of `Lu`
 /// * `PC` is the program counter, which holds the number of the next opcode by default
 #[packed]
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Opcode {
     /// > R[A] := R[B]
     MOV(u8, u8),

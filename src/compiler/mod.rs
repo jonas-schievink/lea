@@ -80,6 +80,7 @@ mod expr_parser;
 pub mod transform;
 pub mod ast;
 pub mod check;
+pub mod emitter;
 pub mod parser;
 pub mod prettyprint;
 pub mod resolve;
