@@ -63,6 +63,7 @@ impl Program {
 //////// Runtime types below ////////
 
 /// An active Upvalue
+#[derive(Debug)]
 pub enum Upval {
     /// Upvalue owned by parent. usize is either the stack slot or the index in the parent's upval
     /// list (stored in Upvalue definition in function prototype).
@@ -72,6 +73,7 @@ pub enum Upval {
 }
 
 /// Instantiated function
+#[derive(Debug)]
 pub struct Function {
     /// The index of the prototype from which this function was instantiated
     pub proto: usize,
