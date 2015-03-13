@@ -164,7 +164,7 @@ mod tests {
         test(Span::new(1, 1), "aA", "A:1   aA\n       ^");
     }
 
-    #[test] #[should_fail]
+    #[test] #[should_panic]
     fn span_inv() {
         // span outside of source code
         test(Span::new(4, 4), "aaa", "A:1   aaa\n         ^");

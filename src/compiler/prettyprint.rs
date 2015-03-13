@@ -569,7 +569,7 @@ local i, j = 0
 "#);
     }
 
-    #[test] #[should_fail]
+    #[test] #[should_panic]
     fn auto_fail() {
         test_auto(r#"
 7

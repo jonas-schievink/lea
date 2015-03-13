@@ -10,8 +10,6 @@ A Lua-based language written in Rust
 """
 
 [dependencies]
+peg = "*"
 phf_macros = "*"
 phf = "*"
-
-[dependencies.peg]
-git = "https://github.com/jonas-schievink/rust-peg.git"
