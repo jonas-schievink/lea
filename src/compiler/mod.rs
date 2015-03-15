@@ -136,11 +136,7 @@ impl Default for CompileConfig {
     /// Creates a default `CompileConfig` that applies the default set of optimizers and linters
     fn default() -> CompileConfig {
         CompileConfig {
-            trans: vec![
-                // TODO move this into transforms module
-                (transform::globalwrite::run, LintMode::Warn),
-                (transform::fold::run, LintMode::Warn),
-            ],
+            trans: transform::TRANSFORMS_DEFAULT.clone(),
         }
     }
 }

@@ -16,12 +16,11 @@ pub type Transform = fn(Function) -> (Function, Vec<Warning>);
 /// Specifies how a Lint's (or Optimizer's) emitted warnings should be handled by the compiler.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum LintMode {
-    /// The warnings will be ignored and not returned to the caller
+    /// The warnings will be ignored and not returned to the caller.
     Ignore,
     /// The warnings will be returned to the caller. It is up to them to handle / print them.
-    /// Default value.
     Warn,
-    /// Any warning emitted by this Lint will cause a compilation error
+    /// Any warning emitted by this Lint will cause a compilation error.
     Error,
 }
 
@@ -37,11 +36,12 @@ macro_rules! transform_map {
     }};
 }
 
-/// Creates a vector of transform functions
+/// Creates a vector of 2-tuples, containing the transform function and default severity of
+/// warnings returned by the function.
 macro_rules! transform_vec {
-    ( $( $name:ident, )* ) => {{
+    ( $( $name:ident : $mode:ident, )* ) => {{
         vec![
-            $( $name :: run as Transform, )*
+            $( ( $name :: run as Transform, LintMode::$mode), )*
         ]
     }};
 }
@@ -56,16 +56,16 @@ lazy_static! {
 
 /// `TRANSFORMS_DEFAULT` is the default set of transforms to apply when compiling Lea code.
 lazy_static! {
-    pub static ref TRANSFORMS_DEFAULT: Vec<Transform> = transform_vec! [
-        globalwrite,
-        fold,
+    pub static ref TRANSFORMS_DEFAULT: Vec<(Transform, LintMode)> = transform_vec! [
+        globalwrite: Warn,
+        fold: Ignore,
     ];
 }
 
 /// `TRANSFORMS_COMPAT` is a list of transforms to apply when compiling in compatibility mode (ie
 /// Lua code).
 lazy_static! {
-    pub static ref TRANSFORMS_COMPAT: Vec<Transform> = transform_vec! [
-        fold,
+    pub static ref TRANSFORMS_COMPAT: Vec<(Transform, LintMode)> = transform_vec! [
+        fold: Ignore,
     ];
 }
