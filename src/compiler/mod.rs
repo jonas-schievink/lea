@@ -91,22 +91,11 @@ pub use self::CompileError::*;
 
 use program::Program;
 use self::ast::Function;
-use self::transform::Transform;
+use self::transform::{Transform, LintMode};
 use self::span::Span;
 
 use std::default::Default;
 
-/// Specifies how a Lint's (or Optimizer's) emitted warnings should be handled
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum LintMode {
-    /// The warnings will be ignored and not returned to the caller
-    Ignore,
-    /// The warnings will be returned to the caller. It is up to them to handle / print them.
-    /// Default value.
-    Warn,
-    /// Any warning emitted by this Lint will cause a compilation error
-    Error,
-}
 
 /// Defines options that can be used to tweak the compilation process (optimizations, linters, ...)
 pub struct CompileConfig {
@@ -148,6 +137,7 @@ impl Default for CompileConfig {
     fn default() -> CompileConfig {
         CompileConfig {
             trans: vec![
+                // TODO move this into transforms module
                 (transform::globalwrite::run, LintMode::Warn),
                 (transform::fold::run, LintMode::Warn),
             ],
@@ -191,13 +181,15 @@ impl Warning {
         }
     }
 
+    /// Formats this warning, its span, and all attached info lines. Does not append a trailing
+    /// newline.
     pub fn format(&self, code: &str, source_name: &str) -> String {
         let (startline, _end) = self.span.get_lines(code);
         let mut res = format!("{}:{}: warning: {} \n", source_name, startline, self.message);
         res.push_str(self.span.format(code, source_name).as_slice());
 
         for info in &self.info {
-            res.push_str(format!("info: {}\n", info).as_slice());
+            res.push_str(format!("\ninfo: {}", info).as_slice());
         }
 
         res

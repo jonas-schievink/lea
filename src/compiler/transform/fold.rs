@@ -296,6 +296,7 @@ pub fn run(mut main: Function) -> (Function, Vec<Warning>) {
 mod tests {
     use super::*;
     use compiler::*;
+    use compiler::transform::LintMode;
 
     /// Parses and folds `raw`, then parses `folded`. Asserts that the ASTs are equal.
     fn test(raw: &str, folded: &str) {
