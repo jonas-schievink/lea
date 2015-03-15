@@ -8,9 +8,22 @@ use compiler::Warning;
 use compiler::visit::*;
 use compiler::ast::*;
 
-struct GlobalWrite {
-    warns: Vec<Warning>,
+use std::ops::{Deref, DerefMut};
+
+
+struct GlobalWrite(Vec<Warning>);
+impl Deref for GlobalWrite {
+    type Target = Vec<Warning>;
+    fn deref(&self) -> &Vec<Warning> {
+        &self.0
+    }
 }
+impl DerefMut for GlobalWrite {
+    fn deref_mut(&mut self) -> &mut Vec<Warning> {
+        &mut self.0
+    }
+}
+
 
 impl Visitor for GlobalWrite {
     fn visit_stmt(&mut self, mut s: Stmt) -> Stmt {
@@ -22,7 +35,7 @@ impl Visitor for GlobalWrite {
                             let message = format!("write to global variable `{}` (you should prefer locals)", name);
                             let info0 = format!("declare a local variable with `local {}`", name);
                             let info1 = format!("or explicitly access the global with `_ENV.{}`", name);
-                            self.warns.push(Warning::with_info(v.span, message, vec![info0, info1]));
+                            self.push(Warning::with_info(v.span, message, vec![info0, info1]));
                         },
                         _ => {},
                     };
@@ -38,10 +51,8 @@ impl Visitor for GlobalWrite {
 }
 
 pub fn run(mut main: Function) -> (Function, Vec<Warning>) {
-    let mut v = GlobalWrite {
-        warns: vec![],
-    };
+    let mut v = GlobalWrite(vec![]);
 
     main = walk_func(main, &mut v);
-    (main, v.warns)
+    (main, v.0)
 }

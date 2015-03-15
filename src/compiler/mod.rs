@@ -185,7 +185,7 @@ impl Warning {
         res.push_str(self.span.format(code, source_name).as_slice());
 
         for info in &self.info {
-            res.push_str(format!("\ninfo: {}", info).as_slice());
+            res.push_str(format!("\n{}:{}: info: {}", source_name, startline, info).as_slice());
         }
 
         res

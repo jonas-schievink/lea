@@ -7,8 +7,9 @@ use compiler::Warning;
 use std::collections::HashMap;
 
 
-pub mod globalwrite;
+pub mod deprecated_ops;
 pub mod fold;
+pub mod globalwrite;
 
 /// Transform function used by Linters and Optimizers
 pub type Transform = fn(Function) -> (Function, Vec<Warning>);
@@ -49,14 +50,16 @@ macro_rules! transform_vec {
 /// `TRANSFORMS` contains all transformations that can be applied to an AST.
 lazy_static! {
     pub static ref TRANSFORMS: HashMap<&'static str, Transform> = transform_map! {
-        globalwrite,
+        deprecated_ops,
         fold,
+        globalwrite,
     };
 }
 
 /// `TRANSFORMS_DEFAULT` is the default set of transforms to apply when compiling Lea code.
 lazy_static! {
     pub static ref TRANSFORMS_DEFAULT: Vec<(Transform, LintMode)> = transform_vec! [
+        deprecated_ops: Warn,
         globalwrite: Warn,
         fold: Ignore,
     ];
