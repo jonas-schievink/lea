@@ -10,7 +10,7 @@ pub mod fold;
 
 pub type Transform = fn(Function) -> (Function, Vec<Warning>);
 
-// TODO add cmd line switches so these mapping aren't useless
+// TODO add cmd line switches so these mappings aren't useless
 pub static TRANSFORMS: ::phf::Map<&'static str, Transform> = phf_map! {
     "globalwrite" => globalwrite::run as Transform,
     "fold" => fold::run as Transform,

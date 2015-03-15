@@ -174,13 +174,20 @@ pub enum CompileError {
 pub struct Warning {
     span: Span,
     message: String,
+    /// Additional help text attached to the message (one per line)
+    info: Vec<String>,
 }
 
 impl Warning {
     pub fn new(span: Span, message: String) -> Warning {
+        Warning::with_info(span, message, vec![])
+    }
+
+    pub fn with_info(span: Span, message: String, info: Vec<String>) -> Warning {
         Warning {
             span: span,
             message: message,
+            info: info,
         }
     }
 
@@ -188,6 +195,11 @@ impl Warning {
         let (startline, _end) = self.span.get_lines(code);
         let mut res = format!("{}:{}: warning: {} \n", source_name, startline, self.message);
         res.push_str(self.span.format(code, source_name).as_slice());
+
+        for info in &self.info {
+            res.push_str(format!("info: {}\n", info).as_slice());
+        }
+
         res
     }
 }
