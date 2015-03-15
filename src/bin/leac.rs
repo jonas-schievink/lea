@@ -1,15 +1,16 @@
 //! The Lea compiler command line frontend
 
-#![feature(core, old_io, io, old_path)]
+#![feature(core)]
 
 extern crate lea;
 
 use std::env;
 use std::fmt;
 use std::default::Default;
-use std::old_io::stdio;
-use std::io::Read;
+use std::io;
+use std::io::{Read, Write};
 use std::fs::File;
+use std::path::Path;
 
 use lea::compiler::*;
 use lea::program::Program;
@@ -23,7 +24,7 @@ macro_rules! printerr {
 #[inline]
 #[allow(unused_must_use)]
 fn print_err_fmt(fmt: fmt::Arguments) {
-    writeln!(&mut stdio::stderr_raw(), "{}", fmt);
+    writeln!(&mut io::stderr(), "{}", fmt);
 }
 
 fn print_usage() {
@@ -79,7 +80,7 @@ fn compile_file(filename: &str) {
         Ok(mut file) => {
             let mut code = String::new();
             match file.read_to_string(&mut code) {
-                Ok(()) => {
+                Ok(_) => {
                     compile(code.as_slice(), filename.as_slice());
                 },
                 Err(err) => {
@@ -128,7 +129,9 @@ pub fn main() {
 
     let f = inputarg.unwrap();
     if f.as_slice() == "-" {
-        let code = stdio::stdin_raw().read_to_string().unwrap();
+        let mut code = String::new();
+        io::stdin().read_to_string(&mut code).unwrap();
+
         println!("");   // print newline to seperate leac output from source input
         compile(code.as_slice(), "<stdin>");
     } else {

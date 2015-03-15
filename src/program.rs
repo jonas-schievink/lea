@@ -3,6 +3,7 @@
 
 use opcode::Opcode;
 use value::Value;
+use compiler::ast::Literal;
 
 use std::vec::Vec;
 
@@ -20,6 +21,7 @@ pub enum UpvalDesc {
 }
 
 /// A compiled function (prototype). Instantiated by the VM
+#[derive(Clone, Debug)]
 pub struct FunctionProto {
     /// The name of the source from which this function was compiled
     pub source_name: String,
@@ -42,11 +44,12 @@ pub struct FunctionProto {
     pub lines: Vec<usize>,
 }
 
+#[derive(Clone, Debug)]
 pub struct Program {
     /// Functions defined inside the program
     pub funcs: Vec<FunctionProto>,
     /// Constants used within the program (strings, integers, floats)
-    pub consts: Vec<Value>,
+    pub consts: Vec<Literal>,
 }
 
 impl Program {
@@ -63,7 +66,7 @@ impl Program {
 //////// Runtime types below ////////
 
 /// An active Upvalue
-#[derive(Debug)]
+#[derive(Debug, RustcEncodable)]
 pub enum Upval {
     /// Upvalue owned by parent. usize is either the stack slot or the index in the parent's upval
     /// list (stored in Upvalue definition in function prototype).
@@ -73,7 +76,7 @@ pub enum Upval {
 }
 
 /// Instantiated function
-#[derive(Debug)]
+#[derive(Debug, RustcEncodable)]
 pub struct Function {
     /// The index of the prototype from which this function was instantiated
     pub proto: usize,

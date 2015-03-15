@@ -4,14 +4,16 @@ use super::parser;
 use super::ast::*;
 use super::visit::*;
 
-pub struct PrettyPrinter<'a, 'b, W: Writer + 'a> {
+use std::io::Write;
+
+pub struct PrettyPrinter<'a, 'b, W: Write + 'a> {
     writer: &'a mut W,
     indent: u16,
     indentstr: &'b str,
     lineend: &'b str,
 }
 
-impl <'a, 'b, W: Writer> PrettyPrinter<'a, 'b, W> {
+impl <'a, 'b, W: Write> PrettyPrinter<'a, 'b, W> {
     pub fn new(writer: &'a mut W) -> PrettyPrinter<'a, 'b, W> {
         PrettyPrinter {
             writer: writer,
@@ -62,7 +64,7 @@ impl <'a, 'b, W: Writer> PrettyPrinter<'a, 'b, W> {
     #[allow(unused_must_use)]
     fn print_indent(&mut self) {
         for _ in range(0, self.indent) {
-            self.writer.write_str(self.indentstr);
+            write!(self.writer, "{}", self.indentstr);
         }
     }
 
@@ -100,19 +102,18 @@ impl <'a, 'b, W: Writer> PrettyPrinter<'a, 'b, W> {
 
     #[allow(unused_must_use)]
     fn print_call_args(&mut self, mut argv: Vec<Expr>) -> Vec<Expr> {
-        self.writer.write_str("(");
+        write!(self.writer, "(");
 
         let mut first = true;
         argv = argv.map_in_place(|arg| {
-            if first { first = false; } else { self.writer.write_str(", "); }
+            if first { first = false; } else { write!(self.writer, ", "); }
             self.visit_expr(arg)
         });
 
-        self.writer.write_str(")");
+        write!(self.writer, ")");
         argv
     }
 
-    /// Prints a function call
     #[allow(unused_must_use)]
     fn print_call(&mut self, mut c: Call) -> Call {
         c = match c {
@@ -133,7 +134,7 @@ impl <'a, 'b, W: Writer> PrettyPrinter<'a, 'b, W> {
     }
 }
 
-impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
+impl <'a, 'b, W: Write> Visitor for PrettyPrinter<'a, 'b, W> {
     #[allow(unused_must_use)]   // Possibly Rust's fault
     fn visit_stmt(&mut self, mut stmt: Stmt) -> Stmt {
         self.print_indent();
@@ -407,7 +408,7 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
                 EFunc(f)
             },
             ETable(mut pairs) => {
-                self.writer.write_str("{");
+                write!(self.writer, "{{");
                 self.indent();
 
                 pairs = pairs.into_iter().map(|(mut key, mut val)| {
@@ -419,7 +420,7 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
                             // If it's an identifier, don't use "[expr] = " syntax
                             match parser::ident(s.as_slice()) {
                                 Ok(..) => {
-                                    self.writer.write_str(s.as_slice());
+                                    write!(self.writer, "{}", s.as_slice());
                                     key_full = false;
                                 },
                                 _ => {},
@@ -429,12 +430,12 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
                     }
 
                     if key_full {
-                        self.writer.write_str("[");
+                        write!(self.writer, "[");
                         key = self.visit_expr(key);
-                        self.writer.write_str("]");
+                        write!(self.writer, "]");
                     }
 
-                    self.writer.write_str(" = ");
+                    write!(self.writer, " = ");
                     val = self.visit_expr(val);
                     write!(self.writer, ",{}", self.lineend);
 
@@ -443,7 +444,7 @@ impl <'a, 'b, W: Writer> Visitor for PrettyPrinter<'a, 'b, W> {
 
                 self.unindent();
                 self.print_indent();
-                self.writer.write_str("}");
+                write!(self.writer, "}}");
 
                 ETable(pairs)
             },

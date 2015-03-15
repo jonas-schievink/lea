@@ -4,7 +4,6 @@
 use std::fmt;
 use std::cmp;
 use std::default::Default;
-use std::io::Write;
 use std::ops::{Deref, DerefMut};
 
 /// A span is a range of input characters in the source code.
