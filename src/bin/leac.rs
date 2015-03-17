@@ -1,6 +1,6 @@
 //! The Lea compiler command line frontend
 
-#![feature(core)]
+#![feature(core, lea)]
 
 extern crate lea;
 
