@@ -4,37 +4,44 @@ use compiler::ast::*;
 use compiler::visit::*;
 use program::Program;
 
-use std::u16;
-
-/// The global limit on the stack size of a single function. This limit depends on the
-/// implementation.
-pub static LEA_STACK_LIMIT: u8 = 128;
-/// Global limit of constants used by a single function.
-pub static LEA_CONST_LIMIT: u16 = u16::MAX;
 
 struct Emitter<'a> {
-    _program: &'a mut Program,
+    program: &'a mut Program,
 }
 
-/*impl Emitter {
+impl <'a> Emitter<'a> {
     /// Adds a constant to the program's constant table and returns its index (does not add it if
     /// the same value already exists in the constant table).
     fn add_const(&mut self, lit: &Literal) -> usize {
-        for c in self.program.consts {
+        // ensure that only "useful" constant are added
+        debug_assert!(match *lit {
+            TInt(..) | TFloat(..) | TStr(..) => true,
+            TBool(..) | TNil => false, // handled by special opcodes
+        });
 
+        for i in 0..self.program.consts.len() {
+            let c = &self.program.consts[i];
+            if lit == c { return i; }
         }
+
+        self.program.consts.push(lit.clone());
+        self.program.consts.len() - 1
     }
-}*/
+}
 
 impl <'a> Visitor for Emitter<'a> {
+    fn visit_func(&mut self, f: Function) -> Function {
+        self.add_const(&TInt(42));  // TEST! TNil is not a valid constant anyways
 
+        f
+    }
 }
 
 
 /// Emits code for the given main function into a program structure.
 pub fn emit_func(p: &mut Program, f: Function) -> Function {
     let mut emitter = Emitter {
-        _program: p,
+        program: p,
     };
 
     emitter.visit_func(f)

@@ -4,11 +4,13 @@
 use opcode::Opcode;
 use value::Value;
 use compiler::ast::Literal;
+use mem::GcRef;
 
 use std::vec::Vec;
 
-/// Describes how an open Upvalue is referenced
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+
+/// Describes how an Upvalue is referenced
+#[derive(PartialEq, Eq, Clone, Copy, Debug, RustcEncodable)]
 pub enum UpvalDesc {
     /// Upvalue is the parent's local with the given id
     ///
@@ -20,8 +22,8 @@ pub enum UpvalDesc {
     Upval(usize),
 }
 
-/// A compiled function (prototype). Instantiated by the VM
-#[derive(Clone, Debug)]
+/// A compiled function. When instantiated by the VM, becomes a `Function`.
+#[derive(Clone, Debug, RustcEncodable)]
 pub struct FunctionProto {
     /// The name of the source from which this function was compiled
     pub source_name: String,
@@ -42,6 +44,9 @@ pub struct FunctionProto {
     pub upval_names: Vec<String>,
     /// Contains the last opcode number emitted for a given line
     pub lines: Vec<usize>,
+    /// References to the prototypes of all function declared within the body of this function.
+    /// When dynamically compiling code, this allows the GC to collect prototypes that are unused.
+    pub child_protos: Vec<GcRef<FunctionProto>>,
 }
 
 #[derive(Clone, Debug)]
@@ -78,8 +83,8 @@ pub enum Upval {
 /// Instantiated function
 #[derive(Debug, RustcEncodable)]
 pub struct Function {
-    /// The index of the prototype from which this function was instantiated
-    pub proto: usize,
+    /// The prototype from which this function was instantiated
+    pub proto: GcRef<FunctionProto>,
     /// Upvalue references, indexed by upvalue ID
     pub upvalues: Vec<Upval>,
 }

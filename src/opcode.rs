@@ -1,7 +1,8 @@
-//! This module defines the `Opcode` type and all opcodes handled by the VM.
+//! This module defines the `Opcode` type, which contains all opcodes handled by the VM.
 
+pub use self::Opcode::*;
 
-/// An opcode that may be executed by the VM. This enum is always 32 bits large.
+/// An opcode that can be executed by the VM. This enum is always 32 bits large.
 ///
 /// Note that this `enum` is unstable (it might not even be an enum in the next version), to allow
 /// adding special optimized opcodes any time.
@@ -19,13 +20,13 @@
 /// * `Ls` = `((A << 16) | Xu) as i32` signed version of `Lu`
 /// * `PC` is the program counter, which holds the number of the next opcode by default
 #[packed]
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, RustcEncodable, RustcDecodable)]
 pub enum Opcode {
     /// > R[A] := R[B]
     MOV(u8, u8),
     /// > R[A] := C[Xu]
     ///
-    /// Loads a constant into `R[A]`.
+    /// Loads the constant with index `Xu` into `R[A]`.
     LOADK(u8, u16),
     /// > R[A] := nil, R[A+1] := nil, ..., R[A+B] := nil
     ///
@@ -33,7 +34,8 @@ pub enum Opcode {
     LOADNIL(u8, u8),
     /// > R[A], R[A+1], ..., R[A+B] := C
     ///
-    /// Assigns the boolean `C` to B+1 registers from `R[A]` to `R[A+B]`.
+    /// Assigns a boolean to B+1 registers from `R[A]` to `R[A+B]`. If C is 0, assign `false` to
+    /// the registers, otherwise assign `true`.
     LOADBOOL(u8, u8, bool),
     /// > R[A] := closure of PROTO[Xu]
     ///
@@ -157,7 +159,8 @@ mod tests {
     use std::mem;
 
     #[test]
-    fn test() {
+    fn size() {
+        // we guarantee that opcodes fit in 32 bits, regardless of the host platform
         assert_eq!(mem::size_of::<Opcode>(), 4);
     }
 }

@@ -1,6 +1,6 @@
 //! Memory management interface and garbage collection.
 
-use program::Function;
+use program::{Function, FunctionProto};
 use array::Array;
 use table::Table;
 
@@ -125,7 +125,7 @@ macro_rules! gc_objects {
     };
 }
 
-gc_objects!(String, Table, Array, Function; Dummy);
+gc_objects!(String, Table, Array, Function, FunctionProto; Dummy);
 
 
 /// Header of all GC objects.
@@ -185,6 +185,12 @@ impl <T: GcObj> GcRef<T> {
 /// `GcRef`s can be safely copied if the user adheres to the usual invariants (no collections while
 /// untraced refs to any objects exist).
 impl <T: GcObj> Copy for GcRef<T> {}
+
+impl <T: GcObj> Clone for GcRef<T> {
+    fn clone(&self) -> GcRef<T> {
+        GcRef(self.0)
+    }
+}
 
 /// `PartialEq` is implemented in terms of pointer equality. Note that some GC objects can override
 /// this method with a metafunction, but that is handled purely by the VM.

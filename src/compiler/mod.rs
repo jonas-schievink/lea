@@ -1,6 +1,7 @@
 //! This module contains the compiler, resolver and AST.
 //!
 //! The complation process can be divided into the following phases:
+//! 
 //! 1. Parsing
 //! 2. Checking
 //! 3. Resolving
@@ -61,15 +62,16 @@
 //!
 //! Linters and Optimizers are implemented in the files inside the "transform" directory:
 //!
-//! "fold.rs" implements a constant folding optimization that looks for operators that are applied
-//! to literals, applies them at compile-time, and replaces the node with the result. This is a
-//! basic optimization performed by most compilers (Lua does this too).
+//! * `fold.rs` implements a constant folding optimization that looks for operators that are
+//!   applied to literals, applies them at compile-time, and replaces the node with the result.
+//!   This is a basic optimization performed by most compilers (Lua does this too).
 //!
-//! "globalwrite.rs" implements a Linter that will issue a warning for all assignments to globals.
-//! Global variables are generally meant to hold the standard library functions, and not much more.
-//! User code should always prefer locals, and modules are meant to return the module when loaded,
-//! which should be assigned to a local by the code that `require`d the module. If you still need
-//! to access a global, you can do so explicitly by indexing `_ENV`.
+//! * `globalwrite.rs` implements a Linter that will issue a warning for all assignments to
+//!   globals. Global variables are generally meant to hold the standard library functions, and not
+//!   much more. User code should always prefer locals, and modules are meant to return the module
+//!   when loaded, which should be assigned to a local by the code that `require`d the module. If
+//!   you still need to access a global (for example, when setting up a sandbox), you can do so
+//!   explicitly by indexing `_ENV`.
 //!
 //! ## Emitting
 //!
