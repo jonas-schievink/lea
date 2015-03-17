@@ -1,7 +1,7 @@
 //! This module contains the compiler, resolver and AST.
 //!
 //! The complation process can be divided into the following phases:
-//! 
+//!
 //! 1. Parsing
 //! 2. Checking
 //! 3. Resolving
@@ -155,6 +155,9 @@ pub enum CompileError {
     /// One or more Lints have issued warnings and were configured to cause a compilation error.
     /// Contains all warnings of all Lints that were configured to error.
     ErrLint(Vec<Warning>),
+
+    /// Byte code emission failed. This can happen if an implementation limit is reached.
+    ErrEmit(emitter::EmitError),
 }
 
 /// A warning emitted by an AST transform (Linter/Optimizer)

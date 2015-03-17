@@ -1,5 +1,7 @@
 # Lea - A sane Lua-like language [![Build Status](https://travis-ci.org/jonas-schievink/lea.svg?branch=master)](https://travis-ci.org/jonas-schievink/lea)
 
+[Documentation](https://jonas-schievink.github.io/lea/lea/index.html)
+
 **Note: This is a work-in-progress. Nothing runs yet. Many features described here are not yet implemented**
 
 Lea is a programming language derived from Lua 5.3 and written in Rust. Lea offers several slight changes to the syntax, making it more familiar, as well as a reworked standard library that makes programs safer and offers much more functionality.

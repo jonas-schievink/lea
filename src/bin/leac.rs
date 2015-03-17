@@ -40,7 +40,6 @@ fn compile(code: &str, filename: &str) {
         Err(e) => match e {
             ErrParse(err) => {
                 printerr!("parse error: {}", err.format(code.as_slice(), filename));
-                return;
             },
             ErrCheck(errs) => {
                 let mut errstr = String::new();
@@ -52,7 +51,6 @@ fn compile(code: &str, filename: &str) {
                     i += 1;
                 }
                 printerr!("{}", errstr);
-                return;
             },
             ErrLint(warns) => {
                 let mut first = true;
@@ -60,8 +58,13 @@ fn compile(code: &str, filename: &str) {
                     if first { first = false; } else { printerr!("\n"); }
                     printerr!("warning as error: {}", w.format(code.as_slice(), filename).as_slice());
                 }
-                return;
             },
+            ErrEmit(err) => {
+                match err.detail {
+                    None => printerr!("emit error: {}", err.msg),
+                    Some(detail) => printerr!("emit error: {} ({})", err.msg, detail),
+                };
+            }
         },
         Ok(output) => {
             let warns = output.get_warns();
