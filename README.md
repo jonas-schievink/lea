@@ -2,11 +2,11 @@
 
 **Note: This is a work-in-progress. Nothing runs yet. Many features described here are not yet implemented**
 
-Lea is a programming language derived from Lua 5.3 and written in Rust. Lea offers several slight changes to the syntax, making it more familiar, as well as a reworked library that makes programs safer and offers much more functionality.
+Lea is a programming language derived from Lua 5.3 and written in Rust. Lea offers several slight changes to the syntax, making it more familiar, as well as a reworked standard library that makes programs safer and offers much more functionality.
 
-For `.lua` files, Lea offers a *compatibility mode* that aims to act as a drop-in replacement for the reference Lua interpreter.
+For `.lua` files, Lea offers a **compatibility mode** that aims to act as a drop-in replacement for the reference Lua interpreter.
 
-When used in the "default" mode (with the Lea modifications enabled), all Lua-code should still compile and run. The compiler will warn you when any deprecated Lua-syntax is used.
+When used in the "default" mode (with the Lea modifications enabled), the compiler will apply a different set of Lints to discourage the use of deprecated Lua syntax.
 
 The replacement standard library is a superset of the Lua library, meaning that all Lua code should still work with it. It will contain an FFI, which allows integrating external libraries without writing a single line of C or Rust code (everything can be done in Lea).
 
@@ -14,13 +14,12 @@ The following features / changes are made by Lea (note that these are - of cours
 
 * `!=` to replace `~=`
 * Integer type (Lua 5.3 has this too)
-* Replace "word" operators with commonly used symbols (`and` -> `&&`, `or` -> `||`, ...)
-* Integrated bitwise operators (`&`, `|`, `~`, `^`)
-* Replace the power operator `^` with XOR
+* Replace "word" operators with commonly used symbols (`and` -> `&&`, `or` -> `||`, `not` -> `!`)
+* Integrated bitwise operators (compatible to Lua 5.3)
 * C-style comments instead of Lua's `--` syntax
 * Tables split into arrays and associative arrays (classical tables)
 * 0 based arrays
-* Larger standard library (including an FFI, filesystem functions, etc.)
+* Larger standard library (including an FFI, extended filesystem functions, etc.)
 
 # Note
 
@@ -42,19 +41,15 @@ Lua provides the operator keywords `and`, `or` and `not` to denote logical opera
 
 ## Bitwise operators
 
-Lua didn't provide bitwise operators until the `bit32` module was added to Lua 5.2. Even then, the module only allows accessing 32 bits of individual numbers (as all numbers are stored as floats).
+Lua didn't provide bitwise operators until the `bit32` module was added to Lua 5.2, and has gained "real" bitwise operators with Lua 5.3.
 
-Lea integrates bitwise operators into the language. They will use the tokens `&`, `|`, `~`, `^` to mean "and", "or", "complement" and "xor". The bitwise operators will only work on integers. This makes Lea more similar to C (and C-inspired languages).
-
-## Power operator
-
-Lua provides the "power operator" `^`, which raises its left operand to the power of the right operand. This makes sense for a language like Lua, which is used in a mathematical context. However, the `xor` operation might be used more commonly when the language is used in a programming context.
-
-Lea replaces the function of the `^` token to mean "bitwise exclusive-or". This makes the meaning of `^` more coherent with the added bitwise operators (see above).
+Lea also integrates bitwise operators into the language. They will use the tokens `&`, `|`, `~` to mean "and", "or", and "complement" or "xor" (depending on whether `~` is used as a unary or binary operator). The bitwise operators will only work on integers and are compatible to the bitwise operators introduced with Lua 5.3.
 
 ## Comments
 
 Like many changes, this change is made to make Lua more similar to C-like languages. Instead of introducing comments with `--` or `--[[` (for multiline comments), Lea will use C's comment style: `//` and `/*`, `*/`.
+
+Comments are not yet included in the AST, but when they are, a Lint will warn if Lua-style comments are used in Lea code.
 
 ## Distinct array type
 
@@ -63,6 +58,8 @@ Lua provides one central data structure: Tables. Tables have an "array part" whi
 This makes Lua's design very simple and yet flexible: Tables can be used for namespaces (thanks to the `.` access syntax sugar) and to store data the program works with. They can be used as building blocks for more complicated data structures, if needed.
 
 Lea will provide a table type that can be used like Lua's tables: It supports metatables, weak reference modes, and will automatically augment its array part.
+
+In Lua, the lenth operator will return the number of entries in a table's array part. This allows iterating over the array part with a numeric for loop, ignoring the hash part, but is a bit unintuitive, since `#{key = "test"}` evaluates to 0. Lea will return the number of mappings in the table instead. To avoid breaking Lua code, a compatibility mode can be activated when compiling a `.lua` file, which will emulate Lua behaviour.
 
 It also provides a distinct array type that stores an ordered list of values indexed by integers starting at 0 (see below). The array type is simpler and more lightweight than the table type (no support for metatables and other table features).
 
@@ -84,4 +81,4 @@ Lua was designed to be a very small language with a minimal runtime. This comes 
 
 Lea will provide a larger runtime library (mainly wrappers around the Rust stdlib):
 * **FFI** - A Foreign Function Interface for loading and calling C code at runtime makes Lua-typical wrapper modules written in C obsolete. Lua provides an FFI via third-party modules.
-* **Filesystem** - Lua's filesystem API is limited to simple operations, as more complex scenarios are not portable and rely on OS-specific features. Lea will provide a more complete API, including support for iterating over directories, changing the current directory, locking files, checking file permissions, etc.
+* **Filesystem** - Lua's filesystem API is limited to simple operations, as more complex scenarios are not portable and rely on OS-specific features. Lea will provide a more complete API, including support for iterating over directories, changing the current directory, locking files, checking file permissions, etc. built on top of rust's stdlib
