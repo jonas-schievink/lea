@@ -6,7 +6,25 @@ use compiler::ast::*;
 use op::*;
 
 use std::ops::{Deref, DerefMut};
+use std::collections::HashMap;
 
+
+// Maps deprecated ops to their non-deprecated replacements
+lazy_static! {
+    pub static ref DEPR_BINOPS: HashMap<BinOp, BinOp> = {
+        let mut m = HashMap::new();
+        m.insert(BinOp::NEqLua, BinOp::NEq);
+        m.insert(BinOp::LAndLua, BinOp::LAnd);
+        m.insert(BinOp::LOrLua, BinOp::LOr);
+        m
+    };
+
+    pub static ref DEPR_UNOPS: HashMap<UnOp, UnOp> = {
+        let mut m = HashMap::new();
+        m.insert(UnOp::LNotLua, UnOp::LNot);
+        m
+    };
+}
 
 struct DeprOps(Vec<Warning>);
 impl Deref for DeprOps {
@@ -27,10 +45,11 @@ impl Visitor for DeprOps {
             EBinOp(mut lhs, op, mut rhs) => {
                 lhs = Box::new(self.visit_expr(*lhs));
                 rhs = Box::new(self.visit_expr(*rhs));
-                match op {
-                    BinOp::NEqLua => {
-                        self.push(Warning::with_info(e.span, "use of deprecated operator `~=`".to_string(),
-                            vec!["use `!=` instead".to_string()]));
+
+                match DEPR_BINOPS.get(&op) {
+                    Some(newop) => {
+                        self.push(Warning::with_info(e.span, format!("use of deprecated operator `{}`", op),
+                            vec![format!("use `{}` instead", newop)]));
                     }
                     _ => {},
                 };
@@ -39,10 +58,11 @@ impl Visitor for DeprOps {
             },
             EUnOp(op, mut p) => {
                 p = Box::new(self.visit_expr(*p));
-                match op {
-                    UnOp::LNotLua => {
-                        self.push(Warning::with_info(e.span, "use of deprecated operator `not`".to_string(),
-                            vec!["use `!` instead".to_string()]));
+
+                match DEPR_UNOPS.get(&op) {
+                    Some(newop) => {
+                        self.push(Warning::with_info(e.span, format!("use of deprecated operator `{}`", op),
+                            vec![format!("use `{}` instead", newop)]));
                     },
                     _ => {},
                 };

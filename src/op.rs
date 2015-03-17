@@ -6,7 +6,7 @@ use self::UnOp::*;
 use self::BinOp::*;
 
 /// Unary operators
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum UnOp {
     Negate, // -
     LNot,   // !
@@ -16,7 +16,7 @@ pub enum UnOp {
 }
 
 /// Binary operators
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum BinOp {
     Add,
     Sub,
@@ -42,7 +42,7 @@ pub enum BinOp {
     BXor,
     ShiftL,
     ShiftR,
-    
+
     Concat,
 }
 

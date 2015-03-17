@@ -188,6 +188,8 @@ impl Warning {
             res.push_str(format!("\n{}:{}: info: {}", source_name, startline, info).as_slice());
         }
 
+        res.push_str("\n");
+
         res
     }
 }
