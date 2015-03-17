@@ -2,16 +2,19 @@
 
 pub use self::Value::*;
 
-/*use table::Table;
+use table::Table;
 use array::Array;
-use program::Function;*/
+use program::Function;
+use mem::GcRef;
 
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 
 /// Wrapper around `f64` that implements `Hash` and `Eq` (needed when used as table keys).
-#[derive(RustcEncodable, RustcDecodable, PartialEq, Debug)]
-pub struct HashedFloat(f64);
+///
+/// Lua supports this, so we will, too. I would still never recommend doing this!
+#[derive(RustcEncodable, PartialEq, Debug)]
+pub struct HashedFloat(pub f64);
 
 /// Manual implementation needed since `f64` doesn't implement Hash, but this is required since
 /// floats can be used as table keys (although I don't recommend it).
@@ -44,25 +47,29 @@ impl DerefMut for HashedFloat {
 }
 
 
-#[derive(RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(RustcEncodable, PartialEq, Eq, Debug, Hash)]
 pub enum Value {
     TNil,
     TBool(bool),
     TInt(i64),
     TFloat(HashedFloat),
-    TString(Box<String>),
-    /*TFunc(Box<Function>),
-    TArray(Box<Array>),
-    TTable(Box<Table>),*/
+    TStr(GcRef<String>),
+    TFunc(GcRef<Function>),
+    TArray(GcRef<Array>),
+    TTable(GcRef<Table>),
 }
 
 impl Value {
+    /// The equivalent of Lua's `type()` function, returns the type name of a value.
     pub fn get_type_name(&self) -> &'static str {
         match *self {
             TNil => "nil",
             TBool(..) => "boolean",
             TInt(..) | TFloat(..) => "number",
-            TString(..) => "string",
+            TStr(..) => "string",
+            TTable(..) => "table",
+            TArray(..) => "array",
+            TFunc(..) => "function",
         }
     }
 }
