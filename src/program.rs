@@ -27,7 +27,7 @@ pub enum UpvalDesc {
 pub struct FunctionProto {
     /// The name of the source from which this function was compiled
     pub source_name: String,
-    /// The max. number of stack slots used
+    /// The number of stack slots required by this function (might be dynamically increased)
     pub stacksize: u8,
     /// Number of parameters accepted (ignoring varargs)
     pub params: u8,
@@ -35,9 +35,8 @@ pub struct FunctionProto {
     pub varargs: bool,
     /// The opcodes emitted for the code in the function body
     pub opcodes: Vec<Opcode>,
-    /// Constants used by this function. Maximum of 65535. These map to indices into the program's
-    /// constant table.
-    pub consts: Vec<usize>,
+    /// Constants used by this function.
+    pub consts: Vec<Literal>,
     /// List of Upvalue reference descriptions
     pub upvalues: Vec<UpvalDesc>,
     /// Names of Upvalues (names may not be defined)
@@ -47,24 +46,6 @@ pub struct FunctionProto {
     /// References to the prototypes of all function declared within the body of this function.
     /// When dynamically compiling code, this allows the GC to collect prototypes that are unused.
     pub child_protos: Vec<GcRef<FunctionProto>>,
-}
-
-#[derive(Clone, Debug)]
-pub struct Program {
-    /// Functions defined inside the program
-    pub funcs: Vec<FunctionProto>,
-    /// Constants used within the program (strings, integers, floats)
-    pub consts: Vec<Literal>,
-}
-
-impl Program {
-    /// Creates an empty program
-    pub fn new() -> Program {
-        Program {
-            funcs: vec![],
-            consts: vec![],
-        }
-    }
 }
 
 

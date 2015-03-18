@@ -13,7 +13,6 @@ use std::fs::File;
 use std::path::Path;
 
 use lea::compiler::*;
-use lea::program::Program;
 
 macro_rules! printerr {
     ($($arg:tt)*) => {
@@ -35,8 +34,7 @@ fn print_usage() {
 }
 
 fn compile(code: &str, filename: &str) {
-    let mut p = Program::new();
-    match compile_str(&mut p, code, filename, &CompileConfig::default()) {
+    match compile_str(code, filename, &CompileConfig::default()) {
         Err(e) => match e {
             ErrParse(err) => {
                 printerr!("parse error: {}", err.format(code.as_slice(), filename));
@@ -54,20 +52,22 @@ fn compile(code: &str, filename: &str) {
             },
             ErrLint(warns) => {
                 let mut first = true;
-                for w in warns {
+                for w in &warns {
                     if first { first = false; } else { printerr!("\n"); }
                     printerr!("warning as error: {}", w.format(code.as_slice(), filename).as_slice());
                 }
             },
-            ErrEmit(err) => {
-                match err.detail {
-                    None => printerr!("emit error: {}", err.msg),
-                    Some(detail) => printerr!("emit error: {} ({})", err.msg, detail),
-                };
+            ErrEmit(errs) => {
+                for err in &errs {
+                    match err.detail {
+                        None => printerr!("emit error: {}", err.msg),
+                        Some(ref detail) => printerr!("emit error: {} ({})", err.msg, detail),
+                    };
+                }
             }
         },
         Ok(output) => {
-            let warns = output.get_warns();
+            let warns = output.warns;
             if warns.len() > 0 {
                 println!("{} warnings:", warns.len());
                 for w in warns {

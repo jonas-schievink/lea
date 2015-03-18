@@ -1,3 +1,5 @@
+//! The Abstract Syntax Tree (AST) used by the Lea compiler
+
 pub use self::_Variable::*;
 pub use self::_Stmt::*;
 pub use self::_Expr::*;
@@ -12,7 +14,7 @@ use program::UpvalDesc;
 use op::*;
 
 /// Literal constants
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, RustcEncodable)]
 pub enum Literal {
     TInt(i64),
     TFloat(f64),

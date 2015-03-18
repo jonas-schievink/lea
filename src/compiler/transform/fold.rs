@@ -304,7 +304,7 @@ mod tests {
         conf.add_transform(run, LintMode::Warn);
 
         let main = parse_and_resolve(raw).unwrap();
-        let (main, _warns) = apply_transforms(main, &conf).unwrap();
+        let (main, _) = apply_transforms(main, &conf);
         let expected = parse_and_resolve(folded).unwrap();
 
         assert_eq!(main, expected);

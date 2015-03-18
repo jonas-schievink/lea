@@ -1,11 +1,13 @@
 //! Implementation-dependent limitations on Lea programs
 
-use std::{u16, u32};
+use std::u32;
 
 /// The global limit on the stack size of a single function. This limit depends on the
 /// implementation.
-pub static LEA_STACK_LIMIT: u8 = 128;
+pub static STACK_LIMIT: u64 = 128;
 /// Global limit of constants used by a single function.
-pub static LEA_CONST_LIMIT: u16 = u16::MAX;
+pub static CONST_LIMIT: u64 = u32::MAX as u64;
 /// Maximal number of opcodes defined for a single function
-pub static LEA_OP_LIMIT: u32 = u32::MAX;
+pub static OP_LIMIT: u64 = u32::MAX as u64;
+/// Max. number of function parameters (minus varargs)
+pub static PARAM_LIMIT: u64 = 50;
