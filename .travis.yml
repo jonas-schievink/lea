@@ -6,7 +6,12 @@ after_success: |
   echo "<meta http-equiv=refresh content=0;url=`echo $TRAVIS_REPO_SLUG | cut -d '/' -f 2`/index.html>" > target/doc/index.html &&
   sudo pip install ghp-import &&
   ghp-import -n target/doc &&
-  git push -fq https://${GH_SECRET}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
+  git push -fq https://${GH_SECRET}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages &&
+  sudo apt-get install libcurl4-openssl-dev libelf-dev libdw-dev &&
+  wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
+  tar xzf master.tar.gz && mkdir kcov-master/build && cd kcov-master/build && cmake .. && make &&
+  sudo make install && cd ../.. &&
+  kcov --coveralls-id=$TRAVIS_JOB_ID target/kcov target/debug/lea-*
 env:
   global:
   # GH_SECRET for pushing the docs to the gh-pages branch automatically
