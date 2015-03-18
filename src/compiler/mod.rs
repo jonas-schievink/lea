@@ -200,6 +200,10 @@ impl Warning {
 
         res
     }
+
+    pub fn get_message(&self) -> &str {
+        self.message.as_slice()
+    }
 }
 
 /// Output of a successful compilation.

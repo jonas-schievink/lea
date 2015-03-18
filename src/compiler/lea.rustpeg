@@ -59,7 +59,7 @@ integer -> i64
 /// C-like float (only one part before/after the decimal point is required)
 cfloat -> &'input str
     = [0-9]* "." decstr { match_str }
-    / decstr "."        { match_str }
+    / decstr "." ! "."  { match_str }   // no second "." allowed, since that's the concat operator
 
 /// Float in exponential notation
 efloat -> &'input str

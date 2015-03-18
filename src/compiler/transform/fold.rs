@@ -14,11 +14,11 @@ struct Folder {
 }
 
 fn unary_err(op: UnOp, lit: &Literal) -> String {
-    format!("attempt to apply unary {} to type \"{}\"", op, lit.get_type_str())
+    format!("attempt to apply unary `{}` to {}", op, lit.get_type_str())
 }
 
 fn bin_err(lhs: &Literal, op: BinOp, rhs: &Literal) -> String {
-    format!("attempt to apply binary {} to {} and {}", op, lhs.get_type_str(), rhs.get_type_str())
+    format!("attempt to apply binary `{}` to {} and {}", op, lhs.get_type_str(), rhs.get_type_str())
 }
 
 /// Folds a literal used as a truth value (eg. as an if condition or in a logical operator).
@@ -53,8 +53,7 @@ fn fold_unop(op: UnOp, lit: &Literal) -> Result<Literal, String> {
         UnOp::Len => match *lit { // #
             TInt(_) | TFloat(_) | TBool(_) | TNil => Err(unary_err(op, lit)),
 
-            // TODO # of graphemes is probably the way to go, but incompat. to Lua
-            //TStr(ref s) => Ok(TInt(s.as_slice().graphemes(true).count() as i64)),
+            // Return number of bytes in the string (compat. to Lua)
             TStr(ref s) => Ok(TInt(s.len() as i64)),
         },
     }
@@ -297,30 +296,59 @@ mod tests {
     use super::*;
     use compiler::*;
     use compiler::transform::LintMode;
+    use compiler::ast::Function;
 
-    /// Parses and folds `raw`, then parses `folded`. Asserts that the ASTs are equal.
-    fn test(raw: &str, folded: &str) {
+    use std::str::StrExt;
+
+    fn parse_fold(code: &str) -> (Function, Vec<Warning>) {
         let mut conf = CompileConfig::empty();
         conf.add_transform(run, LintMode::Warn);
 
-        let main = parse_and_resolve(raw).unwrap();
-        let (main, _) = apply_transforms(main, &conf);
+        let main = parse_and_resolve(code).unwrap();
+        let (main, res) = apply_transforms(main, &conf);
+
+        (main, res.unwrap())
+    }
+
+    /// Parses and folds `raw`, then parses `folded`. Asserts that the ASTs are equal.
+    fn test(raw: &str, folded: &str) {
+        let (main, warns) = parse_fold(raw);
         let expected = parse_and_resolve(folded).unwrap();
 
         assert_eq!(main, expected);
+        assert_eq!(warns.len(), 0);
     }
 
     #[test]
     fn basic() {
-        test("return -0, -4.5, #\"TEST\", ~0", "return 0, -4.5, 4, -1");
+        test("return -0, -(4.5), #\"TEST\", ~0", "return 0, -4.5, 4, -1");
         test("return not true, not false", "return false, true");
-        test("return 1-1+3*(1-1)/1^1+1", "return 1");
+        test("return 1-1+3*(1.0-1)/1^1+1.0", "return 1.0");
         test("return 1&&2, 1||0, false||3, true&&false", "return 2, 1, 3, false");
         test("return false&&3||2, true&&3||2", "return 2, 3");
         test("return 2|1, 2&3, -1~1", "return 3, 2, -2");
-        test("return !(true && (true || false))", "return false");
-        test("return 1<<2, 1>>90, 1<<90, 4>>-1", "return 4, 0, 0, 8");
+        test("return !(true && (true || nil))", "return false");
+        test("return 1<<2, 4>>1, 1>>90, 1<<90, 4>>-1", "return 4, 2, 0, 0, 8");
+        test("return !0, \"test\"..1..\"a\", 2<3 and 1>=0.5", "return false, \"test1a\", true");
     }
 
-    // TODO test warnings
+    #[test]
+    fn warnings() {
+        fn test_warn(code: &str, msgs: &[&str]) {
+            let mut i = 0;
+            let (_, warns) = parse_fold(code);
+            assert_eq!(warns.len(), msgs.len());
+
+            for warn in warns {
+                let msg = warn.get_message();
+                assert!(msg.contains(msgs[i]), format!("got: {}; exp: {}", msg, msgs[i]));
+                i += 1;
+            }
+        }
+
+        test_warn("return 0.5 >> 1", &["attempt to apply binary `>>` to float and integer"]);
+        test_warn("return 3 << \"\", #5", &["integer and string", "unary `#` to integer"]);
+        test_warn("return 2^10000000000", &["out of range"]);
+        test_warn("return \"1\" + 1", &["binary `+` to string and integer"]);   // NOPE.avi
+    }
 }
