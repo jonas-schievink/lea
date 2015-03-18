@@ -21,3 +21,4 @@ pub mod array;
 pub mod table;
 pub mod mem;
 pub mod limits;
+pub mod vm;

@@ -1,10 +1,29 @@
 //! Memory management interface and garbage collection.
+//!
+//! # Finalization
+//!
+//! Finalizers allow Lea code to be run when a table is unreachable and would be collected by the
+//! GC. They can execute arbitrary code and potentially make the table reachable again, and have
+//! access to the table and its referenced objects, which means that the GC must not collect them
+//! when a finalizer needs to run.
+//!
+//! A tables metatables can specify a `__gc` field, which will be run as a finalizer for the table
+//! (if it's a function). The table should register itself for finalization in the GC when its
+//! metatable is changed and contains a `__gc` field. If the metatable doesn't contain the field,
+//! and it is later added to it, the table will *not* be marked for finalization, matching Lua
+//! semantics.
+//!
+//! The GC manages a list of objects with finalizers and scans through them after the main mark
+//! phase. If any object is unmarked, it will be added to a finalization list and recursively
+//! marked. This makes sure that the finalization function can access the object and all reachable
+//! objects. The object is removed from the finalized-object list and its finalizer is invoked.
 
 // TODO: Finalizers, weak tables, less horrific code
 
 use program::{Function, FunctionProto};
 use array::Array;
 use table::Table;
+use vm::VM;
 
 use rustc_serialize::{Encoder, Encodable};
 
@@ -16,6 +35,8 @@ use std::fmt;
 
 /// A garbage-collectable object. Provides a method to get its `GcType` for proper destruction by
 /// the GC.
+///
+/// Note: This is an internal type and may not be used from other modules.
 pub trait GcObj : Encodable {
     fn get_type() -> GcType;
 }
@@ -28,7 +49,7 @@ pub trait GcObj : Encodable {
 macro_rules! gc_objects {
     ( $( $name:ident ),+ ; $( $dbg:ident ),* ) => {
         // For some reason, `#[derive]` is applied before `#[cfg]`, so we have to put `GcType` into
-        // its own module
+        // its own module or we get colliding impls.
 
         #[cfg(not(test))]
         mod gctype {
@@ -137,6 +158,8 @@ struct GcHeader {
     next: Option<&'static GcHeader>,
     /// true if this object is considered reachable. Only valid after mark phase.
     marked: bool,
+    /// true if in `fin` list (and the object needs finalization)
+    needs_fin: bool,
     /// type of the object
     ty: GcType,
 
@@ -146,11 +169,20 @@ struct GcHeader {
 #[test]
 fn header_size() {
     // important for proper alignment of the object behind the header: GcHeader must be a multiple
-    // of the pointer size
+    // of the pointer size (this should cover all alignment restrictions)
     assert_eq!(size_of::<GcHeader>(), size_of::<usize>() * 2);
 }
 
 impl GcHeader {
+    fn new(next: Option<&'static GcHeader>, ty: GcType) -> GcHeader {
+        GcHeader {
+            next: next,
+            ty: ty,
+            marked: false,
+            needs_fin: false,
+        }
+    }
+
     /// Gets a mutable reference to the object behind this header.
     unsafe fn get_obj<T: GcObj>(&self) -> &T {
         let addr: usize = transmute(self);
@@ -178,12 +210,16 @@ impl <T: GcObj> GcRef<T> {
         transmute(self.0)
     }
 
-    /// Gets the corresponding GcHeader for the object, assuming it is wrapped inside `Wrap<T>`
-    /// (which it should be, since only the GC creates `GcRef`s and ensures this invariant).
-    fn get_header_mut(&self) -> &mut GcHeader {
+    fn get_header(&self) -> &'static GcHeader {
         let addr = self.0 as usize - size_of::<GcHeader>();
 
         unsafe { transmute(addr) }
+    }
+
+    /// Gets the corresponding GcHeader for the object, assuming it is wrapped inside `Wrap<T>`
+    /// (which it should be, since only the GC creates `GcRef`s and ensures this invariant).
+    fn get_header_mut(&self) -> &'static mut GcHeader {
+        unsafe { transmute(self.get_header()) }
     }
 }
 
@@ -210,7 +246,7 @@ impl <T: GcObj> Eq for GcRef<T> {}
 /// Hash is also implemented purely on the pointer and will just feed the address of the object to
 /// the `Hasher`.
 impl <T: GcObj> Hash for GcRef<T> {
-    fn hash<H>(&self, state: &mut H) where H: Hasher {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         state.write_usize(self.0 as usize);
     }
 }
@@ -242,9 +278,11 @@ impl <T: GcObj> Encodable for GcRef<T> {
 /// roots are recursively traced, marking all GC objects that can be reached. In the sweep phase,
 /// the object list in traversed and all unmarked objects are removed from the list and dropped.
 pub struct Gc {
-    /// Start of GC object list
+    /// Regular GC object list
     first: Option<&'static GcHeader>,
-    /// Start of rooted GC object list
+    /// List of objects that need to be finalized before they are collected.
+    fin: Option<&'static GcHeader>,
+    /// List of rooted GC objects
     first_root: Option<&'static GcHeader>,
 }
 
@@ -253,6 +291,7 @@ impl Gc {
     pub fn new() -> Gc {
         Gc {
             first: None,
+            fin: None,
             first_root: None,
         }
     }
@@ -260,11 +299,7 @@ impl Gc {
     /// Roots the given object and returns a `GcRef`.
     pub fn root<T: GcObj>(&mut self, t: T) -> GcRef<T> {
         let first_root = replace(&mut self.first_root, None);
-        let b = Box::new((GcHeader {
-            next: first_root,
-            marked: false,
-            ty: T::get_type(),
-        }, t));
+        let b = Box::new((GcHeader::new(first_root, T::get_type()), t));
 
         unsafe {
             let addr: *mut (GcHeader, T) = into_raw(b);
@@ -284,11 +319,7 @@ impl Gc {
     /// `GcRef`s to it are found during a collection.
     pub fn register<T: GcObj>(&mut self, t: T) -> GcRef<T> {
         let first = replace(&mut self.first, None);
-        let b = Box::new((GcHeader {
-            next: first,
-            marked: false,
-            ty: T::get_type(),
-        }, t));
+        let b = Box::new((GcHeader::new(first, T::get_type()), t));
 
         unsafe {
             let addr: *mut (GcHeader, T) = into_raw(b);
@@ -301,11 +332,52 @@ impl Gc {
         }
     }
 
+    /// Registers an object for finalization. If it was already registered, does nothing.
+    pub fn register_finalizer<T: GcObj + 'static>(&mut self, obj: GcRef<T>) {
+        unsafe {
+            let header = obj.get_header_mut();
+            if header.needs_fin { return; }
+
+            header.needs_fin = true;
+
+            let header = obj.get_header();  // get as immutable
+
+            // move to finalized object list (need to scan through the list to remove the object)
+            // this is not as inefficient as it sounds, because tables that get metatables attached
+            // (that define __gc) are usually young and thus at the beginning of the list
+            let mut last: Option<&GcHeader> = None;
+            let mut cur: &GcHeader = self.first.expect("unregistered GcRef");
+            loop {
+                if cur as *const GcHeader == header as *const GcHeader {
+                    match last {
+                        None => self.first = header.next,
+                        Some(ref l) => {
+                            // FIXME this is getting ridiculous. use linked list and cells!
+                            let m: &mut GcHeader = transmute(l);
+                            m.next = header.next;
+                        },
+                    }
+
+                    break;
+                }
+
+                last = Some(cur);
+                cur = cur.next.expect("unregistered GcRef");
+            }
+
+            // add to fin list
+            let header = obj.get_header_mut();
+            header.next = self.fin;
+            self.fin = Some(header);
+        }
+    }
+
     /// Performs an atomic garbage collection (stop-the-world).
     ///
     /// Returns the number of objects that were collected.
-    pub fn collect(&mut self) -> usize {
+    pub fn collect(&mut self, vm: &mut VM) -> usize {
         self.mark();
+        self.finalize(vm);
         self.sweep()
     }
 
@@ -319,6 +391,12 @@ impl Gc {
 
             cur = h.next;
         }
+    }
+
+    /// Traces and marks objects that are to be finalized, puts them into the regular GC object
+    /// list, and runs their finalization code.
+    fn finalize(&mut self, _vm: &mut VM) {
+        // TODO
     }
 
     /// Iterates through the object list and frees all unmarked objects. Resets the mark bit to
@@ -465,8 +543,9 @@ impl Encoder for Gc {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use array::Array;
     use value::*;
+    use vm::VM;
+    use array::Array;
 
     use rustc_serialize::{Encodable, Encoder};
 
@@ -511,7 +590,7 @@ mod tests {
             assert_eq!(sref.get().as_slice(), "test");
         }
 
-        assert_eq!(gc.collect(), 0);
+        assert_eq!(gc.collect(&mut VM::new()), 0);
 
         unsafe {
             assert_eq!(rref.get().len(), 3);
@@ -523,7 +602,7 @@ mod tests {
     #[test]
     fn empty() {
         let mut gc = Gc::new();
-        assert_eq!(gc.collect(), 0);
+        assert_eq!(gc.collect(&mut VM::new()), 0);
     }
 
     /// Tests if the GC actually collects unreachable objects
@@ -538,8 +617,8 @@ mod tests {
             assert_eq!(**rref.get(), vec![TNil, TBool(true), TBool(false)]);
         }
 
-        assert_eq!(gc.collect(), 1);
-        assert_eq!(gc.collect(), 0);
+        assert_eq!(gc.collect(&mut VM::new()), 1);
+        assert_eq!(gc.collect(&mut VM::new()), 0);
     }
 
     /// Test if the drop glue is run. I haven't found an easy way for the closure to return a value
@@ -551,7 +630,7 @@ mod tests {
         }));
         let mut gc = Gc::new();
         gc.register(d);
-        gc.collect();
+        gc.collect(&mut VM::new());
     }
 
     /// Test if the GC correctly drops all objects when it is dropped.
@@ -589,6 +668,6 @@ mod tests {
 
         // TODO test functions. this requires functions to work...
 
-        assert_eq!(gc.collect(), 0);
+        assert_eq!(gc.collect(&mut VM::new()), 0);
     }
 }

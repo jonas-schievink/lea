@@ -1,4 +1,21 @@
-//! Contains Lea's table type
+//! Contains Lea's table type.
+//!
+//! # Weak tables
+//!
+//! A table can have weak keys and/or values. These will reference objects weakly and make no
+//! difference for value types and strings. If an object is only reachable through weak references,
+//! the GC will still collect the object and then modify all weak references that pointed to it to
+//! make sure that they are still valid and don't point to freed memory.
+//!
+//! In case of weak tables, an entry will be removed if either the key or the value is collected
+//! due to being only weakly reachable.
+//!
+//! A table with weak values will thus delete a value's mapping if the value isn't reachable from
+//! outside the table and allows the table to be used like a cache.
+//!
+//! A table with weak keys will delete a key's mapping if the key is only weakly reachable. It is
+//! acting as an "ephemeron" table and allows associating properties with objects that will be
+//! automatically cleared when the object is collected.
 
 #![macro_use]
 
