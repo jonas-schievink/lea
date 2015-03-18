@@ -1,5 +1,7 @@
 //! Memory management interface and garbage collection.
 
+// TODO: Finalizers, weak tables, less horrific code
+
 use program::{Function, FunctionProto};
 use array::Array;
 use table::Table;
@@ -159,7 +161,10 @@ impl GcHeader {
 
 
 /// Unsafe, traced reference to a `GcObj`. Implements `PartialEq` and `Eq` in terms of pointer
-/// equality and `Hash` by using the address of the object.
+/// equality and `Hash` by using the address of the object. Can be trivially copied.
+///
+/// Note: Never access a `GcRef` from the `drop` method, because the referenced objects might
+/// already be collected.
 pub struct GcRef<T: GcObj>(*mut T);
 
 impl <T: GcObj> GcRef<T> {
@@ -174,7 +179,7 @@ impl <T: GcObj> GcRef<T> {
     }
 
     /// Gets the corresponding GcHeader for the object, assuming it is wrapped inside `Wrap<T>`
-    /// (which it should be, since the GC manages all `GcRef`s).
+    /// (which it should be, since only the GC creates `GcRef`s and ensures this invariant).
     fn get_header_mut(&self) -> &mut GcHeader {
         let addr = self.0 as usize - size_of::<GcHeader>();
 
@@ -231,6 +236,11 @@ impl <T: GcObj> Encodable for GcRef<T> {
 }
 
 
+/// The garbage collector.
+///
+/// Each instance manages a list of known objects and a list of GC roots. When collecting, the
+/// roots are recursively traced, marking all GC objects that can be reached. In the sweep phase,
+/// the object list in traversed and all unmarked objects are removed from the list and dropped.
 pub struct Gc {
     /// Start of GC object list
     first: Option<&'static GcHeader>,
@@ -247,7 +257,7 @@ impl Gc {
         }
     }
 
-    /// Roots the given object.
+    /// Roots the given object and returns a `GcRef`.
     pub fn root<T: GcObj>(&mut self, t: T) -> GcRef<T> {
         let first_root = replace(&mut self.first_root, None);
         let b = Box::new((GcHeader {
@@ -260,6 +270,8 @@ impl Gc {
             let addr: *mut (GcHeader, T) = into_raw(b);
             let (ref header_addr, ref obj_addr) = *addr;
             self.first_root = Some(transmute(header_addr));
+
+            //println!("reg root {:p}", addr);
 
             GcRef(transmute(obj_addr))
         }
@@ -319,7 +331,14 @@ impl Gc {
         while cur.is_some() {
             let h = cur.unwrap();
 
-            if !h.marked {
+            if h.marked {
+                // unmark so the object can be collected in the next collection cycle
+                // TODO use cells for this (and figure out how slow they are)
+                unsafe { transmute::<_, &mut GcHeader>(h).marked = false; }
+
+                prev = cur;
+                cur = h.next;
+            } else {
                 //println!("sweeping {:p}", h);
 
                 // remove from object list
@@ -330,25 +349,18 @@ impl Gc {
                         mut_header.next = h.next;
                     }
                     None => {
-                        self.first = cur;
+                        self.first = h.next;
                     },
                 }
+
+                prev = cur;
+                cur = h.next;
 
                 // run drop glue
                 h.ty.drop_obj(h);
 
                 swept += 1;
             }
-
-            // unmark so the object can be collected in the next collection cycle
-            // TODO use cells for this (and figure out how slow they are)
-            unsafe { transmute::<_, &mut GcHeader>(h).marked = false; }
-
-            prev = cur;
-            cur = match prev {
-                Some(h) => h.next,
-                None => None,
-            };
         }
 
         swept
@@ -363,6 +375,31 @@ impl Gc {
             // mark and traverse the object itself
             header.marked = true;
             ptr.get_mut().encode(self);
+        }
+    }
+}
+
+/// The collector will drop all objects when it is dropped.
+impl Drop for Gc {
+    fn drop(&mut self) {
+        // TODO: If a collection is in progress (requires non-atomic collections), ignore the mark
+        // bit while sweeping!
+        let mut cur = self.first_root;
+        while cur.is_some() {
+            let h = cur.unwrap();
+            //println!("drop root {:p}", h);
+            cur = h.next;
+
+            h.ty.drop_obj(h);   // invalidates `h`
+        }
+
+        cur = self.first;
+        while cur.is_some() {
+            let h = cur.unwrap();
+            //println!("drop {:p}", h);
+
+            cur = h.next;
+            h.ty.drop_obj(h);
         }
     }
 }
@@ -483,6 +520,12 @@ mod tests {
         }
     }
 
+    #[test]
+    fn empty() {
+        let mut gc = Gc::new();
+        assert_eq!(gc.collect(), 0);
+    }
+
     /// Tests if the GC actually collects unreachable objects
     #[test]
     fn collect() {
@@ -496,6 +539,7 @@ mod tests {
         }
 
         assert_eq!(gc.collect(), 1);
+        assert_eq!(gc.collect(), 0);
     }
 
     /// Test if the drop glue is run. I haven't found an easy way for the closure to return a value
@@ -508,6 +552,26 @@ mod tests {
         let mut gc = Gc::new();
         gc.register(d);
         gc.collect();
+    }
+
+    /// Test if the GC correctly drops all objects when it is dropped.
+    #[test] #[should_panic(expected = "dropped 123")]
+    fn drop_gc() {
+        let d = Dummy::new(123, Box::new(|val| {
+            panic!("dropped {}", val);
+        }));
+        let mut gc = Gc::new();
+        gc.register(d);
+    }
+
+    /// Test if the GC correctly drops rooted objects when it is dropped.
+    #[test] #[should_panic(expected = "dropped 123")]
+    fn drop_rooted() {
+        let d = Dummy::new(123, Box::new(|val| {
+            panic!("dropped {}", val);
+        }));
+        let mut gc = Gc::new();
+        gc.root(d);
     }
 
     /// Tests if the GC correctly traces all types of objects and marks the reachable objects.

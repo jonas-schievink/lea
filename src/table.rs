@@ -91,7 +91,6 @@ macro_rules! table {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use value::*;
 
     #[test]
