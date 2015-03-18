@@ -28,12 +28,20 @@ impl Table {
         }
     }
 
-    pub fn weak_keys(&self) -> bool {
+    pub fn get_weak_keys(&self) -> bool {
         self.weak_keys
     }
 
-    pub fn weak_values(&self) -> bool {
+    pub fn set_weak_keys(&mut self, weak: bool) {
+        self.weak_keys = weak;
+    }
+
+    pub fn get_weak_values(&self) -> bool {
         self.weak_vals
+    }
+
+    pub fn set_weak_values(&mut self, weak: bool) {
+        self.weak_vals = weak;
     }
 
     /// Equivalent to assignment by Lea code. If the value is nil, the mapping is deleted. Returns
@@ -87,7 +95,7 @@ mod tests {
     use value::*;
 
     #[test]
-    fn basic() {
+    fn test() {
         let mut t = table! {
             TFloat(HashedFloat(0.5)) => TInt(42),
             TBool(true) => TInt(24),
@@ -107,14 +115,5 @@ mod tests {
         });
 
         assert_eq!(t.set(TNil, TNil), Err(()));
-    }
-
-    #[test]
-    fn macros() {
-        assert_eq!(Table::new(hashmap! {
-            TBool(true) => TInt(9),
-        }).data, table! {
-            TBool(true) => TInt(9),
-        }.data);
     }
 }
