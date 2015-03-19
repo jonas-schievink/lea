@@ -44,7 +44,7 @@ fn fold_unop(op: UnOp, lit: &Literal) -> Result<Literal, String> {
         UnOp::LNot | UnOp::LNotLua => match *lit { // ! / not
             TInt(_) | TFloat(_) | TStr(_) => Ok(TBool(false)),  // all these evaluate to true
             TBool(b) => Ok(TBool(!b)),
-            TNil => Err(unary_err(op, lit)),
+            TNil => Ok(TBool(true)),
         },
         UnOp::BNot => match *lit { // ~
             TInt(i) => Ok(TInt(!i)),
@@ -321,7 +321,7 @@ mod tests {
 
     #[test]
     fn basic() {
-        test("return -0, -(4.5), #\"TEST\", ~0", "return 0, -4.5, 4, -1");
+        test("return 1+1, -0, -(4.5), -(2), #\"TEST\", ~0", "return 2, 0, -4.5, -2, 4, -1");
         test("return not true, not false", "return false, true");
         test("return 1-1+3*(1.0-1)/1^1+1.0", "return 1.0");
         test("return 1&&2, 1||0, false||3, true&&false", "return 2, 1, 3, false");
@@ -330,6 +330,7 @@ mod tests {
         test("return !(true && (true || nil))", "return false");
         test("return 1<<2, 4>>1, 1>>90, 1<<90, 4>>-1", "return 4, 2, 0, 0, 8");
         test("return !0, \"test\"..1..\"a\", 2<3 and 1>=0.5", "return false, \"test1a\", true");
+        test("return not nil, 0.5*2.0, 0.5*2, 2%3, 2^2.0", "return true, 1.0, 1.0, 2, 4.0");
     }
 
     #[test]
@@ -349,6 +350,7 @@ mod tests {
         test_warn("return 0.5 >> 1", &["attempt to apply binary `>>` to float and integer"]);
         test_warn("return 3 << \"\", #5", &["integer and string", "unary `#` to integer"]);
         test_warn("return 2^10000000000", &["out of range"]);
+        test_warn("return -\"\", nil - true", &["unary `-` to string", "`-` to nil and boolean"]);
         test_warn("return \"1\" + 1", &["binary `+` to string and integer"]);   // NOPE.avi
     }
 }
