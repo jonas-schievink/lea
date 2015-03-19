@@ -11,7 +11,7 @@ after_success: |
   wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
   tar xzf master.tar.gz && mkdir kcov-master/build && cd kcov-master/build && cmake .. && make &&
   sudo make install && cd ../.. &&
-  kcov --coveralls-id=$TRAVIS_JOB_ID target/kcov target/debug/lea-*
+  kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-path=.cargo target/kcov target/debug/lea-*
 env:
   global:
   # GH_SECRET for pushing the docs to the gh-pages branch automatically
