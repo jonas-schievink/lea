@@ -189,7 +189,8 @@ impl Warning {
 
     /// Formats this warning, its span, and all attached info lines. Does not append a trailing
     /// newline.
-    pub fn format<W: Write>(&self, code: &str, source_name: &str, fmt: &mut FormatTarget<W>) -> io::Result<()> {
+    pub fn format<W: Write>(&self, code: &str, source_name: &str, fmt: &mut FormatTarget<W>)
+    -> io::Result<()> {
         let (startline, _end) = self.span.get_lines(code);
         try!(write!(fmt, "{}:{}: warning: {} \n", source_name, startline, self.message));
         try!(self.span.format(code, source_name, fmt));

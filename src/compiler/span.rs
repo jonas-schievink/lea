@@ -1,7 +1,8 @@
 //! This module contains the `Span` struct, which represents a range of input characters, along
 //! with some helper structs and functions.
 
-use term::Terminal;
+use term::{Terminal, Attr};
+use term::color::Color;
 
 use std::fmt;
 use std::cmp;
@@ -14,6 +15,57 @@ use self::FormatTarget::*;
 pub enum FormatTarget<'a, W: Write + 'a> {
     Io(&'a mut W),
     Term(&'a mut Terminal<W>),
+}
+
+impl <'a, W: Write> Terminal<W> for FormatTarget<'a, W> {
+    fn fg(&mut self, color: Color) -> io::Result<bool> {
+        match *self {
+            Io(_) => Ok(false),
+            Term(ref mut t) => t.fg(color),
+        }
+    }
+
+    fn bg(&mut self, color: Color) -> io::Result<bool> {
+        match *self {
+            Io(_) => Ok(false),
+            Term(ref mut t) => t.bg(color),
+        }
+    }
+
+    fn attr(&mut self, attr: Attr) -> io::Result<bool> {
+        match *self {
+            Io(_) => Ok(false),
+            Term(ref mut t) => t.attr(attr),
+        }
+    }
+
+    fn supports_attr(&self, attr: Attr) -> bool {
+        match *self {
+            Io(_) => false,
+            Term(ref t) => t.supports_attr(attr),
+        }
+    }
+
+    fn reset(&mut self) -> io::Result<bool> {
+        match *self {
+            Io(_) => Ok(false),
+            Term(ref mut t) => t.reset(),
+        }
+    }
+
+    fn get_ref<'b>(&'b self) -> &'b W {
+        match *self {
+            Io(ref w) => w,
+            Term(ref t) => t.get_ref(),
+        }
+    }
+
+    fn get_mut<'b>(&'b mut self) -> &'b mut W {
+        match *self {
+            Io(ref mut w) => w,
+            Term(ref mut t) => t.get_mut(),
+        }
+    }
 }
 
 impl <'a, W: Write> Write for FormatTarget<'a, W> {
@@ -53,7 +105,8 @@ impl Span {
     /// Given the source code from which this span was created (while compiling it), this prints
     /// the part of the source code this span points to. All lines contained in this span are
     /// printed and below each line, a marker shows which part belongs to the span.
-    pub fn format<W: Write>(&self, code: &str, source_name: &str, fmt: &mut FormatTarget<W>) -> io::Result<()> {
+    pub fn format<W: Write>(&self, code: &str, source_name: &str, fmt: &mut FormatTarget<W>)
+    -> io::Result<()> {
         let mut start = self.start;
         let mut len_left = self.len;
         let mut lineno = 1;

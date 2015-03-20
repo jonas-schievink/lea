@@ -21,7 +21,8 @@ pub struct ParseError {
 }
 
 impl ParseError {
-    pub fn format<W: Write>(&self, code: &str, source_name: &str, fmt: &mut FormatTarget<W>) -> io::Result<()> {
+    pub fn format<W: Write>(&self, code: &str, source_name: &str, fmt: &mut FormatTarget<W>)
+    -> io::Result<()> {
         try!(write!(fmt, "{}: {}\n", source_name, self.err));
         try!(self.span.format(code, source_name, fmt));
 

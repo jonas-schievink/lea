@@ -19,7 +19,8 @@ impl CheckError {
     /// Converts this `CheckError` to a string. Note that multiple lines are printed.
     ///
     /// See `Span::format` for details.
-    pub fn format<W: Write>(&self, code: &str, source_name: &str, fmt: &mut FormatTarget<W>) -> io::Result<()> {
+    pub fn format<W: Write>(&self, code: &str, source_name: &str, fmt: &mut FormatTarget<W>)
+    -> io::Result<()> {
         let (start, _end) = self.span.get_lines(code);
         try!(write!(fmt, "{}:{}: {}", source_name, start, self.msg));
 
