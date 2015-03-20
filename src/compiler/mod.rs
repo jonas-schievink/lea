@@ -89,15 +89,17 @@ pub mod resolve;
 pub mod span;
 pub mod visit;
 
-pub use self::CompileError::*;
-
 use program::FunctionProto;
 use self::ast::Function;
 use self::transform::{Transform, LintMode};
-use self::span::Span;
 use self::emitter::emit_func;
+use self::span::*;
 
 use std::default::Default;
+use std::io::{self, Write};
+
+
+pub use self::CompileError::*;
 
 
 /// Defines options that can be used to tweak the compilation process (optimizations, linters, ...)
@@ -187,18 +189,18 @@ impl Warning {
 
     /// Formats this warning, its span, and all attached info lines. Does not append a trailing
     /// newline.
-    pub fn format(&self, code: &str, source_name: &str) -> String {
+    pub fn format<W: Write>(&self, code: &str, source_name: &str, fmt: &mut FormatTarget<W>) -> io::Result<()> {
         let (startline, _end) = self.span.get_lines(code);
-        let mut res = format!("{}:{}: warning: {} \n", source_name, startline, self.message);
-        res.push_str(self.span.format(code, source_name).as_slice());
+        try!(write!(fmt, "{}:{}: warning: {} \n", source_name, startline, self.message));
+        try!(self.span.format(code, source_name, fmt));
 
         for info in &self.info {
-            res.push_str(format!("\n{}:{}: info: {}", source_name, startline, info).as_slice());
+            try!(write!(fmt, "\n{}:{}: info: {}", source_name, startline, info));
         }
 
-        res.push_str("\n");
+        try!(write!(fmt, "\n"));
 
-        res
+        Ok(())
     }
 
     pub fn get_message(&self) -> &str {

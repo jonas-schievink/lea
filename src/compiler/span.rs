@@ -1,10 +1,36 @@
 //! This module contains the `Span` struct, which represents a range of input characters, along
 //! with some helper structs and functions.
 
+use term::Terminal;
+
 use std::fmt;
 use std::cmp;
 use std::default::Default;
 use std::ops::{Deref, DerefMut};
+use std::io::{self, Write};
+
+use self::FormatTarget::*;
+
+pub enum FormatTarget<'a, W: Write + 'a> {
+    Io(&'a mut W),
+    Term(&'a mut Terminal<W>),
+}
+
+impl <'a, W: Write> Write for FormatTarget<'a, W> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match *self {
+            Io(ref mut w) => w.write(buf),
+            Term(ref mut t) => t.write(buf),
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        match *self {
+            Io(ref mut w) => w.flush(),
+            Term(ref mut t) => t.flush(),
+        }
+    }
+}
 
 /// A span is a range of input characters in the source code.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -27,24 +53,22 @@ impl Span {
     /// Given the source code from which this span was created (while compiling it), this prints
     /// the part of the source code this span points to. All lines contained in this span are
     /// printed and below each line, a marker shows which part belongs to the span.
-    pub fn format(&self, code: &str, source_name: &str) -> String {
+    pub fn format<W: Write>(&self, code: &str, source_name: &str, fmt: &mut FormatTarget<W>) -> io::Result<()> {
         let mut start = self.start;
-        let mut res = String::new();
         let mut len_left = self.len;
         let mut lineno = 1;
         for line in code.lines() {
             if line.len() + 1 > start {
                 let prefix = format!("{}:{}   ", source_name, lineno);
-                let srcline = format!("{}{}\n", prefix, line);
-                res.push_str(srcline.as_slice());
+                try!(write!(fmt, "{}{}\n", prefix, line));
 
                 for _ in 0..start+prefix.len() {
-                    res.push(' ');
+                    try!(write!(fmt, " "));
                 }
 
                 let marks = cmp::min(line.len(), len_left);
                 for _ in 0..marks {
-                    res.push('^');
+                    try!(write!(fmt, "^"));
                 }
                 len_left -= marks;
 
@@ -54,7 +78,7 @@ impl Span {
             lineno += 1;
         }
 
-        res
+        Ok(())
     }
 
     /// Computes the first and last line this span points to in the given source code fragment.
@@ -153,7 +177,14 @@ mod tests {
     use super::*;
 
     fn test(span: Span, code: &str, expect: &str) {
-        assert_eq!(span.format(code, "A"), expect);
+        let mut v = Vec::<u8>::new();
+
+        {
+            let mut fmt = FormatTarget::Io(&mut v);
+            span.format(code, "A", &mut fmt).unwrap();
+        }
+
+        assert_eq!(v.as_slice(), expect.as_bytes());
     }
 
     #[test]

@@ -13,3 +13,4 @@ A Lua-based language written in Rust
 peg = "*"
 rustc-serialize = "*"
 lazy_static = "*"
+term = "*"

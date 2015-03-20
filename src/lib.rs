@@ -12,6 +12,8 @@ extern crate lazy_static;
 
 extern crate "rustc-serialize" as rustc_serialize;
 
+extern crate term;
+
 pub mod compiler;
 pub mod op;
 pub mod opcode;

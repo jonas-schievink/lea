@@ -5,12 +5,13 @@ peg_file! parse("lea.rustpeg");
 pub use self::parse::{ident, literal};
 
 use super::ast::*;
-use super::span::Span;
+use super::span::*;
 use super::visit;
 use super::visit::Visitor;
 use super::expr_parser::ExprParser;
 
 use std::error::FromError;
+use std::io::{self, Write};
 
 /// Custom error type adding a dummy span and providing a `format` method.
 #[derive(Debug, PartialEq, Eq)]
@@ -20,11 +21,11 @@ pub struct ParseError {
 }
 
 impl ParseError {
-    pub fn format(&self, code: &str, source_name: &str) -> String {
-        let mut res = format!("{}: {}\n", source_name, self.err);
-        res.push_str(self.span.format(code, source_name).as_slice());
+    pub fn format<W: Write>(&self, code: &str, source_name: &str, fmt: &mut FormatTarget<W>) -> io::Result<()> {
+        try!(write!(fmt, "{}: {}\n", source_name, self.err));
+        try!(self.span.format(code, source_name, fmt));
 
-        res
+        Ok(())
     }
 }
 

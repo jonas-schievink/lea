@@ -63,7 +63,7 @@ impl <'a, 'b, W: Write> PrettyPrinter<'a, 'b, W> {
 
     #[allow(unused_must_use)]
     fn print_indent(&mut self) {
-        for _ in range(0, self.indent) {
+        for _ in 0..self.indent {
             write!(self.writer, "{}", self.indentstr);
         }
     }
@@ -72,7 +72,7 @@ impl <'a, 'b, W: Write> PrettyPrinter<'a, 'b, W> {
     #[allow(unused_must_use)]
     fn print_funcbody(&mut self, mut f: Function) -> Function {
         write!(self.writer, "(");
-        for i in range(0, f.params.len()) {
+        for i in 0..f.params.len() {
             write!(self.writer, "{}", &f.params[i]);
 
             if i < f.params.len() - 1 {
@@ -142,7 +142,7 @@ impl <'a, 'b, W: Write> Visitor for PrettyPrinter<'a, 'b, W> {
         stmt.value = match stmt.value {
             SDecl(names, mut vals) => {
                 write!(self.writer, "local ");
-                for i in range(0, names.len()) {
+                for i in 0..names.len() {
                     let name = &names[i];
 
                     write!(self.writer, "{}", name);
@@ -289,7 +289,7 @@ impl <'a, 'b, W: Write> Visitor for PrettyPrinter<'a, 'b, W> {
             },
             SForIn {vars, mut iter, mut body} => {
                 write!(self.writer, "for ");
-                for i in range(0, vars.len()) {
+                for i in 0..vars.len() {
                     write!(self.writer, "{}", &vars[i]);
 
                     if i < vars.len() - 1 {

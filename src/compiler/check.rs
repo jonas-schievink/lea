@@ -1,10 +1,12 @@
 //! Checks if an AST is valid
 
-use std::fmt;
-
 use super::ast::*;
 use super::visit::*;
-use super::span::Span;
+use super::span::*;
+
+use std::fmt;
+use std::io::{self, Write};
+
 
 #[derive(Clone, Debug)]
 pub struct CheckError {
@@ -16,21 +18,19 @@ pub struct CheckError {
 impl CheckError {
     /// Converts this `CheckError` to a string. Note that multiple lines are printed.
     ///
-    /// # Parameters
-    /// * `code` - The source code from which the checked function was compiled
-    /// * `source_name` - The name of the code source for this piece of source code
-    pub fn format(&self, code: &str, source_name: &str) -> String {
+    /// See `Span::format` for details.
+    pub fn format<W: Write>(&self, code: &str, source_name: &str, fmt: &mut FormatTarget<W>) -> io::Result<()> {
         let (start, _end) = self.span.get_lines(code);
-        let mut res = format!("{}:{}: {}", source_name, start, self.msg);
+        try!(write!(fmt, "{}:{}: {}", source_name, start, self.msg));
 
         if let Some(ref detail) = self.detail {
-            res.push_str(format!(" ({})", detail).as_slice());
+            try!(write!(fmt, " ({})", detail));
         }
 
-        res.push('\n');
-        res.push_str(self.span.format(code, source_name).as_slice());
+        try!(write!(fmt, "\n"));
+        try!(self.span.format(code, source_name, fmt));
 
-        res
+        Ok(())
     }
 }
 
