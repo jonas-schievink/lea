@@ -298,7 +298,6 @@ mod tests {
     use compiler::transform::LintMode;
     use compiler::ast::Function;
 
-    use std::str::StrExt;
 
     fn parse_fold(code: &str) -> (Function, Vec<Warning>) {
         let mut conf = CompileConfig::empty();
