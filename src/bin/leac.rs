@@ -164,3 +164,11 @@ pub fn main() {
         compile_file(f.as_slice()).unwrap();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test() {
+        // TODO
+    }
+}

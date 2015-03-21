@@ -1,6 +1,6 @@
 //! Lea is a scripting language derived from Lua.
 
-#![feature(plugin, core, collections, log_syntax, hash, alloc, staged_api)]
+#![feature(plugin, core, collections, log_syntax, hash, alloc, staged_api, str_char, unicode)]
 
 #![plugin(peg_syntax_ext)]
 
