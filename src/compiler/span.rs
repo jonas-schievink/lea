@@ -2,7 +2,7 @@
 //! with some helper structs and functions.
 
 use term::{Terminal, Attr};
-use term::color::Color;
+use term::color::{self, Color};
 
 use std::fmt;
 use std::cmp;
@@ -10,77 +10,47 @@ use std::default::Default;
 use std::ops::{Deref, DerefMut};
 use std::io::{self, Write};
 
-use self::FormatTarget::*;
 
-pub enum FormatTarget<'a, W: Write + 'a> {
-    Io(&'a mut W),
-    Term(&'a mut Terminal<W>),
-}
+/// Wraps a `Write` and implements `Terminal`
+pub struct DummyTerm<'a, W: Write + 'a>(pub &'a mut W);
 
-impl <'a, W: Write> Terminal<W> for FormatTarget<'a, W> {
-    fn fg(&mut self, color: Color) -> io::Result<bool> {
-        match *self {
-            Io(_) => Ok(false),
-            Term(ref mut t) => t.fg(color),
-        }
+impl <'a, W: Write> Terminal<W> for DummyTerm<'a, W> {
+    fn fg(&mut self, _color: Color) -> io::Result<bool> {
+        Ok(false)
     }
 
-    fn bg(&mut self, color: Color) -> io::Result<bool> {
-        match *self {
-            Io(_) => Ok(false),
-            Term(ref mut t) => t.bg(color),
-        }
+    fn bg(&mut self, _color: Color) -> io::Result<bool> {
+        Ok(false)
     }
 
-    fn attr(&mut self, attr: Attr) -> io::Result<bool> {
-        match *self {
-            Io(_) => Ok(false),
-            Term(ref mut t) => t.attr(attr),
-        }
+    fn attr(&mut self, _attr: Attr) -> io::Result<bool> {
+        Ok(false)
     }
 
-    fn supports_attr(&self, attr: Attr) -> bool {
-        match *self {
-            Io(_) => false,
-            Term(ref t) => t.supports_attr(attr),
-        }
+    fn supports_attr(&self, _attr: Attr) -> bool {
+        false
     }
 
     fn reset(&mut self) -> io::Result<bool> {
-        match *self {
-            Io(_) => Ok(false),
-            Term(ref mut t) => t.reset(),
-        }
+        Ok(false)
     }
 
     fn get_ref<'b>(&'b self) -> &'b W {
-        match *self {
-            Io(ref w) => w,
-            Term(ref t) => t.get_ref(),
-        }
+        &self.0
     }
 
     fn get_mut<'b>(&'b mut self) -> &'b mut W {
-        match *self {
-            Io(ref mut w) => w,
-            Term(ref mut t) => t.get_mut(),
-        }
+        &mut self.0
     }
 }
 
-impl <'a, W: Write> Write for FormatTarget<'a, W> {
+impl <'a, W: Write> Write for DummyTerm<'a, W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match *self {
-            Io(ref mut w) => w.write(buf),
-            Term(ref mut t) => t.write(buf),
-        }
+        self.0.write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        match *self {
-            Io(ref mut w) => w.flush(),
-            Term(ref mut t) => t.flush(),
-        }
+        self.0.flush()
     }
 }
 
@@ -102,27 +72,68 @@ impl Span {
         }
     }
 
+    /// Prints the file name, line and (optionally) column. Returns the number of graphemes
+    /// written (to allow proper indentation).
+    pub fn print_loc<W: Write>(source_name: &str, line: usize, col: Option<usize>, t: &mut Terminal<W>)
+    -> io::Result<usize> {
+        let mut s = format!("{}:{}:", source_name, line);
+        if let Some(col) = col { s.push_str(format!("{}:", col).as_slice()); }
+        s.push_str(" ");
+        try!(t.reset());
+        try!(write!(t, "{}", s));
+
+        Ok(s.graphemes(true).count())
+    }
+
+    pub fn print_info<W: Write>(source_name: &str, line: usize, col: Option<usize>, info: &str,
+    t: &mut Terminal<W>) -> io::Result<()> {
+        try!(Span::print_loc(source_name, line, col, t));
+        try!(t.fg(color::CYAN));
+        try!(write!(t, "info: "));
+        try!(t.reset());
+        try!(Span::print_msg(info, t));
+        Ok(())
+    }
+
+    /// Prints a string with code formatting, followed by a line break
+    fn print_code<W: Write>(code: &str, t: &mut Terminal<W>) -> io::Result<()> {
+        try!(t.reset());
+        try!(write!(t, "{}\n", code));
+        Ok(())
+    }
+
+    /// Prints a message followed by a line break
+    fn print_msg<W: Write>(msg: &str, t: &mut Terminal<W>) -> io::Result<()> {
+        try!(t.attr(Attr::Bold));
+        try!(t.fg(color::WHITE));
+        try!(write!(t, "{}\n", msg));
+        try!(t.reset());
+        Ok(())
+    }
+
     /// Given the source code from which this span was created (while compiling it), this prints
     /// the part of the source code this span points to. All lines contained in this span are
     /// printed and below each line, a marker shows which part belongs to the span.
-    pub fn format<W: Write>(&self, code: &str, source_name: &str, fmt: &mut FormatTarget<W>)
+    pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<W>, c: Color)
     -> io::Result<()> {
         let mut start = self.start;
         let mut len_left = self.len;
         let mut lineno = 1;
         for line in code.lines() {
             if line.len() + 1 > start {
-                let prefix = format!("{}:{}   ", source_name, lineno);
-                try!(write!(fmt, "{}{}\n", prefix, line));
+                let prefixlen = try!(Span::print_loc(source_name, lineno, None, t));
+                try!(Span::print_code(line, t));
 
-                for _ in 0..start+prefix.len() {
-                    try!(write!(fmt, " "));
+                for _ in 0..start+prefixlen {
+                    try!(write!(t, " "));
                 }
 
+                try!(t.fg(c));
                 let marks = cmp::min(line.len(), len_left);
                 for _ in 0..marks {
-                    try!(write!(fmt, "^"));
+                    try!(write!(t, "^"));
                 }
+                try!(t.reset());
                 len_left -= marks;
 
                 if len_left == 0 { break; }   // whole span printed, done
@@ -131,6 +142,31 @@ impl Span {
             lineno += 1;
         }
 
+        try!(write!(t, "\n"));
+        Ok(())
+    }
+
+    /// Prints an error message with file position info, followed by this span (and the source line
+    /// it points to).
+    pub fn print_with_err<W: Write>(&self, code: &str, source_name: &str, err: &str, t: &mut Terminal<W>)
+    -> io::Result<()> {
+        let (start, _end) = self.get_lines(code);
+        try!(Span::print_loc(source_name, start, None, t));
+        try!(t.fg(color::RED));
+        try!(write!(t, "error: "));
+        try!(Span::print_msg(err, t));
+        try!(self.format(code, source_name, t, color::RED));
+        Ok(())
+    }
+
+    pub fn print_with_warn<W: Write>(&self, code: &str, source_name: &str, warn: &str, t: &mut Terminal<W>)
+    -> io::Result<()> {
+        let (start, _end) = self.get_lines(code);
+        try!(Span::print_loc(source_name, start, None, t));
+        try!(t.fg(color::YELLOW));
+        try!(write!(t, "warning: "));
+        try!(Span::print_msg(warn, t));
+        try!(self.format(code, source_name, t, color::YELLOW));
         Ok(())
     }
 
@@ -147,7 +183,7 @@ impl Span {
                 if len_left == self.len { first = lineno; }
                 len_left -= cmp::min(line.len(), len_left);
 
-                if len_left == 0 { break; }   // whole span printed, done
+                if len_left == 0 { break; }
             }
             start -= cmp::min(line.len() + 1, start);
             lineno += 1;
@@ -228,28 +264,29 @@ pub fn mkspanned<T>(t: T, start: usize, end: usize) -> Spanned<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use term::color;
 
     fn test(span: Span, code: &str, expect: &str) {
         let mut v = Vec::<u8>::new();
 
         {
-            let mut fmt = FormatTarget::Io(&mut v);
-            span.format(code, "A", &mut fmt).unwrap();
+            let mut fmt = DummyTerm(&mut v);
+            span.format(code, "A", &mut fmt, color::RED).unwrap();
         }
 
-        assert_eq!(v.as_slice(), expect.as_bytes());
+        assert_eq!(String::from_utf8(v).unwrap().as_slice(), expect);
     }
 
     #[test]
     fn span_format() {
-        test(Span::new(0, 0), "Aaa", "A:1   Aaa\n      ^");
-        test(Span::new(3, 3), "a\naAa", "A:2   aAa\n       ^");
-        test(Span::new(1, 1), "aA", "A:1   aA\n       ^");
+        test(Span::new(0, 0), "Aaa", "A:1: Aaa\n     ^\n");
+        test(Span::new(3, 3), "a\naAa", "A:2: aAa\n      ^\n");
+        test(Span::new(1, 1), "aA", "A:1: aA\n      ^\n");
     }
 
     #[test] #[should_panic]
     fn span_inv() {
         // span outside of source code
-        test(Span::new(4, 4), "aaa", "A:1   aaa\n         ^");
+        test(Span::new(4, 4), "aaa", "A:1: aaa\n        ^\n");
     }
 }

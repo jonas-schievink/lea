@@ -1,4 +1,4 @@
-//! Wrapper around rust-peg generated parser methods.
+﻿//! Wrapper around rust-peg generated parser methods.
 
 peg_file! parse("lea.rustpeg");
 
@@ -9,6 +9,8 @@ use super::span::*;
 use super::visit;
 use super::visit::Visitor;
 use super::expr_parser::ExprParser;
+
+use term::Terminal;
 
 use std::error::FromError;
 use std::io::{self, Write};
@@ -21,10 +23,9 @@ pub struct ParseError {
 }
 
 impl ParseError {
-    pub fn format<W: Write>(&self, code: &str, source_name: &str, fmt: &mut FormatTarget<W>)
+    pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<W>)
     -> io::Result<()> {
-        try!(write!(fmt, "{}: {}\n", source_name, self.err));
-        try!(self.span.format(code, source_name, fmt));
+        try!(self.span.print_with_err(code, source_name, format!("{}", self.err).as_slice(), t));
 
         Ok(())
     }
@@ -33,7 +34,7 @@ impl ParseError {
 impl FromError<parse::ParseError> for ParseError {
     fn from_error(err: parse::ParseError) -> ParseError {
         ParseError {
-            span: Span::new(err.offset, err.offset + 1),
+            span: Span::new(err.offset, err.offset),
             err: err,
         }
     }

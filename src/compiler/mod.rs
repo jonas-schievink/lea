@@ -95,6 +95,8 @@ use self::transform::{Transform, LintMode};
 use self::emitter::emit_func;
 use self::span::*;
 
+use term::Terminal;
+
 use std::default::Default;
 use std::io::{self, Write};
 
@@ -189,17 +191,14 @@ impl Warning {
 
     /// Formats this warning, its span, and all attached info lines. Does not append a trailing
     /// newline.
-    pub fn format<W: Write>(&self, code: &str, source_name: &str, fmt: &mut FormatTarget<W>)
+    pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<W>)
     -> io::Result<()> {
         let (startline, _end) = self.span.get_lines(code);
-        try!(write!(fmt, "{}:{}: warning: {} \n", source_name, startline, self.message));
-        try!(self.span.format(code, source_name, fmt));
+        try!(self.span.print_with_warn(code, source_name, self.message.as_slice(), t));
 
         for info in &self.info {
-            try!(write!(fmt, "\n{}:{}: info: {}", source_name, startline, info));
+            try!(Span::print_info(source_name, startline, None, info, t));
         }
-
-        try!(write!(fmt, "\n"));
 
         Ok(())
     }

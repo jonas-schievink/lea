@@ -1,9 +1,10 @@
 //! The Lea compiler command line frontend
 
-#![feature(core, lea)]
+#![feature(core, libc, lea)]
 
 extern crate lea;
 extern crate term;
+extern crate libc;
 
 use lea::compiler::*;
 use lea::compiler::span::*;
@@ -11,7 +12,7 @@ use lea::compiler::span::*;
 use std::env;
 use std::fmt;
 use std::default::Default;
-use std::io::{self, Read, Write};
+use std::io::{self, Read, Write, Stderr};
 use std::fs::File;
 use std::path::Path;
 
@@ -36,49 +37,60 @@ fn print_usage() {
 }
 
 fn compile(code: &str, filename: &str) -> io::Result<()> {
-    let mut err = io::stderr();
-    let mut t = term::stderr();
-    let mut fmt_target: FormatTarget<io::Stderr> = match t {
-        Some(ref mut term) => FormatTarget::Term(&mut **term),
-        None => FormatTarget::Io(&mut err),
+    let mut term = term::stderr();
+    let mut stderr = io::stderr();
+    let mut dummy = DummyTerm(&mut stderr);
+    let mut fmt_target: &mut term::Terminal<Stderr> = if unsafe {
+        libc::isatty(libc::STDERR_FILENO as i32) != 0
+    } {
+        // we can print to the term (or at least try to)
+        match term {
+            Some(ref mut term) => &mut **term,
+            None => &mut dummy,
+        }
+    } else {
+        // use dummy, since we don't want escape sequences
+        &mut dummy
     };
 
     match compile_str(code, filename, &CompileConfig::default()) {
         Err(e) => match e {
             ErrParse(err) => {
-                try!(err.format(code.as_slice(), filename, &mut fmt_target));
+                try!(err.format(code.as_slice(), filename, fmt_target));
             },
             ErrCheck(errs) => {
                 let mut i = 1;
                 for err in &errs {
-                    try!(err.format(code.as_slice(), filename, &mut fmt_target));
-                    if i < errs.len() - 1 { try!(write!(&mut fmt_target, "\n")); }
+                    try!(err.format(code.as_slice(), filename, fmt_target));
+                    if i < errs.len() - 1 { try!(write!(fmt_target, "\n")); }
                     i += 1;
                 }
             },
             ErrLint(warns) => {
                 let mut first = true;
                 for w in &warns {
-                    if first { first = false; } else { try!(write!(&mut fmt_target, "\n")); }
-                    try!(w.format(code.as_slice(), filename, &mut fmt_target));
+                    if first { first = false; } else { try!(write!(fmt_target, "\n")); }
+                    try!(w.format(code.as_slice(), filename, fmt_target));
                 }
             },
             ErrEmit(errs) => {
                 for err in &errs {
-                    match err.detail {
-                        None => try!(write!(&mut fmt_target, "emit error: {}", err.msg)),
-                        Some(ref detail) => try!(write!(&mut fmt_target, "emit error: {} ({})",
-                            err.msg, detail)),
-                    };
+                    let mut msg = err.msg.to_string();
+                    if let Some(ref d) = err.detail {
+                        msg.push_str(format!(" ({})", d).as_slice());
+                    }
+
+                    try!(fmt_target.fg(term::color::RED));
+                    try!(write!(fmt_target, "{}", msg));
+                    try!(fmt_target.reset());
                 }
             }
         },
         Ok(output) => {
             let warns = output.warns;
             if warns.len() > 0 {
-                try!(write!(&mut fmt_target, "{} warnings:", warns.len()));
                 for w in warns {
-                    try!(w.format(code, filename, &mut fmt_target));
+                    try!(w.format(code, filename, fmt_target));
                 }
             }
         }

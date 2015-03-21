@@ -4,6 +4,8 @@ use super::ast::*;
 use super::visit::*;
 use super::span::*;
 
+use term::Terminal;
+
 use std::fmt;
 use std::io::{self, Write};
 
@@ -16,20 +18,14 @@ pub struct CheckError {
 }
 
 impl CheckError {
-    /// Converts this `CheckError` to a string. Note that multiple lines are printed.
-    ///
-    /// See `Span::format` for details.
-    pub fn format<W: Write>(&self, code: &str, source_name: &str, fmt: &mut FormatTarget<W>)
+    /// Prints this `CheckError` to a terminal.
+    pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<W>)
     -> io::Result<()> {
-        let (start, _end) = self.span.get_lines(code);
-        try!(write!(fmt, "{}:{}: {}", source_name, start, self.msg));
-
+        let mut msg = self.msg.to_string();
         if let Some(ref detail) = self.detail {
-            try!(write!(fmt, " ({})", detail));
+            msg.push_str(detail.as_slice());
         }
-
-        try!(write!(fmt, "\n"));
-        try!(self.span.format(code, source_name, fmt));
+        try!(self.span.print_with_err(code, source_name, msg.as_slice(), t));
 
         Ok(())
     }
