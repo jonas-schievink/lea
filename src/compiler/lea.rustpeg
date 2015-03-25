@@ -9,13 +9,16 @@ use compiler::span::{Span, Spanned, mkspanned};
 use compiler::ast::*;
 use op::*;
 
+mlcomment_inner -> ()
+    = "=" mlcomment_inner "="
 
 whitespace -> ()
     = " "
     / "\t"
     / "\n"
-    / ( "//" / "--" ) [^\n]*
+    / "--[" mlcomment_inner "]"
     / "/*" ( [^*] / [*][^/] )* "*/"
+    / ( "//" / "--" ) [^\n]*
 
 #[pub]
 ident -> Spanned<&'input str>

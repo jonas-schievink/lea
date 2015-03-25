@@ -23,9 +23,9 @@ impl CheckError {
     -> io::Result<()> {
         let mut msg = self.msg.to_string();
         if let Some(ref detail) = self.detail {
-            msg.push_str(detail.as_slice());
+            msg.push_str(detail.as_ref());
         }
-        try!(self.span.print_with_err(code, source_name, msg.as_slice(), t));
+        try!(self.span.print_with_err(code, source_name, msg.as_ref(), t));
 
         Ok(())
     }

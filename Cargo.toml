@@ -10,9 +10,8 @@ A Lua-based language written in Rust
 """
 
 [dependencies]
+peg = "*"
 rustc-serialize = "*"
 lazy_static = "*"
 term = "*"
 
-[dependencies.peg]
-git = "https://github.com/kevinmehall/rust-peg.git"

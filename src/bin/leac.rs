@@ -1,6 +1,6 @@
 //! The Lea compiler command line frontend
 
-#![feature(core, libc, lea)]
+#![feature(libc, convert, lea)]
 
 extern crate lea;
 extern crate term;
@@ -56,12 +56,12 @@ fn compile(code: &str, filename: &str) -> io::Result<()> {
     match compile_str(code, filename, &CompileConfig::default()) {
         Err(e) => match e {
             ErrParse(err) => {
-                try!(err.format(code.as_slice(), filename, fmt_target));
+                try!(err.format(code.as_ref(), filename, fmt_target));
             },
             ErrCheck(errs) => {
                 let mut i = 1;
                 for err in &errs {
-                    try!(err.format(code.as_slice(), filename, fmt_target));
+                    try!(err.format(code.as_ref(), filename, fmt_target));
                     if i < errs.len() - 1 { try!(write!(fmt_target, "\n")); }
                     i += 1;
                 }
@@ -70,14 +70,14 @@ fn compile(code: &str, filename: &str) -> io::Result<()> {
                 let mut first = true;
                 for w in &warns {
                     if first { first = false; } else { try!(write!(fmt_target, "\n")); }
-                    try!(w.format(code.as_slice(), filename, fmt_target));
+                    try!(w.format(code.as_ref(), filename, fmt_target));
                 }
             },
             ErrEmit(errs) => {
                 for err in &errs {
                     let mut msg = err.msg.to_string();
                     if let Some(ref d) = err.detail {
-                        msg.push_str(format!(" ({})", d).as_slice());
+                        msg.push_str(format!(" ({})", d).as_ref());
                     }
 
                     try!(fmt_target.fg(term::color::RED));
@@ -105,7 +105,7 @@ fn compile_file(filename: &str) -> io::Result<()> {
             let mut code = String::new();
             match file.read_to_string(&mut code) {
                 Ok(_) => {
-                    try!(compile(code.as_slice(), filename.as_slice()));
+                    try!(compile(code.as_ref(), filename.as_ref()));
                 },
                 Err(err) => {
                     printerr!("error reading file \"{}\": {}", filename, err);
@@ -133,7 +133,7 @@ pub fn main() {
             return;
         }
 
-        match arg.as_slice() {
+        match arg.as_ref() {
             "--help" | "-h" => {
                 print_usage();
                 return;
@@ -153,15 +153,16 @@ pub fn main() {
         return;
     }
 
-    let f = inputarg.unwrap();
-    if f.as_slice() == "-" {
+    let f_string = inputarg.unwrap();
+    let f: &str = f_string.as_ref();
+    if f == "-" {
         let mut code = String::new();
         io::stdin().read_to_string(&mut code).unwrap();
 
         println!("");   // print newline to seperate leac output from source input
-        compile(code.as_slice(), "<stdin>").unwrap();
+        compile(code.as_ref(), "<stdin>").unwrap();
     } else {
-        compile_file(f.as_slice()).unwrap();
+        compile_file(f).unwrap();
     }
 }
 

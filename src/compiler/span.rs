@@ -77,7 +77,7 @@ impl Span {
     pub fn print_loc<W: Write>(source_name: &str, line: usize, col: Option<usize>, t: &mut Terminal<W>)
     -> io::Result<usize> {
         let mut s = format!("{}:{}:", source_name, line);
-        if let Some(col) = col { s.push_str(format!("{}:", col).as_slice()); }
+        if let Some(col) = col { s.push_str(format!("{}:", col).as_ref()); }
         s.push_str(" ");
         try!(t.reset());
         try!(write!(t, "{}", s));
@@ -274,7 +274,9 @@ mod tests {
             span.format(code, "A", &mut fmt, color::RED).unwrap();
         }
 
-        assert_eq!(String::from_utf8(v).unwrap().as_slice(), expect);
+        let s = String::from_utf8(v).unwrap();
+        let s: &str = s.as_ref();
+        assert_eq!(s, expect);
     }
 
     #[test]

@@ -587,7 +587,8 @@ mod tests {
         unsafe {
             assert_eq!(rref.get().len(), 3);
             assert_eq!(**rref.get(), vec![TNil, TBool(true), TBool(false)]);
-            assert_eq!(sref.get().as_slice(), "test");
+            let s: &str = sref.get().as_ref();
+            assert_eq!(s, "test");
         }
 
         assert_eq!(gc.collect(&mut VM::new()), 0);
@@ -595,7 +596,8 @@ mod tests {
         unsafe {
             assert_eq!(rref.get().len(), 3);
             assert_eq!(**rref.get(), vec![TNil, TBool(true), TBool(false)]);
-            assert_eq!(sref.get().as_slice(), "test");
+            let s: &str = sref.get().as_ref();
+            assert_eq!(s, "test");
         }
     }
 

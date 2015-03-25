@@ -418,9 +418,10 @@ impl <'a, 'b, W: Write> Visitor for PrettyPrinter<'a, 'b, W> {
                     match key.value {
                         ELit(TStr(ref s)) => {
                             // If it's an identifier, don't use "[expr] = " syntax
-                            match parser::ident(s.as_slice()) {
+                            match parser::ident(s.as_ref()) {
                                 Ok(..) => {
-                                    write!(self.writer, "{}", s.as_slice());
+                                    let s: &str = s.as_ref();
+                                    write!(self.writer, "{}", s);
                                     key_full = false;
                                 },
                                 _ => {},
@@ -545,7 +546,7 @@ mod tests {
         let expblock = block(code).unwrap();
         let (expblock, printed) = print_block(expblock);
 
-        let newblock = block(printed.as_slice()).unwrap();
+        let newblock = block(printed.as_ref()).unwrap();
 
         assert_eq!(expblock, newblock);
     }
