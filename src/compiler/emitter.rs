@@ -5,10 +5,10 @@
 use compiler::ast::*;
 use compiler::visit::*;
 use opcode::*;
-use program::FunctionProto;
+use program::FnData;
 use limits;
 
-use std::mem::replace;
+use std::u16;
 
 
 #[derive(Clone, Debug)]
@@ -17,47 +17,71 @@ pub struct EmitError {
     pub detail: Option<String>,
 }
 
-/// On success, the ID of the main function is returned. On error, the `EmitError`s produced.
-pub type EmitResult = Result<FunctionProto, Vec<EmitError>>;
+/// On success, the main function is returned as an `FnData` object. On error, the `EmitError`s
+/// produced are returned.
+pub type EmitResult = Result<FnData, Vec<EmitError>>;
 
 struct Emitter {
     source_name: String,
-    /// Next stack slot used for variables (local to current function)
-    next_slot: usize,
+    /// List of errors that have occurred while emitting. They are ignored until the main function
+    /// is traversed. If this list isn't empty when the emitter is done, it will not complete the
+    /// process and return an error to the caller instead.
     errs: Vec<EmitError>,
-    /// Prototypes emitted by this emitter. Used as a stack: The innermost function is at the end
-    /// (and is the function the emitter currently works on).
-    protos: Vec<FunctionProto>,
+    /// Function stack. The last entry is the currently emitted function. When done emitting, the
+    /// last `FnData` is popped off and added to the child function list of the parent.
+    funcs: Vec<FnData>,
 }
 
 impl Emitter {
+    fn new(source_name: &str) -> Emitter {
+        Emitter {
+            source_name: source_name.to_string(),
+            errs: Vec::new(),
+            funcs: Vec::with_capacity(4),
+        }
+    }
+
     /// Get the prototype of the currently emitted function
-    fn curproto(&mut self) -> &mut FunctionProto {
-        let len = self.protos.len();
+    fn cur_func(&mut self) -> &mut FnData {
+        let len = self.funcs.len();
         debug_assert!(len > 0);
-        &mut self.protos[len-1]
+        &mut self.funcs[len-1]
     }
 
     /// Adds a constant to the program's constant table and returns its index (does not add it if
     /// the same value already exists in the constant table).
-    fn add_const(&mut self, lit: &Literal) -> usize {
+    fn add_const(&mut self, lit: &Literal) -> u16 {
         // ensure that only "useful" constant are added
         debug_assert!(match *lit {
             TInt(..) | TFloat(..) | TStr(..) => true,
             TBool(..) | TNil => false, // handled by special opcodes
         });
 
-        let mut proto = self.curproto();
-
-        for i in 0..proto.consts.len() {
-            let c = &proto.consts[i];
-            if lit == c { return i; }
+        {
+            let func = self.cur_func();
+            for i in 0..func.consts.len() {
+                let c = &func.consts[i];
+                if lit == c {
+                    // this cast cannot fail, because we stop adding constants when the u16 limit is
+                    // reached
+                    return i as u16;
+                }
+            }
         }
 
-        proto.consts.push(lit.clone());
-        proto.consts.len() - 1
+        let id = self.cur_func().consts.len();
+        if id > u16::MAX as usize {
+            self.err("constant limit reached", Some(format!("limit: {}", u16::MAX + 1)));
+            u16::MAX
+        } else {
+            self.cur_func().consts.push(lit.clone());
+            id as u16
+        }
     }
 
+    /// Adds an error to the error list. The emitter ignores errors until it is done. If the error
+    /// list isn't empty when the main function was traversed, the emitter will return an error to
+    /// the caller.
     fn err(&mut self, msg: &'static str, detail: Option<String>) {
         self.errs.push(EmitError {
             msg: msg,
@@ -65,11 +89,26 @@ impl Emitter {
         });
     }
 
+    fn get_result(mut self) -> EmitResult {
+        if self.errs.len() > 0 {
+            Err(self.errs)
+        } else {
+            assert_eq!(self.funcs.len(), 1);
+
+            Ok(self.funcs.pop().unwrap())
+        }
+    }
+
     /// Emits an opcode into the current function and returns its "address" or index
     fn emit(&mut self, op: Opcode) -> usize {
-        let ops = &mut self.curproto().opcodes;
-        let idx = ops.len();
-        ops.push(op);
+        println!("EMIT {:?}", op);
+
+        let idx = self.cur_func().opcodes.len();
+        if idx as u64 >= limits::OP_LIMIT {
+            self.err("opcode limit reached", Some(format!("limit: {}", limits::OP_LIMIT)));
+        } else {
+            self.cur_func().opcodes.push(op);
+        }
 
         idx
     }
@@ -77,75 +116,41 @@ impl Emitter {
 
 impl Visitor for Emitter {
     fn visit_func(&mut self, mut f: Function) -> Function {
-        let old_slot = replace(&mut self.next_slot, 0);
-        let proto = FunctionProto {
-            source_name: self.source_name.clone(),
-            stacksize: 0,
-            params: if f.params.len() as u64 > limits::PARAM_LIMIT {
-                self.err("parameter count exceeds limit",
-                    Some(format!("count {} > {}", f.params.len(), limits::PARAM_LIMIT)));
-                return f;
-            } else {
-                f.params.len() as u8
-            },
-            varargs: f.varargs,
-            opcodes: Vec::with_capacity(32),
-            consts: Vec::with_capacity(8),
-            upvalues: Vec::with_capacity(f.upvalues.len()),
-            upval_names: Vec::with_capacity(f.upvalues.len()),
-            lines: Vec::new(),  // TODO emit line info
-            child_protos: Vec::with_capacity(8),
-        };
-        self.protos.push(proto);
-
-        self.add_const(&TInt(42));  // TEST!
+        self.funcs.push(FnData::new(&f));
 
         f = walk_func(f, self);
 
-        let stacksz = self.next_slot;
-        if stacksz as u64 > limits::STACK_LIMIT {
+        let func = self.funcs.pop().unwrap();
+        if func.stacksize as u64 > limits::STACK_LIMIT {
             self.err("stack size exceeds maximum value",
-                Some(format!("size {} > {}", stacksz, limits::STACK_LIMIT)));
+                Some(format!("got size {}, max is {}", func.stacksize, limits::STACK_LIMIT)));
             return f;
         }
-        let mut proto = self.protos.pop().unwrap();
-        proto.stacksize = stacksz as u8;
 
         // TODO shrink vectors to save space
-        
-        if self.protos.is_empty() {
-            // just emitted the main function, put it back
-            self.protos.push(proto);
-        } else {
-            //let parent = &mut self.protos[self.protos.len()-1];
-            // TODO store function prototype in its parent, shrink vectors
-        }
 
-        self.next_slot = old_slot;
+        if self.funcs.is_empty() {
+            // just emitted the main function, put it back, we are done
+            self.funcs.push(func);
+        } else {
+            let parent_idx = self.funcs.len()-1;
+            let parent = &mut self.funcs[parent_idx];
+            parent.child_protos.push(Box::new(func));
+        }
 
         f
     }
 }
 
 
-/// Builds a `FunctionProto` for the given main function by emitting byte code
+/// Builds a `FunctionProto` for the given main function and emits byte code for execution by the
+/// VM.
 pub fn emit_func(f: Function, source_name: &str) -> (Function, EmitResult) {
-    let mut emitter = Emitter {
-        source_name: source_name.to_string(),
-        next_slot: 0,
-        errs: vec![],
-        protos: Vec::with_capacity(16),
-    };
+    let mut emitter = Emitter::new(source_name);
 
     let f = emitter.visit_func(f);
-    let res = if emitter.errs.is_empty() {
-        debug_assert_eq!(emitter.protos.len(), 1);
-        Ok(emitter.protos.pop().unwrap())
-    } else {
-        Err(emitter.errs)
-    };
 
-    (f, res)
+    (f, emitter.get_result())
 }
 
 
@@ -153,9 +158,9 @@ pub fn emit_func(f: Function, source_name: &str) -> (Function, EmitResult) {
 mod tests {
     use super::*;
     use compiler::parse_and_resolve;
-    use program::FunctionProto;
+    use program::FnData;
 
-    fn test(code: &str) -> FunctionProto {
+    fn test(code: &str) -> FnData {
         emit_func(parse_and_resolve(code).unwrap(), "<test>").1.unwrap()
     }
 

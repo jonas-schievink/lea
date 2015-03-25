@@ -3,14 +3,14 @@
 
 use opcode::Opcode;
 use value::Value;
-use compiler::ast::Literal;
-use mem::GcRef;
+use compiler::ast::{self, Literal};
+use mem::{GcRef, Gc};
 
 use std::vec::Vec;
 
 
 /// Describes how an Upvalue is referenced
-#[derive(PartialEq, Eq, Clone, Copy, Debug, RustcEncodable)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
 pub enum UpvalDesc {
     /// Upvalue is the parent's local with the given id
     ///
@@ -20,6 +20,43 @@ pub enum UpvalDesc {
     Stack(usize),
     /// Upvalue is the parent's Upvalue with the given ID
     Upval(usize),
+}
+
+/// Function represenation used by the emitter. Later converted to a `FunctionProto`. This owns all
+/// child functions (as `FnData`) and can be serialized.
+#[derive(Debug, RustcEncodable, RustcDecodable)]
+pub struct FnData {
+    /// Size of the variable stack. This is also used as the next slot allocated for a value.
+    pub stacksize: usize,
+    pub params: usize,
+    pub varargs: bool,
+    pub opcodes: Vec<Opcode>,
+    pub consts: Vec<Literal>,
+    pub upvals: Vec<UpvalDesc>,
+    pub lines: Vec<usize>,
+    pub child_protos: Vec<Box<FnData>>,
+}
+
+impl FnData {
+    pub fn new(f: &ast::Function) -> FnData {
+        FnData {
+            stacksize: 0,
+            params: f.params.len(),
+            varargs: f.varargs,
+            opcodes: Vec::with_capacity(32),
+            consts: Vec::with_capacity(8),
+            upvals: Vec::with_capacity(f.upvalues.len()),
+            lines: Vec::new(),  // TODO: emit line info
+            child_protos: Vec::new(),
+        }
+    }
+
+    /// Converts this `FnData` instance to a `FunctionProto`. Registers all child functions with
+    /// the given garbage collector.
+    pub fn to_proto(self, _gc: &mut Gc) -> FunctionProto {
+        // TODO
+        unimplemented!();
+    }
 }
 
 /// A compiled function. When instantiated by the VM, becomes a `Function`.

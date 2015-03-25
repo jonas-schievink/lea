@@ -89,7 +89,7 @@ pub mod resolve;
 pub mod span;
 pub mod visit;
 
-use program::FunctionProto;
+use program::FnData;
 use self::ast::Function;
 use self::transform::{Transform, LintMode};
 use self::emitter::emit_func;
@@ -215,7 +215,7 @@ pub struct CompileOutput {
     /// AST node of main function
     pub main: Function,
     /// Prototype of main function, to be instantiated and run by the VM
-    pub mainproto: FunctionProto,
+    pub mainproto: FnData,
 }
 
 /// Parses and checks the given source code (stops after compilation step 2). Returns a valid
@@ -273,7 +273,7 @@ pub fn apply_transforms(mut main: Function, conf: &CompileConfig) -> (Function, 
     })
 }
 
-/// Compiles source code into a `FunctionProto`. This executes the whole compilation process and
+/// Compiles source code into an `FnData` instance. This executes the whole compilation process and
 /// emits byte code (TODO).
 ///
 /// Note that this will not return the `Function` node on error, even if parsing succeeded.
