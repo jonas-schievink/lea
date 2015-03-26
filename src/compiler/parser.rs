@@ -410,8 +410,20 @@ mod tests {
             }
         ));
 
-        assert_eq!(statement("function f(i,j) end").unwrap().value, SFunc(
-            Spanned::default(VNamed("f".to_string())),
+        assert_eq!(statement("function g.f(i,j) end").unwrap().value, SFunc(
+            Spanned::default(VDotIndex(Box::new(Spanned::default(VNamed("g".to_string()))), "f".to_string())),
+            Function {
+                params: vec!["i".to_string(), "j".to_string()],
+                locals: vec![],
+                upvalues: vec![],
+                varargs: false,
+                body: Block::new(vec![], Default::default()),
+            }
+        ));
+
+        assert_eq!(statement("function g.f:j(i,j) end").unwrap().value, SMethod(
+            Spanned::default(VDotIndex(Box::new(Spanned::default(VNamed("g".to_string()))), "f".to_string())),
+            "j".to_string(),
             Function {
                 params: vec!["i".to_string(), "j".to_string()],
                 locals: vec![],

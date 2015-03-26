@@ -182,7 +182,10 @@ pub enum _Stmt {
     /// Assign function to named variable (`function XY(...) ... end`)
     SFunc(Variable, Function),
 
-    /// function some.thing:name() ... end
+    /// Method declaration a la `function some.thing:methodname(...) ... end`
+    ///
+    /// Assigns the function to `some.thing.methodname` and adds an implicit `self` parameter to
+    /// the start of the parameter list.
     SMethod(Variable, String, Function),
 
     /// Assign function to newly declared local (`local function XY(...) ... end`)

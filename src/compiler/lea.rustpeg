@@ -383,8 +383,15 @@ funcbody -> Function
     }
 
 stmt_func -> Stmt
-    = "function" whitespace+ name:ident f:funcbody {
-        mkspanned(SFunc(Spanned::new(name.span, VNamed(name.value.to_string())), f), start_pos, pos)
+    = "function" whitespace+ var:variable method:methodname? f:funcbody {
+        mkspanned(match method {
+            None => {
+                SFunc(var, f)
+            }
+            Some(method) => {
+                SMethod(var, method.value.to_string(), f)
+            }
+        }, start_pos, pos)
     }
 
 stmt_lfunc -> Stmt
