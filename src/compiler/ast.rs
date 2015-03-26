@@ -83,7 +83,7 @@ impl PartialEq for Block {
 pub enum CallArgs {
     Normal(Vec<Expr>),
     String(String),
-    Table(Vec<(Expr, Expr)>),
+    Table(TableCons),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -226,6 +226,16 @@ pub enum _Stmt {
     },
 }
 
+#[derive(Clone, PartialEq, Debug)]
+pub enum TableEntry {
+    /// A key-value-pair
+    Pair(Expr, Expr),
+    /// An element of the table's array part
+    Elem(Expr),
+}
+
+pub type TableCons = Vec<TableEntry>;
+
 /// Expression nodes
 #[derive(Clone, PartialEq, Debug)]
 pub enum _Expr {
@@ -246,8 +256,8 @@ pub enum _Expr {
     /// Instantiates a function/closure
     EFunc(Function),
 
-    /// Table constructor, takes key-value pairs
-    ETable(Vec<(Expr, Expr)>),
+    /// Table constructor
+    ETable(TableCons),
     /// Array constructor, takes a list of initial values
     EArray(Vec<Expr>),
     /// "..."; expands to var args. only valid if used inside varargs functions

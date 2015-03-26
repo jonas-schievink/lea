@@ -75,46 +75,56 @@ impl <'a, 'b, W: Write> PrettyPrinter<'a, 'b, W> {
     }
 
     #[allow(unused_must_use)]
-    fn print_table(&mut self, mut pairs: Vec<(Expr, Expr)>) -> Vec<(Expr, Expr)> {
+    fn print_table(&mut self, mut cons: TableCons) -> TableCons {
         write!(self.writer, "{{{}", self.lineend);
         self.indent();
 
-        pairs = pairs.into_iter().map(|(mut key, mut val)| {
+        cons = cons.map_in_place(|entry| {
             self.print_indent();
 
-            let mut key_full = true;    // Print the key in "[expr] = " notation
-            match key.value {
-                ELit(TStr(ref s)) => {
-                    // If it's an identifier, don't use "[expr] = " syntax
-                    match parser::ident(s.as_ref()) {
-                        Ok(..) => {
-                            let s: &str = s.as_ref();
-                            write!(self.writer, "{}", s);
-                            key_full = false;
+            match entry {
+                TableEntry::Pair(mut key, mut val) => {
+                    let mut key_full = true;    // Print the key in "[expr] = " notation
+                    match key.value {
+                        ELit(TStr(ref s)) => {
+                            // If it's an identifier, don't use "[expr] = " syntax
+                            match parser::ident(s.as_ref()) {
+                                Ok(..) => {
+                                    let s: &str = s.as_ref();
+                                    write!(self.writer, "{}", s);
+                                    key_full = false;
+                                },
+                                _ => {},
+                            };
                         },
                         _ => {},
-                    };
-                },
-                _ => {},
+                    }
+
+                    if key_full {
+                        write!(self.writer, "[");
+                        key = self.visit_expr(key);
+                        write!(self.writer, "]");
+                    }
+
+                    write!(self.writer, " = ");
+                    val = self.visit_expr(val);
+                    write!(self.writer, ",{}", self.lineend);
+
+                    TableEntry::Pair(key, val)
+                }
+                TableEntry::Elem(mut elem) => {
+                    elem = self.visit_expr(elem);
+                    write!(self.writer, ",{}", self.lineend);
+
+                    TableEntry::Elem(elem)
+                }
             }
-
-            if key_full {
-                write!(self.writer, "[");
-                key = self.visit_expr(key);
-                write!(self.writer, "]");
-            }
-
-            write!(self.writer, " = ");
-            val = self.visit_expr(val);
-            write!(self.writer, ",{}", self.lineend);
-
-            (key, val)
-        }).collect();
+        });
 
         self.unindent();
         self.print_indent();
         write!(self.writer, "}}");
-        pairs
+        cons
     }
 
     /// Prints the parameter list and the body of the given function

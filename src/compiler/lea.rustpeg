@@ -242,8 +242,12 @@ kvpair_inner -> (Expr, Expr)
 kvpair -> (Expr, Expr)
     = whitespace* kv:kvpair_inner whitespace* { kv }
 
-tablecons -> Vec<(Expr, Expr)>
-    = "{" pairs:kvpair ++ listsep listsep? "}" { pairs }
+tableentry -> TableEntry
+    = pair:kvpair { TableEntry::Pair(pair.0, pair.1) }
+    / e:expression { TableEntry::Elem(e) }
+
+tablecons -> TableCons
+    = "{" pairs:tableentry ++ listsep listsep? "}" { pairs }
     / "{" whitespace* "}" { Vec::new() }
 
 arraycons -> Vec<Expr>

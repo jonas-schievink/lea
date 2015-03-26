@@ -297,14 +297,23 @@ mod tests {
         assert_eq!(expression("{}").unwrap().value, ETable(vec![]));
         assert_eq!(expression("[{k=[1,2,],}]").unwrap().value, EArray(vec![
             Spanned::default(ETable(vec![
-                (
+                TableEntry::Pair(
                     Spanned::default(ELit(TStr("k".to_string()))),
                     Spanned::default(EArray(vec![
                         Spanned::default(ELit(TInt(1))),
                         Spanned::default(ELit(TInt(2))),
                     ]))
-                )
+                ),
             ]))
+        ]));
+        assert_eq!(expression("{ [9] = 0, [9] }").unwrap().value, ETable(vec![
+            TableEntry::Pair(
+                Spanned::default(ELit(TInt(9))),
+                Spanned::default(ELit(TInt(0))),
+            ),
+            TableEntry::Elem(Spanned::default(EArray(vec![
+                Spanned::default(ELit(TInt(9)))
+            ]))),
         ]));
 
         assert_eq!(expression("function()end").unwrap().value,

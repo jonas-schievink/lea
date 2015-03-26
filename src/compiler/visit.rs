@@ -50,12 +50,17 @@ fn walk_args<V: Visitor>(args: CallArgs, visitor: &mut V) -> CallArgs {
         CallArgs::String(s) => {
             CallArgs::String(s)
         },
-        CallArgs::Table(mut pairs) => {
-            pairs = pairs.map_in_place(
-                |(key, val)| (visitor.visit_expr(key), visitor.visit_expr(val)));
-            CallArgs::Table(pairs)
+        CallArgs::Table(cons) => {
+            CallArgs::Table(walk_table(cons, visitor))
         }
     }
+}
+
+fn walk_table<V: Visitor>(cons: TableCons, visitor: &mut V) -> TableCons {
+    cons.map_in_place(|entry| match entry {
+        TableEntry::Pair(k, v) => TableEntry::Pair(visitor.visit_expr(k), visitor.visit_expr(v)),
+        TableEntry::Elem(elem) => TableEntry::Elem(visitor.visit_expr(elem)),
+    })
 }
 
 pub fn walk_stmt<V: Visitor>(mut stmt: Stmt, visitor: &mut V) -> Stmt {
@@ -152,9 +157,8 @@ pub fn walk_expr<V: Visitor>(mut expr: Expr, visitor: &mut V) -> Expr {
             operand = Box::new(visitor.visit_expr(*operand));
             EUnOp(op, operand)
         },
-        EVar(mut var) => {
-            var = visitor.visit_var(var);
-            EVar(var)
+        EVar(var) => {
+            EVar(visitor.visit_var(var))
         },
         ECall(SimpleCall(mut callee, mut argv)) => {
             callee = Box::new(visitor.visit_expr(*callee));
@@ -166,18 +170,14 @@ pub fn walk_expr<V: Visitor>(mut expr: Expr, visitor: &mut V) -> Expr {
             argv = walk_args(argv, visitor);
             ECall(MethodCall(callee, name, argv))
         },
-        EFunc(mut func) => {
-            func = visitor.visit_func(func);
-            EFunc(func)
+        EFunc(func) => {
+            EFunc(visitor.visit_func(func))
         },
-        ETable(mut pairs) => {
-            pairs = pairs.map_in_place(
-                |(key, val)| (visitor.visit_expr(key), visitor.visit_expr(val)));
-            ETable(pairs)
+        ETable(cons) => {
+            ETable(walk_table(cons, visitor))
         },
-        EArray(mut exprs) => {
-            exprs = exprs.map_in_place(|e| visitor.visit_expr(e));
-            EArray(exprs)
+        EArray(exprs) => {
+            EArray(exprs.map_in_place(|e| visitor.visit_expr(e)))
         },
 
         // Explicitly ignore these, they carry nothing visitable
