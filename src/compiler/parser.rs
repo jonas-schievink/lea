@@ -1,4 +1,4 @@
-﻿//! Wrapper around rust-peg generated parser methods.
+//! Wrapper around rust-peg generated parser methods.
 
 peg_file! parse("lea.rustpeg");
 
@@ -123,10 +123,14 @@ mod tests {
 
         assert_eq!(literal("\"\"").unwrap().value, TStr("".to_string()));
         assert_eq!(literal("\" test_string \"").unwrap().value, TStr(" test_string ".to_string()));
-        assert_eq!(literal("\"hi\\n\\r\\t\\\\\"").unwrap().value, TStr("hi\n\r\t\\".to_string()));
+        assert_eq!(literal("\"hi\\n\\r\\t\\\\ \\\"\"").unwrap().value, TStr("hi\n\r\t\\ \"".to_string()));
+        assert_eq!(literal("\"\\127\\0\\1\\255\\xff\"").unwrap().value, TStr("\x7f\0\x01\u{ff}\u{ff}".to_string()));
 
-        // TODO: unescaped "\n" is accepted; keep? change? remove? multiline str?
-        assert_eq!(literal("\"\n\"").unwrap().value, TStr("\n".to_string()));
+        assert_eq!(literal("''").unwrap().value, TStr("".to_string()));
+        assert_eq!(literal("'\\n\\r'").unwrap().value, TStr("\n\r".to_string()));
+        assert_eq!(literal("'\\z   \n'").unwrap().value, TStr("".to_string()));
+
+        assert!(literal("\"\n\"").is_err());
 
         // invalid escape seq
         assert!(literal("\"\\q\"").is_err());
@@ -331,21 +335,26 @@ mod tests {
         assert_eq!(statement("f(1, 2)"), statement("f ( 1 , 2 )"));
         assert_eq!(statement("f ( 1 , 2 )").unwrap().value, SCall(SimpleCall(
             Box::new(Spanned::default(EVar(Spanned::default(VNamed("f".to_string()))))),
-            vec![
+            CallArgs::Normal(vec![
                 Spanned::default(ELit(TInt(1))),
                 Spanned::default(ELit(TInt(2))),
-            ],
+            ]),
         )));
         assert_eq!(expression("f()").unwrap().value, ECall(SimpleCall(
             Box::new(Spanned::default(EVar(Spanned::default(VNamed("f".to_string()))))),
-            vec![],
+            CallArgs::Normal(vec![]),
         )));
         assert_eq!(expression("f()()").unwrap().value, ECall(SimpleCall(
             Box::new(Spanned::default(ECall(SimpleCall(
                 Box::new(Spanned::default(EVar(Spanned::default(VNamed("f".to_string()))))),
-                vec![],
+                CallArgs::Normal(vec![]),
             )))),
-            vec![],
+            CallArgs::Normal(vec![]),
+        )));
+
+        assert_eq!(expression("f ''").unwrap().value, ECall(SimpleCall(
+            Box::new(Spanned::default(EVar(Spanned::default(VNamed("f".to_string()))))),
+            CallArgs::String("".to_string()),
         )));
 
         assert!(expression("f(1,2,)").is_err());
@@ -500,6 +509,8 @@ mod tests {
         assert_eq!(statement("break // ").unwrap().value, SBreak);
         assert_eq!(statement("break //////").unwrap().value, SBreak);
         assert_eq!(statement("break // test\\\\aaa").unwrap().value, SBreak);
+        assert_eq!(statement("break --").unwrap().value, SBreak);
+        assert_eq!(statement("break ------asdsa\n").unwrap().value, SBreak);
         assert_eq!(statement("break /* test */").unwrap().value, SBreak);
         assert_eq!(statement("break /**///").unwrap().value, SBreak);
         assert_eq!(statement("do break /*aeurebv// */break end").unwrap().value, SDo(

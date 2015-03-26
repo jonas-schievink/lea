@@ -11,24 +11,38 @@ use op::*;
 
 mlcomment_inner -> ()
     = "=" mlcomment_inner "="
+    / "["  "]"
 
-whitespace -> ()
+comment -> ()
+    = "--[" mlcomment_inner "]"
+    / "/*" ( [^*] / [*][^/] )* "*/"
+    / ( "//" / "--" ) [^\n]*
+
+real_whitespace -> ()
     = " "
     / "\t"
     / "\n"
-    / "--[" mlcomment_inner "]"
-    / "/*" ( [^*] / [*][^/] )* "*/"
-    / ( "//" / "--" ) [^\n]*
+    / "\r"
+
+whitespace -> ()
+    = real_whitespace
+    / comment
 
 #[pub]
 ident -> Spanned<&'input str>
     = [_a-zA-Z][_a-zA-Z0-9]* { mkspanned(match_str, start_pos, pos) }
 
+decdigit -> char
+    = [0-9] { match_str.char_at(0) }
+
 decstr -> &'input str
-    = [0-9]+ { match_str }
+    = decdigit+ { match_str }
+
+hexdigit -> char
+    = [0-9a-fA-F] { match_str.char_at(0) }
 
 hexstr -> &'input str
-    = [0-9a-fA-F]+ { match_str }
+    = hexdigit+ { match_str }
 
 octstr -> &'input str
     = [0-7]+ { match_str }
@@ -71,18 +85,53 @@ efloat -> &'input str
 float -> f64
     = "-"? ( efloat / cfloat ) { match_str.parse().unwrap() }
 
-stringchr -> char
-    = "\\n" { '\n' }
+/// Matches the decimal notation of a single byte: 0-255
+dec_byte -> u8
+    = [01] decdigit{,2} { match_str.parse().unwrap() }
+    / "2" [0-4] [0-9] { match_str.parse().unwrap() }
+    / "25" [0-5] { match_str.parse().unwrap() }
+    / decdigit{1,2} { match_str.parse().unwrap() }
+
+esc_seq -> char
+    = "\\a" { '\x07' }  // bell
+    / "\\b" { '\x08' }  // backspace
+    / "\\f" { '\x0c' }  // form feed
+    / "\\n" { '\n' }
     / "\\r" { '\r' }
     / "\\t" { '\t' }
+    / "\\v" { '\x0b' }  // vertical tab
     / "\\\\" { '\\' }
-    / [^\\"]    { match_str.char_at(0) }    //" to make this work with simple highlighters
+    / "\\\"" { '\"' }
+    / "\\'" { '\'' }
+    / "\\\n" { '\n' }
+    / "\\x" digits:hexdigit{2} {
+        let string: String = digits.into_iter().collect();
+        let i: u8 = from_str_radix(string.as_ref(), 16).unwrap();
 
-stringcontent -> String
-    = chrs:stringchr* { chrs.into_iter().collect() }
+        i as char
+    }
+    / "\\" val:dec_byte { val as char }
+    / "\\0" { 0 as char }
+
+/// \z will skip all whitespace that follows it. Useful for breaking string literals into multiple
+/// lines: "bla\z
+///         bla"
+blank_esc -> ()
+    = "\\z" real_whitespace*
+
+_double_quote_content -> char
+    = esc_seq
+    / blank_esc _double_quote_content
+    / [^\\"\n]  { match_str.char_at(0) }    //" to make this work with simple highlighters
+
+_single_quote_content -> char
+    = esc_seq
+    / blank_esc _single_quote_content
+    / [^\\'\n]  { match_str.char_at(0) }
 
 string -> String
-    = '"' content:stringcontent '"' { content }
+    = '"' chars:_double_quote_content* blank_esc? '"' { chars.into_iter().collect() }
+    / '\'' chars:_single_quote_content* blank_esc? '\'' { chars.into_iter().collect() }
 
 boolean -> bool
     = "true" { true }
@@ -142,35 +191,29 @@ variable -> Variable
     }
     / i:ident { mkspanned(VNamed(i.value.to_string()), start_pos, pos) }
 
-callargs -> Vec<Expr>
-    = whitespace* "(" args:expression ** listsep whitespace* ")" { args }
+/// Returns the expressions to pass as arguments, and a bool indicating if the "special" form was
+/// used (ie. `StringCall` or `TableCall`)
+callargs -> CallArgs
+    = whitespace* "(" args:expression ** listsep whitespace* ")" { CallArgs::Normal(args) }
+    / whitespace* strn:string { CallArgs::String(strn) }
+    / whitespace* tbl:tablecons { CallArgs::Table(tbl) }
 
 methodname -> Spanned<&'input str>
     = ":" ident
 
 call -> Call
     = v:variable name:methodname? args:callargs+ {
-        fn get_arg_span(start: usize, args: &Vec<Expr>) -> Span {
-            let mut end: usize = start;
-
-            if args.len() > 0 {
-                end = args[args.len()-1].span.start + args[args.len()-1].span.len;
-            }
-
-            Span::new(start, end)
-        }
-
         let mut it = args.into_iter();
         let first_args = it.next().unwrap();
         let span = v.span.clone();
-        let callee = Box::new(Spanned::new(v.span, EVar(v)));
-        let mut what = Spanned::new(get_arg_span(span.start, &first_args), match name {
+        let callee = Box::new(Spanned::new(v.span.clone(), EVar(v.clone())));
+        let mut what = Spanned::new(v.span.clone(), match name {
             None => SimpleCall(callee, first_args),
             Some(name) => MethodCall(callee, Spanned::new(name.span, name.to_string()), first_args),
         });
 
         for list in it {
-            what = Spanned::new(get_arg_span(what.span.start, &list),
+            what = Spanned::new(v.span.clone(),
                 SimpleCall(Box::new(Spanned::new(what.span, ECall(what.value))), list));
         }
 
@@ -186,7 +229,7 @@ atom_inner -> Expr
     / v:variable { Spanned::new(v.span, EVar(v)) }
 
 // Atomic expression. Either a literal, a unary operator applied to another atom or a full expr
-// inside parentheses. Can not be decomposed any further.
+// inside parentheses.
 atom -> Expr
     = whitespace* a:atom_inner whitespace* { a }
 

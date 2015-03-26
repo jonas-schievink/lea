@@ -4,7 +4,8 @@ use super::parser;
 use super::ast::*;
 use super::visit::*;
 
-use std::io::Write;
+use std::io::{self, Write};
+
 
 pub struct PrettyPrinter<'a, 'b, W: Write + 'a> {
     writer: &'a mut W,
@@ -68,6 +69,54 @@ impl <'a, 'b, W: Write> PrettyPrinter<'a, 'b, W> {
         }
     }
 
+    /// Prints a string in quotes and escapes all chars that need an escape sequence.
+    fn print_string(&mut self, s: &str) -> io::Result<()> {
+        write!(self.writer, "\"{}\"", s)   // TODO escape
+    }
+
+    #[allow(unused_must_use)]
+    fn print_table(&mut self, mut pairs: Vec<(Expr, Expr)>) -> Vec<(Expr, Expr)> {
+        write!(self.writer, "{{{}", self.lineend);
+        self.indent();
+
+        pairs = pairs.into_iter().map(|(mut key, mut val)| {
+            self.print_indent();
+
+            let mut key_full = true;    // Print the key in "[expr] = " notation
+            match key.value {
+                ELit(TStr(ref s)) => {
+                    // If it's an identifier, don't use "[expr] = " syntax
+                    match parser::ident(s.as_ref()) {
+                        Ok(..) => {
+                            let s: &str = s.as_ref();
+                            write!(self.writer, "{}", s);
+                            key_full = false;
+                        },
+                        _ => {},
+                    };
+                },
+                _ => {},
+            }
+
+            if key_full {
+                write!(self.writer, "[");
+                key = self.visit_expr(key);
+                write!(self.writer, "]");
+            }
+
+            write!(self.writer, " = ");
+            val = self.visit_expr(val);
+            write!(self.writer, ",{}", self.lineend);
+
+            (key, val)
+        }).collect();
+
+        self.unindent();
+        self.print_indent();
+        write!(self.writer, "}}");
+        pairs
+    }
+
     /// Prints the parameter list and the body of the given function
     #[allow(unused_must_use)]
     fn print_funcbody(&mut self, mut f: Function) -> Function {
@@ -101,17 +150,30 @@ impl <'a, 'b, W: Write> PrettyPrinter<'a, 'b, W> {
     }
 
     #[allow(unused_must_use)]
-    fn print_call_args(&mut self, mut argv: Vec<Expr>) -> Vec<Expr> {
-        write!(self.writer, "(");
+    fn print_call_args(&mut self, args: CallArgs) -> CallArgs {
+        match args {
+            CallArgs::Normal(mut argv) => {
+                write!(self.writer, "(");
 
-        let mut first = true;
-        argv = argv.map_in_place(|arg| {
-            if first { first = false; } else { write!(self.writer, ", "); }
-            self.visit_expr(arg)
-        });
+                let mut first = true;
+                argv = argv.map_in_place(|arg| {
+                    if first { first = false; } else { write!(self.writer, ", "); }
+                    self.visit_expr(arg)
+                });
 
-        write!(self.writer, ")");
-        argv
+                write!(self.writer, ")");
+                CallArgs::Normal(argv)
+            },
+            CallArgs::String(s) => {
+                write!(self.writer, " ");
+                self.print_string(s.as_ref());
+                CallArgs::String(s)
+            },
+            CallArgs::Table(mut tbl) => {
+                tbl = self.print_table(tbl);
+                CallArgs::Table(tbl)
+            }
+        }
     }
 
     #[allow(unused_must_use)]
@@ -408,44 +470,7 @@ impl <'a, 'b, W: Write> Visitor for PrettyPrinter<'a, 'b, W> {
                 EFunc(f)
             },
             ETable(mut pairs) => {
-                write!(self.writer, "{{");
-                self.indent();
-
-                pairs = pairs.into_iter().map(|(mut key, mut val)| {
-                    self.print_indent();
-
-                    let mut key_full = true;    // Print the key in "[expr] = " notation
-                    match key.value {
-                        ELit(TStr(ref s)) => {
-                            // If it's an identifier, don't use "[expr] = " syntax
-                            match parser::ident(s.as_ref()) {
-                                Ok(..) => {
-                                    let s: &str = s.as_ref();
-                                    write!(self.writer, "{}", s);
-                                    key_full = false;
-                                },
-                                _ => {},
-                            };
-                        },
-                        _ => {},
-                    }
-
-                    if key_full {
-                        write!(self.writer, "[");
-                        key = self.visit_expr(key);
-                        write!(self.writer, "]");
-                    }
-
-                    write!(self.writer, " = ");
-                    val = self.visit_expr(val);
-                    write!(self.writer, ",{}", self.lineend);
-
-                    (key, val)
-                }).collect();
-
-                self.unindent();
-                self.print_indent();
-                write!(self.writer, "}}");
+                pairs = self.print_table(pairs);
 
                 ETable(pairs)
             },
@@ -469,7 +494,7 @@ impl <'a, 'b, W: Write> Visitor for PrettyPrinter<'a, 'b, W> {
                 match lit {
                     TInt(i) => write!(self.writer, "{}", i),
                     TFloat(f) => write!(self.writer, "{}", f),
-                    TStr(ref s) => write!(self.writer, "{}", s),
+                    TStr(ref s) => self.print_string(s.as_ref()),
                     TBool(b) => write!(self.writer, "{}", b),
                     TNil => write!(self.writer, "nil"),
                 };

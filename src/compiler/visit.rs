@@ -41,6 +41,23 @@ pub fn walk_func<V: Visitor>(mut f: Function, visitor: &mut V) -> Function {
     f
 }
 
+fn walk_args<V: Visitor>(args: CallArgs, visitor: &mut V) -> CallArgs {
+    match args {
+        CallArgs::Normal(mut argv) => {
+            argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
+            CallArgs::Normal(argv)
+        },
+        CallArgs::String(s) => {
+            CallArgs::String(s)
+        },
+        CallArgs::Table(mut pairs) => {
+            pairs = pairs.map_in_place(
+                |(key, val)| (visitor.visit_expr(key), visitor.visit_expr(val)));
+            CallArgs::Table(pairs)
+        }
+    }
+}
+
 pub fn walk_stmt<V: Visitor>(mut stmt: Stmt, visitor: &mut V) -> Stmt {
     stmt.value = match stmt.value {
         SDecl(names, mut vals) => {
@@ -62,12 +79,12 @@ pub fn walk_stmt<V: Visitor>(mut stmt: Stmt, visitor: &mut V) -> Stmt {
         },
         SCall(SimpleCall(mut callee, mut argv)) => {
             callee = Box::new(visitor.visit_expr(*callee));
-            argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
+            argv = walk_args(argv, visitor);
             SCall(SimpleCall(callee, argv))
         },
         SCall(MethodCall(mut callee, name, mut argv)) => {
             callee = Box::new(visitor.visit_expr(*callee));
-            argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
+            argv = walk_args(argv, visitor);
             SCall(MethodCall(callee, name, argv))
         },
         SFunc(mut var, mut func) => {
@@ -141,12 +158,12 @@ pub fn walk_expr<V: Visitor>(mut expr: Expr, visitor: &mut V) -> Expr {
         },
         ECall(SimpleCall(mut callee, mut argv)) => {
             callee = Box::new(visitor.visit_expr(*callee));
-            argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
+            argv = walk_args(argv, visitor);
             ECall(SimpleCall(callee, argv))
         },
         ECall(MethodCall(mut callee, name, mut argv)) => {
             callee = Box::new(visitor.visit_expr(*callee));
-            argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
+            argv = walk_args(argv, visitor);
             ECall(MethodCall(callee, name, argv))
         },
         EFunc(mut func) => {

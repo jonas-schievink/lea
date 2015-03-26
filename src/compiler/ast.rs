@@ -80,11 +80,19 @@ impl PartialEq for Block {
 }
 
 #[derive(Clone, PartialEq, Debug)]
+pub enum CallArgs {
+    Normal(Vec<Expr>),
+    String(String),
+    Table(Vec<(Expr, Expr)>),
+}
+
+#[derive(Clone, PartialEq, Debug)]
 pub enum Call {
-    SimpleCall(Box<Expr>, Vec<Expr>),
+    /// Regular call: f(e1, e2, ..)
+    SimpleCall(Box<Expr>, CallArgs),
 
     /// some.thing:name(...) - passes `some.thing` as the first argument
-    MethodCall(Box<Expr>, Spanned<String>, Vec<Expr>),
+    MethodCall(Box<Expr>, Spanned<String>, CallArgs),
 }
 
 #[derive(Clone, PartialEq, Debug)]
