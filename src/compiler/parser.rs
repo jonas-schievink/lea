@@ -134,6 +134,20 @@ mod tests {
 
         // invalid escape seq
         assert!(literal("\"\\q\"").is_err());
+
+        // TODO implement long strings
+        /*
+        assert_eq!(literal("[[test]]").unwrap().value, TStr("test".to_string()));
+        assert_eq!(literal("[=[test]=]").unwrap().value, TStr("test".to_string()));
+        assert_eq!(literal("[======[test]======]").unwrap().value, TStr("test".to_string()));
+
+        assert_eq!(literal("[=[test]]]=]").unwrap().value, TStr("test]]".to_string()));
+        assert_eq!(expression("[=[test]=] + [=[bla]=]").unwrap().value, EBinOp(
+            Box::new(Spanned::default(ELit(TStr("test".to_string())))),
+            BinOp::Add,
+            Box::new(Spanned::default(ELit(TStr("bla".to_string())))),
+        ));
+        */
     }
 
     #[test]

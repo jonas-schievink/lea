@@ -31,7 +31,7 @@ pub enum LintMode {
 macro_rules! transform_map {
     ( $( $name:ident, )* ) => {{
         let mut map = HashMap::new();
-        $( map.insert(stringify!($name), $name :: run as Transform); )*
+        $( map.insert(stringify!($name), $name::run as Transform); )*
 
         map
     }};

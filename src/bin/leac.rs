@@ -41,7 +41,7 @@ fn compile(code: &str, filename: &str) -> io::Result<()> {
     let mut stderr = io::stderr();
     let mut dummy = DummyTerm(&mut stderr);
     let mut fmt_target: &mut term::Terminal<Stderr> = if unsafe {
-        libc::isatty(libc::STDERR_FILENO as i32) != 0
+        libc::isatty(libc::STDERR_FILENO) != 0
     } {
         // we can print to the term (or at least try to)
         match term {

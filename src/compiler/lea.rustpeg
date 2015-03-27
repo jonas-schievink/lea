@@ -9,20 +9,12 @@ use compiler::span::{Span, Spanned, mkspanned};
 use compiler::ast::*;
 use op::*;
 
-mlcomment_inner -> ()
-    = "=" mlcomment_inner "="
-    / "["  "]"
-
 comment -> ()
-    = "--[" mlcomment_inner "]"
-    / "/*" ( [^*] / [*][^/] )* "*/"
+    = "/*" ( !"*/" .)* "*/"
     / ( "//" / "--" ) [^\n]*
 
 real_whitespace -> ()
-    = " "
-    / "\t"
-    / "\n"
-    / "\r"
+    = " " / "\t" / "\n" / "\r"
 
 whitespace -> ()
     = real_whitespace
@@ -129,6 +121,7 @@ _single_quote_content -> char
     / blank_esc _single_quote_content
     / [^\\'\n]  { match_str.char_at(0) }
 
+#[pub]
 string -> String
     = '"' chars:_double_quote_content* blank_esc? '"' { chars.into_iter().collect() }
     / '\'' chars:_single_quote_content* blank_esc? '\'' { chars.into_iter().collect() }
