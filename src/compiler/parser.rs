@@ -337,7 +337,8 @@ mod tests {
                 upvalues: vec![],
                 varargs: false,
                 body: Block::new(vec![], Default::default()),
-        }));
+            })
+        );
         assert_eq!(expression("function(i, j, ...) break end").unwrap().value,
             EFunc(Function {
                 params: vec!["i".to_string(), "j".to_string()],
@@ -378,6 +379,17 @@ mod tests {
         assert_eq!(expression("f ''").unwrap().value, ECall(SimpleCall(
             Box::new(Spanned::default(EVar(Spanned::default(VNamed("f".to_string()))))),
             CallArgs::String("".to_string()),
+        )));
+
+        assert_eq!(expression("(function()end)()").unwrap().value, ECall(SimpleCall(
+            Box::new(Spanned::default(EFunc(Function {
+                params: vec![],
+                locals: vec![],
+                upvalues: vec![],
+                varargs: false,
+                body: Block::new(vec![], Default::default()),
+            }))),
+            CallArgs::Normal(vec![]),
         )));
 
         assert!(expression("f(1,2,)").is_err());

@@ -24,11 +24,8 @@ whitespace -> ()
 ident -> Spanned<&'input str>
     = [_a-zA-Z][_a-zA-Z0-9]* { mkspanned(match_str, start_pos, pos) }
 
-decdigit -> char
-    = [0-9] { match_str.char_at(0) }
-
 decstr -> &'input str
-    = decdigit+ { match_str }
+    = [0-9]+ { match_str }
 
 hexdigit -> char
     = [0-9a-fA-F] { match_str.char_at(0) }
@@ -40,7 +37,7 @@ octstr -> &'input str
     = [0-7]+ { match_str }
 
 int_dec -> i64
-    = "-"? decstr { match_str.parse().unwrap() }
+    = "-"? [0-9]+ { match_str.parse().unwrap() }
 
 int_hex -> i64
     = minus:"-"? "0x" hex:hexstr {
@@ -61,9 +58,7 @@ int_oct -> i64
     }
 
 integer -> i64
-    = int_hex
-    / int_oct
-    / int_dec
+    = int_hex / int_oct / int_dec
 
 /// C-like float (only one part before/after the decimal point is required)
 cfloat -> &'input str
@@ -79,10 +74,10 @@ float -> f64
 
 /// Matches the decimal notation of a single byte: 0-255
 dec_byte -> u8
-    = [01] decdigit{,2} { match_str.parse().unwrap() }
+    = [01] [0-9]{,2} { match_str.parse().unwrap() }
     / "2" [0-4] [0-9] { match_str.parse().unwrap() }
     / "25" [0-5] { match_str.parse().unwrap() }
-    / decdigit{1,2} { match_str.parse().unwrap() }
+    / [0-9]{1,2} { match_str.parse().unwrap() }
 
 esc_seq -> char
     = "\\a" { '\x07' }  // bell
@@ -95,7 +90,7 @@ esc_seq -> char
     / "\\\\" { '\\' }
     / "\\\"" { '\"' }
     / "\\'" { '\'' }
-    / "\\\n" { '\n' }
+    / "\\\n" { '\n' }   // "\" at the end of a line continues the string and embeds a "\n"
     / "\\x" digits:hexdigit{2} {
         let string: String = digits.into_iter().collect();
         let i: u8 = from_str_radix(string.as_ref(), 16).unwrap();
@@ -192,21 +187,25 @@ callargs -> CallArgs
     / whitespace* tbl:tablecons { CallArgs::Table(tbl) }
 
 methodname -> Spanned<&'input str>
-    = ":" ident
+    = ":" whitespace* name:ident whitespace* { name }
+
+callee -> Expr
+    = v:variable { mkspanned(EVar(v), start_pos, pos) }
+    / "(" e:expression ")" { e }
 
 call -> Call
-    = v:variable name:methodname? args:callargs+ {
+    = callee:callee name:methodname? args:callargs+ {
         let mut it = args.into_iter();
         let first_args = it.next().unwrap();
-        let span = v.span.clone();
-        let callee = Box::new(Spanned::new(v.span.clone(), EVar(v.clone())));
-        let mut what = Spanned::new(v.span.clone(), match name {
+        let callee_span = callee.span.clone();
+        let callee = Box::new(callee);
+        let mut what = Spanned::new(callee_span, match name {
             None => SimpleCall(callee, first_args),
             Some(name) => MethodCall(callee, Spanned::new(name.span, name.to_string()), first_args),
         });
 
         for list in it {
-            what = Spanned::new(v.span.clone(),
+            what = Spanned::new(callee_span,
                 SimpleCall(Box::new(Spanned::new(what.span, ECall(what.value))), list));
         }
 
@@ -214,7 +213,8 @@ call -> Call
     }
 
 atom_inner -> Expr
-    = "(" expr:expression ")" { mkspanned(expr.value, start_pos, pos) }
+    = c:call { mkspanned(ECall(c), start_pos, pos) }
+    / "(" expr:expression ")" { mkspanned(expr.value, start_pos, pos) }
     / "..." { mkspanned(EVarArgs, start_pos, pos) }
     / lit:literal { Spanned::new(lit.span, ELit(lit.value)) }
     / op:unop a:atom { mkspanned(EUnOp(op, Box::new(a)), start_pos, pos) }
@@ -364,7 +364,7 @@ varargs_def -> ()
 // Returns the parameter list and a boolean indicating whether the function takes variable args
 funcparams -> (Vec<String>, bool)
     = "(" whitespace* params:identlist va:varargs_def? whitespace* ")" {
-        (params, match va { None => false, Some(..) => true})
+        (params, va.is_some())
     }
     / "(" whitespace* "..." whitespace* ")" { (Vec::new(), true) }
     / "(" whitespace* ")" { (Vec::new(), false) }
@@ -378,12 +378,8 @@ funcbody -> Function
 stmt_func -> Stmt
     = "function" whitespace+ var:variable method:methodname? f:funcbody {
         mkspanned(match method {
-            None => {
-                SFunc(var, f)
-            }
-            Some(method) => {
-                SMethod(var, method.value.to_string(), f)
-            }
+            None => SFunc(var, f),
+            Some(method) => SMethod(var, method.value.to_string(), f),
         }, start_pos, pos)
     }
 
