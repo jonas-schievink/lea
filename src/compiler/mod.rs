@@ -227,7 +227,7 @@ pub fn parse_and_check(code: &str) -> CompileResult<Function> {
     match parser::parse_main(code) {
         Err(e) => Err(ErrParse(e)),
         Ok(main) => {
-            let (main, res) = check::check_func(main);
+            let res = check::check_func(&main);
             match res {
                 Err(errs) => Err(ErrCheck(errs)),
                 Ok(()) => {
@@ -288,7 +288,7 @@ pub fn compile_str(code: &str, source_name: &str, conf: &CompileConfig) -> Compi
     let main = try!(parse_and_resolve(code));
     let (main, tr_res) = apply_transforms(main, &conf);
     let warnings = try!(tr_res);
-    let (main, emit_res) = emit_func(main, source_name);
+    let emit_res = emit_func(&main, source_name);
 
     match emit_res {
         Ok(proto) => Ok(CompileOutput {

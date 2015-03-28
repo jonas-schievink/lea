@@ -124,7 +124,7 @@ impl Emitter {
     }
 }
 
-impl Transform for Emitter {
+impl <'a> Visitor<'a> for Emitter {
     /*fn visit_stmt(&mut self, s: Stmt) -> Stmt {
         s.value = match s.value {
             SDecl(names, exprs) => {
@@ -140,7 +140,7 @@ impl Transform for Emitter {
         walk_stmt(s, self)
     }*/
 
-    fn visit_expr(&mut self, _e: Expr) -> Expr {
+    fn visit_expr(&mut self, _e: &Expr) {
         panic!("Emitter::visit_expr entered (this should never happen)");
     }
 
@@ -151,17 +151,17 @@ impl Transform for Emitter {
         replace(&mut self.block, None).unwrap()
     }*/
 
-    fn visit_func(&mut self, mut f: Function) -> Function {
-        self.funcs.push(FnData::new(&f));
+    fn visit_func(&mut self, f: &Function) {
+        self.funcs.push(FnData::new(f));
 
-        f = walk_func(f, self);
+        self.visit_block(&f.body);
         self.emit(RETURN(0, 1));
 
         let func = self.funcs.pop().unwrap();
         if func.stacksize as u64 > limits::STACK_LIMIT {
             self.err("stack size exceeds maximum value",
                 Some(format!("got size {}, max is {}", func.stacksize, limits::STACK_LIMIT)));
-            return f;
+            return;
         }
 
         // TODO shrink vectors to save space
@@ -174,20 +174,17 @@ impl Transform for Emitter {
             let parent = &mut self.funcs[parent_idx];
             parent.child_protos.push(Box::new(func));
         }
-
-        f
     }
 }
 
 
 /// Builds a `FunctionProto` for the given main function and emits byte code for execution by the
 /// VM.
-pub fn emit_func(f: Function, source_name: &str) -> (Function, EmitResult) {
+pub fn emit_func(f: &Function, source_name: &str) -> EmitResult {
     let mut emitter = Emitter::new(source_name);
+    emitter.visit_func(f);
 
-    let f = emitter.visit_func(f);
-
-    (f, emitter.get_result())
+    emitter.get_result()
 }
 
 
@@ -198,7 +195,7 @@ mod tests {
     use program::FnData;
 
     fn test(code: &str) -> FnData {
-        emit_func(parse_and_resolve(code).unwrap(), "<test>").1.unwrap()
+        emit_func(&parse_and_resolve(code).unwrap(), "<test>").unwrap()
     }
 
     #[test]
