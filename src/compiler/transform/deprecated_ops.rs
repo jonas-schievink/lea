@@ -39,7 +39,7 @@ impl DerefMut for DeprOps {
     }
 }
 
-impl Visitor for DeprOps {
+impl Transform for DeprOps {
     fn visit_expr(&mut self, mut e: Expr) -> Expr {
         e.value = match e.value {
             EBinOp(mut lhs, op, mut rhs) => {

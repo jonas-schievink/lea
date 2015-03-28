@@ -177,7 +177,7 @@ impl Resolver {
     }
 }
 
-impl Visitor for Resolver {
+impl Transform for Resolver {
     fn visit_stmt(&mut self, mut s: Stmt) -> Stmt {
         s.value = match s.value {
             SDecl(names, mut exprs) => {

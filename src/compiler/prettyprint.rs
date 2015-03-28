@@ -206,7 +206,7 @@ impl <'a, 'b, W: Write> PrettyPrinter<'a, 'b, W> {
     }
 }
 
-impl <'a, 'b, W: Write> Visitor for PrettyPrinter<'a, 'b, W> {
+impl <'a, 'b, W: Write> Transform for PrettyPrinter<'a, 'b, W> {
     #[allow(unused_must_use)]   // Possibly Rust's fault
     fn visit_stmt(&mut self, mut stmt: Stmt) -> Stmt {
         self.print_indent();

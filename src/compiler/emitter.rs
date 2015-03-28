@@ -124,7 +124,7 @@ impl Emitter {
     }
 }
 
-impl Visitor for Emitter {
+impl Transform for Emitter {
     /*fn visit_stmt(&mut self, s: Stmt) -> Stmt {
         s.value = match s.value {
             SDecl(names, exprs) => {

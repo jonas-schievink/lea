@@ -19,7 +19,7 @@ fn mknode(lhs: Expr, op: BinOp, rhs: Expr) -> Expr {
     mkspanned(EBinOp(Box::new(lhs), op, Box::new(rhs)), start, end)
 }
 
-impl Visitor for ExprParser {
+impl Transform for ExprParser {
     fn visit_expr(&mut self, mut expr: Expr) -> Expr {
         expr = match expr.value {
             ERawOp(left, rest) => {

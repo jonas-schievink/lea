@@ -50,7 +50,7 @@ struct Checker {
     looplvl: u32,
 }
 
-impl Visitor for Checker {
+impl Transform for Checker {
     fn visit_stmt(&mut self, mut s: Stmt) -> Stmt {
         match s.value {
             SBreak => {

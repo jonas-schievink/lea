@@ -5,7 +5,9 @@ use super::ast::*;
 use std::default::Default;
 use std::mem;
 
-pub trait Visitor : Sized {
+
+/// A visitor that can transform AST nodes
+pub trait Transform : Sized {
     fn visit_stmt(&mut self, stmt: Stmt) -> Stmt {
         walk_stmt(stmt, self)
     }
@@ -25,14 +27,14 @@ pub trait Visitor : Sized {
 }
 
 
-pub fn walk_block<V: Visitor>(mut b: Block, visitor: &mut V) -> Block {
+pub fn walk_block<V: Transform>(mut b: Block, visitor: &mut V) -> Block {
     b.stmts = b.stmts.map_in_place(|stmt| visitor.visit_stmt(stmt));
 
     b
 }
 
 /// Helper function that walks the function's body.
-pub fn walk_func<V: Visitor>(mut f: Function, visitor: &mut V) -> Function {
+pub fn walk_func<V: Transform>(mut f: Function, visitor: &mut V) -> Function {
     // this is needed since rustc is too strict when doing something like:
     // func.body = walk_block(func.body, visitor);
     let mut body = mem::replace(&mut f.body, Block::new(vec![], Default::default()));
@@ -41,7 +43,7 @@ pub fn walk_func<V: Visitor>(mut f: Function, visitor: &mut V) -> Function {
     f
 }
 
-fn walk_args<V: Visitor>(args: CallArgs, visitor: &mut V) -> CallArgs {
+fn walk_args<V: Transform>(args: CallArgs, visitor: &mut V) -> CallArgs {
     match args {
         CallArgs::Normal(mut argv) => {
             argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
@@ -56,14 +58,14 @@ fn walk_args<V: Visitor>(args: CallArgs, visitor: &mut V) -> CallArgs {
     }
 }
 
-fn walk_table<V: Visitor>(cons: TableCons, visitor: &mut V) -> TableCons {
+fn walk_table<V: Transform>(cons: TableCons, visitor: &mut V) -> TableCons {
     cons.map_in_place(|entry| match entry {
         TableEntry::Pair(k, v) => TableEntry::Pair(visitor.visit_expr(k), visitor.visit_expr(v)),
         TableEntry::Elem(elem) => TableEntry::Elem(visitor.visit_expr(elem)),
     })
 }
 
-pub fn walk_stmt<V: Visitor>(mut stmt: Stmt, visitor: &mut V) -> Stmt {
+pub fn walk_stmt<V: Transform>(mut stmt: Stmt, visitor: &mut V) -> Stmt {
     stmt.value = match stmt.value {
         SDecl(names, mut vals) => {
             vals = vals.map_in_place(|val| visitor.visit_expr(val));
@@ -141,7 +143,7 @@ pub fn walk_stmt<V: Visitor>(mut stmt: Stmt, visitor: &mut V) -> Stmt {
     stmt
 }
 
-pub fn walk_expr<V: Visitor>(mut expr: Expr, visitor: &mut V) -> Expr {
+pub fn walk_expr<V: Transform>(mut expr: Expr, visitor: &mut V) -> Expr {
     expr.value = match expr.value {
         ERawOp(mut lhs, mut rest) => {
             lhs = Box::new(visitor.visit_expr(*lhs));
@@ -188,7 +190,7 @@ pub fn walk_expr<V: Visitor>(mut expr: Expr, visitor: &mut V) -> Expr {
     expr
 }
 
-pub fn walk_var<V: Visitor>(mut var: Variable, visitor: &mut V) -> Variable {
+pub fn walk_var<V: Transform>(mut var: Variable, visitor: &mut V) -> Variable {
     var.value = match var.value {
         VIndex(mut var, mut idx) => {
             var = Box::new(visitor.visit_var(*var));

@@ -7,7 +7,7 @@ pub use self::parse::{ident, literal};
 use super::ast::*;
 use super::span::*;
 use super::visit;
-use super::visit::Visitor;
+use super::visit::Transform;
 use super::expr_parser::ExprParser;
 
 use term::Terminal;
