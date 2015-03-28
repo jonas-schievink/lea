@@ -70,6 +70,10 @@ impl Block {
             localmap: localmap,
         }
     }
+
+    pub fn get_local(&self, name: &String) -> Option<&usize> {
+        self.localmap.get(name)
+    }
 }
 
 impl PartialEq for Block {

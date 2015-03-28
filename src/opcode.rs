@@ -55,10 +55,11 @@ pub enum Opcode {
     ///
     /// This might invoke a metamethod if `R[A]` has a metatable with a `__call` field.
     CALL(u8, u8, u8),
-    /// > return R[A], R[A+1], ..., R[A+B-1]
+    /// > return R[A], R[A+1], ..., R[A+B-2]
     ///
-    /// Returns B values stored in `R[A]` through `R[A+B-1]` to the caller. If B is 0, returns no
-    /// values and just leaves the current function, returning control to the caller.
+    /// Returns B-1 values stored in `R[A]` through `R[A+B-2]` to the caller. If B is 1, returns no
+    /// values and just leaves the current function, returning control to the caller. If B is 0,
+    /// returns all values from A to the top of the stack.
     ///
     /// If the program's main function executes this opcode, the VM will pass the first return
     /// value (if any) to the code that started the VM.

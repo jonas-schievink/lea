@@ -30,6 +30,8 @@ struct Emitter {
     /// Function stack. The last entry is the currently emitted function. When done emitting, the
     /// last `FnData` is popped off and added to the child function list of the parent.
     funcs: Vec<FnData>,
+
+    block: Option<Block>,
 }
 
 impl Emitter {
@@ -38,10 +40,18 @@ impl Emitter {
             source_name: source_name.to_string(),
             errs: Vec::new(),
             funcs: Vec::with_capacity(4),
+            block: None,
         }
     }
 
-    /// Get the prototype of the currently emitted function
+    fn cur_block(&self) -> &Block {
+        match self.block {
+            Some(ref b) => b,
+            None => panic!("emitter has no current block"),
+        }
+    }
+
+    /// Get the FnData of the currently emitted function
     fn cur_func(&mut self) -> &mut FnData {
         let len = self.funcs.len();
         debug_assert!(len > 0);
@@ -101,7 +111,7 @@ impl Emitter {
 
     /// Emits an opcode into the current function and returns its "address" or index
     fn emit(&mut self, op: Opcode) -> usize {
-        println!("EMIT {:?}", op);
+        println!("{:?}", op);
 
         let idx = self.cur_func().opcodes.len();
         if idx as u64 >= limits::OP_LIMIT {
@@ -115,10 +125,37 @@ impl Emitter {
 }
 
 impl Visitor for Emitter {
+    /*fn visit_stmt(&mut self, s: Stmt) -> Stmt {
+        s.value = match s.value {
+            SDecl(names, exprs) => {
+                for name in &names {
+                    println!("DECL {:?}", self.cur_block().get_local(name));
+                }
+
+                SDecl(names, exprs)
+            }
+            _ => s.value,
+        };
+
+        walk_stmt(s, self)
+    }*/
+
+    fn visit_expr(&mut self, _e: Expr) -> Expr {
+        panic!("Emitter::visit_expr entered (this should never happen)");
+    }
+
+    /*fn visit_block(&mut self, b: Block) -> Block {
+        self.block = Some(b);
+        walk_block(b, self);
+
+        replace(&mut self.block, None).unwrap()
+    }*/
+
     fn visit_func(&mut self, mut f: Function) -> Function {
         self.funcs.push(FnData::new(&f));
 
         f = walk_func(f, self);
+        self.emit(RETURN(0, 1));
 
         let func = self.funcs.pop().unwrap();
         if func.stacksize as u64 > limits::STACK_LIMIT {
