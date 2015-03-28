@@ -419,13 +419,13 @@ mod tests {
             vars: u8,
         };
         impl <'a> Visitor<'a> for NoopVisitor {
-            fn visit_stmt(&mut self, stmt: &Stmt) {
+            fn visit_stmt(&mut self, _stmt: &Stmt) {
                 self.stmts += 1;
             }
-            fn visit_expr(&mut self, expr: &Expr) {
+            fn visit_expr(&mut self, _expr: &Expr) {
                 self.exprs += 1;
             }
-            fn visit_var(&mut self, var: &Variable) {
+            fn visit_var(&mut self, _var: &Variable) {
                 self.vars += 1;
             }
         }
@@ -447,13 +447,13 @@ mod tests {
             vars: Vec<Variable>,
         }
         impl <'a> Visitor<'a> for VarVisitor {
-            fn visit_stmt(&mut self, _stmt: &Stmt) {
+            fn visit_stmt(&mut self, stmt: &Stmt) {
                 walk_stmt_ref(stmt, self);
             }
-            fn visit_expr(&mut self, _expr: &Expr) {
+            fn visit_expr(&mut self, expr: &Expr) {
                 walk_expr_ref(expr, self);
             }
-            fn visit_var(&mut self, _var: &Variable) {
+            fn visit_var(&mut self, var: &Variable) {
                 self.vars.push(var.clone());
                 walk_var_ref(var, self);
             }

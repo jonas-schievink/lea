@@ -12,24 +12,25 @@ use std::ops::{Deref, DerefMut};
 
 
 struct GlobalWrite(Vec<Warning>);
+
 impl Deref for GlobalWrite {
     type Target = Vec<Warning>;
     fn deref(&self) -> &Vec<Warning> {
         &self.0
     }
 }
+
 impl DerefMut for GlobalWrite {
     fn deref_mut(&mut self) -> &mut Vec<Warning> {
         &mut self.0
     }
 }
 
-
-impl Transform for GlobalWrite {
-    fn visit_stmt(&mut self, mut s: Stmt) -> Stmt {
-        s.value = match s.value {
-            SAssign(targets, values) => {
-                for v in &targets {
+impl <'a> Visitor<'a> for GlobalWrite {
+    fn visit_stmt(&mut self, s: &Stmt) {
+        match s.value {
+            SAssign(ref targets, _) => {
+                for v in targets {
                     match v.value {
                         VResGlobal(_, ref name) => {
                             let message = format!("write to global variable `{}` (you should prefer locals)", name);
@@ -38,21 +39,17 @@ impl Transform for GlobalWrite {
                             self.push(Warning::with_info(v.span, message, vec![info0, info1]));
                         },
                         _ => {},
-                    };
+                    }
                 }
-
-                SAssign(targets, values)
             },
-            _ => { return walk_stmt(s, self) },
-        };
-
-        s
+            _ => walk_stmt_ref(s, self),
+        }
     }
 }
 
-pub fn run(mut main: Function) -> (Function, Vec<Warning>) {
+pub fn run(main: Function) -> (Function, Vec<Warning>) {
     let mut v = GlobalWrite(vec![]);
+    v.visit_func(&main);
 
-    main = walk_func(main, &mut v);
     (main, v.0)
 }

@@ -27,24 +27,26 @@ lazy_static! {
 }
 
 struct DeprOps(Vec<Warning>);
+
 impl Deref for DeprOps {
     type Target = Vec<Warning>;
     fn deref(&self) -> &Vec<Warning> {
         &self.0
     }
 }
+
 impl DerefMut for DeprOps {
     fn deref_mut(&mut self) -> &mut Vec<Warning> {
         &mut self.0
     }
 }
 
-impl Transform for DeprOps {
-    fn visit_expr(&mut self, mut e: Expr) -> Expr {
-        e.value = match e.value {
-            EBinOp(mut lhs, op, mut rhs) => {
-                lhs = Box::new(self.visit_expr(*lhs));
-                rhs = Box::new(self.visit_expr(*rhs));
+impl <'a> Visitor<'a> for DeprOps {
+    fn visit_expr(&mut self, e: &Expr) {
+        match e.value {
+            EBinOp(ref lhs, op, ref rhs) => {
+                self.visit_expr(&**lhs);
+                self.visit_expr(&**rhs);
 
                 match DEPR_BINOPS.get(&op) {
                     Some(newop) => {
@@ -52,12 +54,10 @@ impl Transform for DeprOps {
                             vec![format!("use `{}` instead", newop)]));
                     }
                     _ => {},
-                };
-
-                EBinOp(lhs, op, rhs)
+                }
             },
-            EUnOp(op, mut p) => {
-                p = Box::new(self.visit_expr(*p));
+            EUnOp(op, ref p) => {
+                self.visit_expr(&**p);
 
                 match DEPR_UNOPS.get(&op) {
                     Some(newop) => {
@@ -65,20 +65,16 @@ impl Transform for DeprOps {
                             vec![format!("use `{}` instead", newop)]));
                     },
                     _ => {},
-                };
-
-                EUnOp(op, p)
+                }
             },
-            _ => { return walk_expr(e, self); },
+            _ => { walk_expr_ref(e, self); },
         };
-
-        e
     }
 }
 
-pub fn run(mut main: Function) -> (Function, Vec<Warning>) {
+pub fn run(main: Function) -> (Function, Vec<Warning>) {
     let mut v = DeprOps(vec![]);
-
-    main = walk_func(main, &mut v);
+    v.visit_func(&main);
+    
     (main, v.0)
 }
