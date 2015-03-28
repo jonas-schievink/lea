@@ -26,11 +26,36 @@ pub trait Transform : Sized {
     }
 }
 
+/// A "read-only" visitor that gets a shared reference to the AST node
+pub trait Visitor<'a> : Sized {
+    fn visit_stmt(&mut self, stmt: &'a Stmt) {
+        walk_stmt_ref(stmt, self);
+    }
+    fn visit_expr(&mut self, expr: &'a Expr) {
+        walk_expr_ref(expr, self);
+    }
+    fn visit_var(&mut self, var: &'a Variable) {
+        walk_var_ref(var, self);
+    }
+    fn visit_block(&mut self, block: &'a Block) {
+        walk_block_ref(block, self);
+    }
+    fn visit_func(&mut self, func: &'a Function) {
+        self.visit_block(&func.body);
+    }
+}
+
 
 pub fn walk_block<V: Transform>(mut b: Block, visitor: &mut V) -> Block {
     b.stmts = b.stmts.map_in_place(|stmt| visitor.visit_stmt(stmt));
 
     b
+}
+
+pub fn walk_block_ref<'a, V: Visitor<'a>>(b: &'a Block, visitor: &mut V) {
+    for stmt in &b.stmts {
+        visitor.visit_stmt(stmt);
+    }
 }
 
 /// Helper function that walks the function's body.
@@ -58,11 +83,39 @@ fn walk_args<V: Transform>(args: CallArgs, visitor: &mut V) -> CallArgs {
     }
 }
 
+fn walk_args_ref<'a, V: Visitor<'a>>(args: &'a CallArgs, visitor: &mut V) {
+    match *args {
+        CallArgs::Normal(ref argv) => {
+            for arg in argv {
+                visitor.visit_expr(arg);
+            }
+        },
+        CallArgs::String(_) => {},
+        CallArgs::Table(ref cons) => {
+            walk_table_ref(cons, visitor)
+        }
+    }
+}
+
 fn walk_table<V: Transform>(cons: TableCons, visitor: &mut V) -> TableCons {
     cons.map_in_place(|entry| match entry {
         TableEntry::Pair(k, v) => TableEntry::Pair(visitor.visit_expr(k), visitor.visit_expr(v)),
         TableEntry::Elem(elem) => TableEntry::Elem(visitor.visit_expr(elem)),
     })
+}
+
+fn walk_table_ref<'a, V: Visitor<'a>>(cons: &'a TableCons, visitor: &mut V) {
+    for entry in cons {
+        match *entry {
+            TableEntry::Pair(ref k, ref v) => {
+                visitor.visit_expr(k);
+                visitor.visit_expr(v);
+            }
+            TableEntry::Elem(ref elem) => {
+                visitor.visit_expr(elem);
+            }
+        }
+    }
 }
 
 pub fn walk_stmt<V: Transform>(mut stmt: Stmt, visitor: &mut V) -> Stmt {
@@ -143,6 +196,80 @@ pub fn walk_stmt<V: Transform>(mut stmt: Stmt, visitor: &mut V) -> Stmt {
     stmt
 }
 
+
+pub fn walk_stmt_ref<'a, V: Visitor<'a>>(stmt: &'a Stmt, visitor: &mut V) {
+    match stmt.value {
+        SDecl(_, ref vals) => {
+            for e in vals {
+                visitor.visit_expr(e);
+            }
+        },
+        SAssign(ref vars, ref vals) => {
+            for var in vars {
+                visitor.visit_var(var);
+            }
+
+            for val in vals {
+                visitor.visit_expr(val);
+            }
+        },
+        SDo(ref block) => {
+            visitor.visit_block(block);
+        },
+        SReturn(ref vals) => {
+            for val in vals {
+                visitor.visit_expr(val);
+            }
+        },
+        SCall(SimpleCall(ref callee, ref argv)) => {
+            visitor.visit_expr(&**callee);
+            walk_args_ref(argv, visitor);
+        },
+        SCall(MethodCall(ref callee, _, ref argv)) => {
+            visitor.visit_expr(&**callee);
+            walk_args_ref(argv, visitor);
+        },
+        SFunc(ref var, ref func) => {
+            visitor.visit_var(var);
+            visitor.visit_func(func);
+        },
+        SMethod(ref var, _, ref func) => {
+            visitor.visit_var(var);
+            visitor.visit_func(func);
+        },
+        SLFunc(_, ref func) => {
+            visitor.visit_func(func);
+        },
+        SIf {ref cond, ref body, ref el} => {
+            visitor.visit_expr(cond);
+            visitor.visit_block(body);
+            visitor.visit_block(el);
+        },
+        SWhile {ref cond, ref body} => {
+            visitor.visit_expr(cond);
+            visitor.visit_block(body);
+        },
+        SRepeat {ref abort_on, ref body} => {
+            visitor.visit_expr(abort_on);
+            visitor.visit_block(body);
+        },
+        SFor {ref start, ref step, ref end, ref body, ..} => {
+            visitor.visit_expr(start);
+            visitor.visit_expr(step);
+            visitor.visit_expr(end);
+            visitor.visit_block(body);
+        },
+        SForIn {iter: ref iter_exprs, ref body, ..} => {
+            for e in iter_exprs {
+                visitor.visit_expr(e);
+            }
+            visitor.visit_block(body);
+        },
+
+        SBreak => {},
+    };
+}
+
 pub fn walk_expr<V: Transform>(mut expr: Expr, visitor: &mut V) -> Expr {
     expr.value = match expr.value {
         ERawOp(mut lhs, mut rest) => {
@@ -190,6 +317,51 @@ pub fn walk_expr<V: Transform>(mut expr: Expr, visitor: &mut V) -> Expr {
     expr
 }
 
+pub fn walk_expr_ref<'a, V: Visitor<'a>>(expr: &'a Expr, visitor: &mut V) {
+    match expr.value {
+        ERawOp(ref lhs, ref rest) => {
+            visitor.visit_expr(&**lhs);
+            for entry in rest {
+                let (_, ref e) = *entry;
+                visitor.visit_expr(e);
+            }
+        },
+        EBinOp(ref lhs, _, ref rhs) => {
+            visitor.visit_expr(&**lhs);
+            visitor.visit_expr(&**rhs);
+        },
+        EUnOp(_, ref operand) => {
+            visitor.visit_expr(&**operand);
+        },
+        EVar(ref var) => {
+            visitor.visit_var(var);
+        },
+        ECall(SimpleCall(ref callee, ref argv)) => {
+            visitor.visit_expr(&**callee);
+            walk_args_ref(argv, visitor);
+        },
+        ECall(MethodCall(ref callee, _, ref argv)) => {
+            visitor.visit_expr(&**callee);
+            walk_args_ref(argv, visitor);
+        },
+        EFunc(ref func) => {
+            visitor.visit_func(func);
+        },
+        ETable(ref cons) => {
+            walk_table_ref(cons, visitor);
+        },
+        EArray(ref exprs) => {
+            for e in exprs {
+                visitor.visit_expr(e);
+            }
+        },
+
+        // Explicitly ignore these, they carry nothing visitable
+        EVarArgs => {},
+        ELit(_) => {},
+    };
+}
+
 pub fn walk_var<V: Transform>(mut var: Variable, visitor: &mut V) -> Variable {
     var.value = match var.value {
         VIndex(mut var, mut idx) => {
@@ -214,6 +386,22 @@ pub fn walk_var<V: Transform>(mut var: Variable, visitor: &mut V) -> Variable {
     var
 }
 
+pub fn walk_var_ref<'a, V: Visitor<'a>>(var: &'a Variable, visitor: &mut V) {
+    match var.value {
+        VIndex(ref var, ref idx) => {
+            visitor.visit_var(&**var);
+            visitor.visit_expr(&**idx);
+        },
+        VDotIndex(ref var, _) => {
+            visitor.visit_var(&**var);
+        },
+        VResGlobal(ref env, _) => {
+            visitor.visit_var(&**env);
+        }
+        VNamed(_) | VLocal(_) | VUpval(_) | VGlobal(_) => {},
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -230,24 +418,21 @@ mod tests {
             exprs: u8,
             vars: u8,
         };
-        impl Visitor for NoopVisitor {
-            fn visit_stmt(&mut self, stmt: Stmt) -> Stmt {
+        impl <'a> Visitor<'a> for NoopVisitor {
+            fn visit_stmt(&mut self, stmt: &Stmt) {
                 self.stmts += 1;
-                stmt
             }
-            fn visit_expr(&mut self, expr: Expr) -> Expr {
+            fn visit_expr(&mut self, expr: &Expr) {
                 self.exprs += 1;
-                expr
             }
-            fn visit_var(&mut self, var: Variable) -> Variable {
+            fn visit_var(&mut self, var: &Variable) {
                 self.vars += 1;
-                var
             }
         }
 
         let myblock = block("i = 0").unwrap();
         let mut v = NoopVisitor {stmts: 0, exprs: 0, vars: 0};
-        walk_block(myblock, &mut v);
+        walk_block_ref(&myblock, &mut v);
 
         // The statement is always visited, the expr and var are skipped because we don't call
         // the walk_* functions.
@@ -261,22 +446,22 @@ mod tests {
         struct VarVisitor {
             vars: Vec<Variable>,
         }
-        impl Visitor for VarVisitor {
-            fn visit_stmt(&mut self, stmt: Stmt) -> Stmt {
-                walk_stmt(stmt, self)
+        impl <'a> Visitor<'a> for VarVisitor {
+            fn visit_stmt(&mut self, _stmt: &Stmt) {
+                walk_stmt_ref(stmt, self);
             }
-            fn visit_expr(&mut self, expr: Expr) -> Expr {
-                walk_expr(expr, self)
+            fn visit_expr(&mut self, _expr: &Expr) {
+                walk_expr_ref(expr, self);
             }
-            fn visit_var(&mut self, var: Variable) -> Variable {
+            fn visit_var(&mut self, _var: &Variable) {
                 self.vars.push(var.clone());
-                walk_var(var, self)
+                walk_var_ref(var, self);
             }
         }
 
         let myblock = block("local i = a\nj = i").unwrap();
         let mut v = VarVisitor { vars: Vec::new() };
-        walk_block(myblock, &mut v);
+        walk_block_ref(&myblock, &mut v);
 
         // The first "i" is not visited, since it's stored as a string. Everything else is a
         // "VNamed" since variable resolution hasn't yet taken place.
@@ -290,7 +475,7 @@ mod tests {
     #[test]
     fn visit_mut() {
         struct MutVisitor;
-        impl Visitor for MutVisitor {
+        impl Transform for MutVisitor {
             fn visit_expr(&mut self, mut expr: Expr) -> Expr {
                 expr.value = match expr.value {
                     ELit(TInt(1)) => ELit(TInt(0)),
