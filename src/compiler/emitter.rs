@@ -349,10 +349,14 @@ impl <'a> Visitor<'a> for Emitter<'a> {
     fn visit_stmt(&mut self, s: &'a Stmt) {
         match s.value {
             SDecl(ref names, ref exprs) => {
+                // allocate stack slots for locals
                 let mut it = exprs.iter();
                 for name in names {
                     let id = self.cur_block().get_local(name).unwrap();
-                    let slot = self.get_slot(*id);
+                    let slot = self.alloc_slots(1);
+                    self.alloc.insert(*id, slot);
+
+                    println!(" {} -> {}", name, slot);
 
                     match it.next() {
                         Some(e) => {
@@ -483,7 +487,7 @@ impl <'a> Visitor<'a> for Emitter<'a> {
                 // move temps to their targets
                 for i in 0..tmpcount {
                     let target = &vars[i];
-                    self.emit_assign(target, |_, _| i as u8);
+                    self.emit_assign(target, |_, _| (tmpstart + i) as u8);
                 }
 
                 self.dealloc_slots(tmpcount);
@@ -509,13 +513,13 @@ impl <'a> Visitor<'a> for Emitter<'a> {
 
         // allocate stack slots for all locals in the block
         let oldstack = self.cur_func().stacksize;
-        let mut stacksz = self.alloc_slots(b.localmap.len());
+        /*let mut stacksz = self.alloc_slots(b.localmap.len());
         for entry in &b.localmap {
             let (ref name, id) = entry;
             self.alloc.insert(*id, stacksz);
-            println!("{} ({}) => {}", id, name, stacksz);
+            println!("{} => {}", name, stacksz);
             stacksz += 1;
-        }
+        }*/
 
         walk_block_ref(b, self);
 
@@ -570,14 +574,25 @@ pub fn emit_func(f: &Function, source_name: &str) -> EmitResult {
 mod tests {
     use super::*;
     use compiler::parse_and_resolve;
-    use program::FnData;
+    use opcode::*;
 
-    fn test(code: &str) -> FnData {
-        emit_func(&parse_and_resolve(code).unwrap(), "<test>").unwrap()
+    use std::fmt::Debug;
+
+    fn test_simple<T: AsRef<[Opcode]> + Debug>(code: &str, ops: T) {
+        let opvec = emit_func(&parse_and_resolve(code).unwrap(), "<test>").unwrap().opcodes;
+
+        assert_eq!(opvec, ops.as_ref());
     }
 
     #[test]
     fn tdd() {
-        test("local i");
+        test_simple("local i, j i, j = j, i", vec![
+            LOADNIL(0,0),
+            LOADNIL(1,0),
+            MOV(2,1),
+            MOV(1,0),
+            MOV(0,2),
+            RETURN(0,1),
+        ]);
     }
 }
