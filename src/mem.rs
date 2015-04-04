@@ -53,7 +53,7 @@ macro_rules! gc_objects {
 
         #[cfg(not(test))]
         mod gctype {
-            #[derive(Debug, Copy)]
+            #[derive(Copy, Clone, Debug)]
             pub enum GcType {
                 $($name,)+
             }
@@ -61,7 +61,7 @@ macro_rules! gc_objects {
 
         #[cfg(test)]
         mod gctype {
-            #[derive(Debug, Copy)]
+            #[derive(Copy, Clone, Debug)]
             pub enum GcType {
                 $($name,)+
                 $($dbg,)*

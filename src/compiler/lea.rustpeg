@@ -2,7 +2,6 @@
 //!
 //! rust-peg generates a parser from this definition at compile time
 
-use std::num::from_str_radix;
 use std::mem;
 
 use compiler::span::{Span, Spanned, mkspanned};
@@ -41,7 +40,7 @@ int_dec -> i64
 
 int_hex -> i64
     = minus:"-"? "0x" hex:hexstr {
-        let num = from_str_radix(hex, 16).unwrap();
+        let num = i64::from_str_radix(hex, 16).unwrap();
         match minus {
             None => num,
             Some(_) => -num,
@@ -50,7 +49,7 @@ int_hex -> i64
 
 int_oct -> i64
     = minus:"-"? "0o" oct:octstr {
-        let num = from_str_radix(oct, 8).unwrap();
+        let num = i64::from_str_radix(oct, 8).unwrap();
         match minus {
             None => num,
             Some(_) => -num,
@@ -93,7 +92,7 @@ esc_seq -> char
     / "\\\n" { '\n' }   // "\" at the end of a line continues the string and embeds a "\n"
     / "\\x" digits:hexdigit{2} {
         let string: String = digits.into_iter().collect();
-        let i: u8 = from_str_radix(string.as_ref(), 16).unwrap();
+        let i = u8::from_str_radix(string.as_ref(), 16).unwrap();
 
         i as char
     }

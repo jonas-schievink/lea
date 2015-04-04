@@ -1,6 +1,6 @@
 //! The Lea compiler command line frontend
 
-#![feature(libc, convert, lea)]
+#![feature(libc, lea)]
 
 extern crate lea;
 extern crate term;

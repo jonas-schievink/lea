@@ -27,7 +27,7 @@ pub enum UpvalDesc {
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct FnData {
     /// Size of the variable stack. This is also used as the next slot allocated for a value.
-    pub stacksize: usize,
+    pub stacksize: u8,
     pub params: usize,
     pub varargs: bool,
     pub opcodes: Vec<Opcode>,

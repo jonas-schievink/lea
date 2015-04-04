@@ -12,7 +12,7 @@ use super::expr_parser::ExprParser;
 
 use term::Terminal;
 
-use std::error::FromError;
+use std::convert::From;
 use std::io::{self, Write};
 
 /// Custom error type adding a dummy span and providing a `format` method.
@@ -31,8 +31,8 @@ impl ParseError {
     }
 }
 
-impl FromError<parse::ParseError> for ParseError {
-    fn from_error(err: parse::ParseError) -> ParseError {
+impl From<parse::ParseError> for ParseError {
+    fn from(err: parse::ParseError) -> ParseError {
         ParseError {
             span: Span::new(err.offset, err.offset),
             err: err,

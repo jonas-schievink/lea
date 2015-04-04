@@ -34,8 +34,8 @@ pub enum Opcode {
     LOADNIL(u8, u8),
     /// > R[A], R[A+1], ..., R[A+B] := C
     ///
-    /// Assigns a boolean to B+1 registers from `R[A]` to `R[A+B]`. If C is 0, assign `false` to
-    /// the registers, otherwise assign `true`.
+    /// Assigns a boolean to B+1 registers from `R[A]` to `R[A+B]`. If C is `false`, assign `false`
+    /// to the registers, otherwise assign `true`.
     LOADBOOL(u8, u8, bool),
     /// > R[A] := closure of PROTO[Xu]
     ///
@@ -66,7 +66,7 @@ pub enum Opcode {
     RETURN(u8, u8),
     /// > R[A], R[A+1], ..., R[A+B-1] := varargs
     ///
-    /// Stores B+1 arguments passed as variable arguments (in `...`) in `R[A]` through `R[A+B-1]`.
+    /// Stores B arguments passed as variable arguments (in `...`) in `R[A]` through `R[A+B-1]`.
     /// If B is 0, stores all varargs in `R[A]`, `R[A+1]`, ... (expanding the stack if necessary).
     VARARGS(u8, u8),
     /// > PC += Ls

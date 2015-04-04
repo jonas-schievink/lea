@@ -8,7 +8,7 @@ use super::ast::*;
 use super::span::*;
 use op::*;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct ExprParser;
 
 /// Builds an `EBinOp` node and attaches the correct span. This requires that `lhs` and `rhs` are
