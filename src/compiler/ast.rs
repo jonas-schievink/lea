@@ -256,8 +256,9 @@ pub enum _Expr {
     /// These expression are turned into EBinOp's right after the PEG-generated parser is run, so
     /// following code only has to deal with tree-like expressions.
     ERawOp(Box<Expr>, Vec<(BinOp, Expr)>),
-
+    /// Variable used as expression
     EVar(Variable),
+    /// Calls a function, might return multiple results
     ECall(Call),
 
     /// Instantiates a function/closure
@@ -269,6 +270,16 @@ pub enum _Expr {
     EArray(Vec<Expr>),
     /// "..."; expands to var args. only valid if used inside varargs functions
     EVarArgs,
+}
+
+impl _Expr {
+    /// Returns true if this expression might evaluate to multiple results.
+    pub fn is_multi_result(&self) -> bool {
+        match *self {
+            ECall(_) | EVarArgs => true,
+            _ => false,
+        }
+    }
 }
 
 pub type Expr = Spanned<_Expr>;

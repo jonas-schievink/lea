@@ -11,6 +11,7 @@ use limits;
 use std::{u8, u16};
 use std::collections::HashMap;
 use std::cmp;
+use std::mem;
 
 
 #[derive(Clone, Debug)]
@@ -113,7 +114,7 @@ impl <'a> Emitter<'a> {
             self.err("constant limit reached", Some(format!("limit: {}", u16::MAX as u64 + 1)));
             u16::MAX
         } else {
-            println!(":CONST {} = {:?}", id, lit);
+            println!(" CONST {} = {:?}", id, lit);
             self.cur_func().consts.push(lit.clone());
             id as u16
         }
@@ -139,29 +140,41 @@ impl <'a> Emitter<'a> {
         }
     }
 
-    /// Emits an opcode into the current function and returns its "address" or index
-    fn emit(&mut self, op: Opcode) -> usize {
-        println!("=> {:?}", op);
+    /// Emits an opcode into the current function. Note that this might not add the opcode, but
+    /// instead modify the last opcode emitted.
+    fn emit(&mut self, op: Opcode) {
+        println!("{:?}", op);
 
-        let idx = self.cur_func().opcodes.len();
-        if idx as u64 >= limits::OP_LIMIT {
+        if self.cur_func().opcodes.len() as u64 >= limits::OP_LIMIT {
             self.err("opcode limit reached", Some(format!("limit: {}", limits::OP_LIMIT)));
         } else {
+            /// Applies various simple peephole optimizations. Returns the opcode to replace `last`
+            /// with, or `None` if `new` should be added to the opcode list.
+            fn peephole_opt(last: Opcode, new: Opcode) -> Option<Opcode> {
+                match last {
+                    LOADNIL(a, b) => if let LOADNIL(c, d) = new {
+                        if c == a + b + 1 {
+                            Some(LOADNIL(a, b + d + 1))
+                        } else {
+                            None
+                        }
+                    } else { None },
+                    _ => None,
+                }
+            }
+
+            if self.cur_func().opcodes.len() != 0 {
+                let len = self.cur_func().opcodes.len();
+                let lastref = &mut self.cur_func().opcodes[len - 1];
+                let last = *lastref;
+
+                if let Some(new) = peephole_opt(last, op) {
+                    mem::replace(lastref, new);
+                    return;
+                }
+            }
+
             self.cur_func().opcodes.push(op);
-        }
-
-        idx
-    }
-
-    fn emit_nil(&mut self, slot: u8) -> u8 {
-        self.emit(LOADNIL(slot, 0));
-        slot
-    }
-
-    fn emit_expr_or_nil(&mut self, e: Option<&'a Expr>, hint_slot: u8) -> u8 {
-        match e {
-            Some(ref e) => self.emit_expr(e, hint_slot),
-            None => self.emit_nil(hint_slot),
         }
     }
 
@@ -377,37 +390,7 @@ impl <'a> Visitor<'a> for Emitter<'a> {
                 }
             }
             SAssign(ref vars, ref vals) => {
-                // i, j = a, b, c
-                // a -> tmp0
-                // b -> j
-                // tmp0 -> i
-                // c -> /dev/null
-                //
-                // i, j, k = a
-                // a -> i
-                // nil -> j
-                // nil -> k
-                //
-                // i, j, k = a, b
-                // a -> tmp0
-                // b -> j
-                // nil -> k
-                // tmp0 -> i
-                //
-                // i, j, k = a, b, c
-                // a -> tmp0
-                // b -> tmp1
-                // c -> k
-                // tmp0 -> i
-                // tmp1 -> j
-                //
-                // i = a, b
-                // a -> i
-                // b -> /dev/null
-                //
-                // ======
-                //
-                // Need `min(varcount-1, valcount-1)` temps (= `tmpcount`). Eval first `tmpcount`
+                // We need `min(varcount-1, valcount-1)` temps (= `tmpcount`). Eval first `tmpcount`
                 // expressions on the right-hand side into the temps (these all must exist since
                 // `tmpcount` < `valcount`).
                 //
@@ -463,7 +446,7 @@ impl <'a> Visitor<'a> for Emitter<'a> {
 
                     let last_value = tmpcount == vals.len() - 1;
                     let vars_left = varcount - tmpcount;
-                    if last_value && vars_left > 1 {
+                    if last_value && vars_left > 1 && val.is_multi_result() {
                         // might assign multiple results
 
                         // TODO might be able to optimize the case when locals are the target
@@ -480,7 +463,15 @@ impl <'a> Visitor<'a> for Emitter<'a> {
                     } else {
                         // single result, simple assignment. `hint` is allocated by emit_assign.
                         // excessive results will be ignored (`emit_expr` ignores them).
+
                         self.emit_assign(target, |e, hint| e.emit_expr(val, hint));
+
+                        for i in 1..vars_left {
+                            self.emit_assign(&vars[tmpcount+i], |e, hint| {
+                                e.emit(LOADNIL(hint, 0));
+                                hint
+                            });
+                        }
                     }
                 }
 
@@ -509,17 +500,8 @@ impl <'a> Visitor<'a> for Emitter<'a> {
 
     fn visit_block(&mut self, b: &'a Block) {
         let old_block = self.block;
-        self.block = Some(b);
-
-        // allocate stack slots for all locals in the block
         let oldstack = self.cur_func().stacksize;
-        /*let mut stacksz = self.alloc_slots(b.localmap.len());
-        for entry in &b.localmap {
-            let (ref name, id) = entry;
-            self.alloc.insert(*id, stacksz);
-            println!("{} => {}", name, stacksz);
-            stacksz += 1;
-        }*/
+        self.block = Some(b);
 
         walk_block_ref(b, self);
 
@@ -578,6 +560,7 @@ mod tests {
 
     use std::fmt::Debug;
 
+    /// A simple test that compiles a main function and compares the emitted opcodes
     fn test_simple<T: AsRef<[Opcode]> + Debug>(code: &str, ops: T) {
         let opvec = emit_func(&parse_and_resolve(code).unwrap(), "<test>").unwrap().opcodes;
 
@@ -585,14 +568,39 @@ mod tests {
     }
 
     #[test]
-    fn tdd() {
-        test_simple("local i, j i, j = j, i", vec![
-            LOADNIL(0,0),
-            LOADNIL(1,0),
+    fn assign_simple() {
+        test_simple("local i, j    i, j = j, i, 0", vec![
+            LOADNIL(0,1),
             MOV(2,1),
             MOV(1,0),
             MOV(0,2),
+            LOADK(2,0), 	// evaluates `0`
+            RETURN(0,1),
+        ]);
+        test_simple("local i, j    i, j = i, j", vec![
+            LOADNIL(0,1),
+            MOV(2,0),
+            MOV(0,2),
+            RETURN(0,1),
+        ]);
+        test_simple("local i = 0, 1, 2", vec![
+            LOADK(0,0),
+            LOADK(1,1),
+            LOADK(1,2),
+            RETURN(0,1),
+        ]);
+        test_simple("local i, j    i, j = j", vec![
+            LOADNIL(0,1),
+            MOV(0,1),
+            LOADNIL(1,0),
             RETURN(0,1),
         ]);
     }
+
+    /*#[test]
+    fn assign_multi() {
+        test_simple("local i, j   i, j = ...", vec![
+
+        ]);
+    }*/
 }
