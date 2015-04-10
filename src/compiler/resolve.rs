@@ -322,10 +322,10 @@ j = i
         let mut f = parse_main(r#"
 local a
 local function f()
-    f = nil     // upvalue
-    local f = f // both
+    f = nil     -- upvalue
+    local f = f -- both
 
-    local function g() f = a end    // chained upvalue + normal upvalue
+    local function g() f = a end    -- chained upvalue + normal upvalue
 end
 "#).unwrap();
         f = resolve_func(f);

@@ -218,7 +218,7 @@ pub enum _Stmt {
     SFor {
         var: String,    // named local
         start: Expr,
-        step: Expr,
+        step: Option<Expr>,
         end: Expr,
         body: Block,
     },
@@ -249,6 +249,7 @@ pub enum _Expr {
     ELit(Literal),
     EBinOp(Box<Expr>, BinOp, Box<Expr>),
     EUnOp(UnOp, Box<Expr>),
+    EBraced(Box<Expr>),
 
     /// Raw binary expression returned from generated parser. Operator precedences are not yet
     /// applied, since the generated parser doesn't know about them.

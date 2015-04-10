@@ -128,15 +128,11 @@ mod tests {
 
         assert_eq!(literal("''").unwrap().value, TStr("".to_string()));
         assert_eq!(literal("'\\n\\r'").unwrap().value, TStr("\n\r".to_string()));
-        assert_eq!(literal("'\\z   \n'").unwrap().value, TStr("".to_string()));
+        assert_eq!(literal("'\\z   \n\"'").unwrap().value, TStr("\"".to_string()));
 
         assert!(literal("\"\n\"").is_err());
+        assert!(literal("\"\\q\"").is_err());       // invalid escape seq
 
-        // invalid escape seq
-        assert!(literal("\"\\q\"").is_err());
-
-        // TODO implement long strings
-        /*
         assert_eq!(literal("[[test]]").unwrap().value, TStr("test".to_string()));
         assert_eq!(literal("[=[test]=]").unwrap().value, TStr("test".to_string()));
         assert_eq!(literal("[======[test]======]").unwrap().value, TStr("test".to_string()));
@@ -147,7 +143,6 @@ mod tests {
             BinOp::Add,
             Box::new(Spanned::default(ELit(TStr("bla".to_string())))),
         ));
-        */
     }
 
     #[test]
@@ -195,31 +190,31 @@ mod tests {
 
         assert_eq!(expression("-(5)").unwrap().value, EUnOp(
             UnOp::Negate,
-            Box::new(Spanned::default(ELit(TInt(5))))
+            Box::new(Spanned::default(EBraced(Box::new(Spanned::default(ELit(TInt(5)))))))
         ));
         assert_eq!(expression("-(5+1)").unwrap().value, EUnOp(
             UnOp::Negate,
-            Box::new(Spanned::default(EBinOp(
+            Box::new(Spanned::default(EBraced(Box::new(Spanned::default(EBinOp(
                 Box::new(Spanned::default(ELit(TInt(5)))),
                 BinOp::Add,
                 Box::new(Spanned::default(ELit(TInt(1))))
-            )))
+            ))))))
         ));
         assert_eq!(expression("(1+2)*3").unwrap().value, EBinOp(
-            Box::new(Spanned::default(EBinOp(
+            Box::new(Spanned::default(EBraced(Box::new(Spanned::default(EBinOp(
                 Box::new(Spanned::default(ELit(TInt(1)))),
                 BinOp::Add,
                 Box::new(Spanned::default(ELit(TInt(2))))
-            ))),
+            )))))),
             BinOp::Mul,
             Box::new(Spanned::default(ELit(TInt(3))))
         ));
         assert_eq!(expression("-!~(#5)").unwrap().value, EUnOp(
             UnOp::Negate, Box::new(Spanned::default(EUnOp(
                 UnOp::LNot, Box::new(Spanned::default(EUnOp(
-                    UnOp::BNot, Box::new(Spanned::default(EUnOp(
+                    UnOp::BNot, Box::new(Spanned::default(EBraced(Box::new(Spanned::default(EUnOp(
                         UnOp::Len, Box::new(Spanned::default(ELit(TInt(5))))
-                    )))
+                    ))))))
                 )))
             )))
         ));
@@ -382,13 +377,13 @@ mod tests {
         )));
 
         assert_eq!(expression("(function()end)()").unwrap().value, ECall(SimpleCall(
-            Box::new(Spanned::default(EFunc(Function {
+            Box::new(Spanned::default(EBraced(Box::new(Spanned::default(EFunc(Function {
                 params: vec![],
                 locals: vec![],
                 upvalues: vec![],
                 varargs: false,
                 body: Block::new(vec![], Default::default()),
-            }))),
+            })))))),
             CallArgs::Normal(vec![]),
         )));
 
@@ -499,13 +494,22 @@ mod tests {
                 UnOp::Len,
                 Box::new(Spanned::default(EVar(Spanned::default(VNamed("t".to_string())))))
             )),
-            step: Spanned::default(ELit(TInt(1))),
+            step: None,
             body: Block::new(vec![
                 Spanned::default(SDo(Block::new(vec![], Default::default()))),
                 Spanned::default(SBreak),
             ], Default::default()),
         });
-        assert_eq!(statement("for \n\t_\n=\n2,3,4\ndo\nend"), statement("for _=2,3,4 do end"));
+        assert_eq!(statement("for i = 1,2,3 do do end break end").unwrap().value, SFor {
+            var: "i".to_string(),
+            start: Spanned::default(ELit(TInt(1))),
+            end: Spanned::default(ELit(TInt(2))),
+            step: Some(Spanned::default(ELit(TInt(3)))),
+            body: Block::new(vec![
+                Spanned::default(SDo(Block::new(vec![], Default::default()))),
+                Spanned::default(SBreak),
+            ], Default::default()),
+        });
 
         assert_eq!(statement("repeat break until 1").unwrap().value, SRepeat {
             abort_on: Spanned::default(ELit(TInt(1))),
@@ -552,25 +556,19 @@ mod tests {
 
     #[test]
     fn comments() {
-        assert_eq!(statement("break //").unwrap().value, SBreak);
-        assert_eq!(statement("break // ").unwrap().value, SBreak);
-        assert_eq!(statement("break //////").unwrap().value, SBreak);
-        assert_eq!(statement("break // test\\\\aaa").unwrap().value, SBreak);
+        assert_eq!(statement("break -- test\\\\aaa").unwrap().value, SBreak);
         assert_eq!(statement("break --").unwrap().value, SBreak);
         assert_eq!(statement("break ------asdsa\n").unwrap().value, SBreak);
-        assert_eq!(statement("break /* test */").unwrap().value, SBreak);
-        assert_eq!(statement("break /**///").unwrap().value, SBreak);
-        assert_eq!(statement("do break /*aeurebv// */break end").unwrap().value, SDo(
-            Block::new(vec![
-                Spanned::default(SBreak), Spanned::default(SBreak),
-            ], Default::default())
-        ));
+
+        assert_eq!(statement("break --[[\ntest ]]").unwrap().value, SBreak);
+        assert_eq!(statement("break --[[  \r\n\t  ]]").unwrap().value, SBreak);
+        assert_eq!(statement("break --[===[\n--[===[]]]]-- ]===]").unwrap().value, SBreak);
     }
 
     #[test]
     fn parse_block() {
         assert_eq!(block(r#"
-    // Test program
+    -- Test program
     t = 1
     local r, s = 4, 2, 1
     function f(g, ...) do end end

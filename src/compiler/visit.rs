@@ -179,7 +179,7 @@ pub fn walk_stmt<V: Transform>(mut stmt: Stmt, visitor: &mut V) -> Stmt {
         },
         SFor {mut start, mut step, mut end, mut body, var} => {
             start = visitor.visit_expr(start);
-            step = visitor.visit_expr(step);
+            step = step.map(|s| visitor.visit_expr(s));
             end = visitor.visit_expr(end);
             body = visitor.visit_block(body);
             SFor {start: start, step: step, end: end, body: body, var: var}
@@ -255,7 +255,7 @@ pub fn walk_stmt_ref<'a, V: Visitor<'a>>(stmt: &'a Stmt, visitor: &mut V) {
         },
         SFor {ref start, ref step, ref end, ref body, ..} => {
             visitor.visit_expr(start);
-            visitor.visit_expr(step);
+            if let Some(ref stepexpr) = *step { visitor.visit_expr(stepexpr); }
             visitor.visit_expr(end);
             visitor.visit_block(body);
         },
@@ -282,6 +282,10 @@ pub fn walk_expr<V: Transform>(mut expr: Expr, visitor: &mut V) -> Expr {
             rhs = Box::new(visitor.visit_expr(*rhs));
             EBinOp(lhs, op, rhs)
         },
+        EBraced(mut e) => {
+            e = Box::new(visitor.visit_expr(*e));
+            EBraced(e)
+        }
         EUnOp(op, mut operand) => {
             operand = Box::new(visitor.visit_expr(*operand));
             EUnOp(op, operand)
@@ -332,6 +336,9 @@ pub fn walk_expr_ref<'a, V: Visitor<'a>>(expr: &'a Expr, visitor: &mut V) {
         },
         EUnOp(_, ref operand) => {
             visitor.visit_expr(&**operand);
+        },
+        EBraced(ref e) => {
+            visitor.visit_expr(&**e);
         },
         EVar(ref var) => {
             visitor.visit_var(var);

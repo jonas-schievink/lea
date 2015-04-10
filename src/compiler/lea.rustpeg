@@ -8,147 +8,6 @@ use compiler::span::{Span, Spanned, mkspanned};
 use compiler::ast::*;
 use op::*;
 
-comment -> ()
-    = "/*" ( !"*/" .)* "*/"
-    / ( "//" / "--" ) [^\n]*
-
-real_whitespace -> ()
-    = " " / "\t" / "\n" / "\r"
-
-whitespace -> ()
-    = real_whitespace
-    / comment
-
-#[pub]
-ident -> Spanned<&'input str>
-    = [_a-zA-Z][_a-zA-Z0-9]* { mkspanned(match_str, start_pos, pos) }
-
-decstr -> &'input str
-    = [0-9]+ { match_str }
-
-hexdigit -> char
-    = [0-9a-fA-F] { match_str.char_at(0) }
-
-hexstr -> &'input str
-    = hexdigit+ { match_str }
-
-octstr -> &'input str
-    = [0-7]+ { match_str }
-
-int_dec -> i64
-    = "-"? [0-9]+ { match_str.parse().unwrap() }
-
-int_hex -> i64
-    = minus:"-"? "0x" hex:hexstr {
-        let num = i64::from_str_radix(hex, 16).unwrap();
-        match minus {
-            None => num,
-            Some(_) => -num,
-        }
-    }
-
-int_oct -> i64
-    = minus:"-"? "0o" oct:octstr {
-        let num = i64::from_str_radix(oct, 8).unwrap();
-        match minus {
-            None => num,
-            Some(_) => -num,
-        }
-    }
-
-integer -> i64
-    = int_hex / int_oct / int_dec
-
-/// C-like float (only one part before/after the decimal point is required)
-cfloat -> &'input str
-    = [0-9]* "." decstr { match_str }
-    / decstr "." ! "."  { match_str }   // no second "." allowed, since that's the concat operator
-
-/// Float in exponential notation
-efloat -> &'input str
-    = ( cfloat / decstr ) "e" [+-]? decstr { match_str }
-
-float -> f64
-    = "-"? ( efloat / cfloat ) { match_str.parse().unwrap() }
-
-/// Matches the decimal notation of a single byte: 0-255
-dec_byte -> u8
-    = [01] [0-9]{,2} { match_str.parse().unwrap() }
-    / "2" [0-4] [0-9] { match_str.parse().unwrap() }
-    / "25" [0-5] { match_str.parse().unwrap() }
-    / [0-9]{1,2} { match_str.parse().unwrap() }
-
-esc_seq -> char
-    = "\\a" { '\x07' }  // bell
-    / "\\b" { '\x08' }  // backspace
-    / "\\f" { '\x0c' }  // form feed
-    / "\\n" { '\n' }
-    / "\\r" { '\r' }
-    / "\\t" { '\t' }
-    / "\\v" { '\x0b' }  // vertical tab
-    / "\\\\" { '\\' }
-    / "\\\"" { '\"' }
-    / "\\'" { '\'' }
-    / "\\\n" { '\n' }   // "\" at the end of a line continues the string and embeds a "\n"
-    / "\\x" digits:hexdigit{2} {
-        let string: String = digits.into_iter().collect();
-        let i = u8::from_str_radix(string.as_ref(), 16).unwrap();
-
-        i as char
-    }
-    / "\\" val:dec_byte { val as char }
-    / "\\0" { 0 as char }
-
-/// \z will skip all whitespace that follows it. Useful for breaking string literals into multiple
-/// lines: "bla\z
-///         bla"
-blank_esc -> ()
-    = "\\z" real_whitespace*
-
-_double_quote_content -> char
-    = esc_seq
-    / blank_esc _double_quote_content
-    / [^\\"\n]  { match_str.char_at(0) }    //" to make this work with simple highlighters
-
-_single_quote_content -> char
-    = esc_seq
-    / blank_esc _single_quote_content
-    / [^\\'\n]  { match_str.char_at(0) }
-
-#[pub]
-string -> String
-    = '"' chars:_double_quote_content* blank_esc? '"' { chars.into_iter().collect() }
-    / '\'' chars:_single_quote_content* blank_esc? '\'' { chars.into_iter().collect() }
-
-boolean -> bool
-    = "true" { true }
-    / "false" { false }
-
-_literal -> Literal
-    = f:float   { TFloat(f) }
-    / i:integer { TInt(i) }
-    / s:string  { TStr(s) }
-    / b:boolean { TBool(b) }
-    / "nil"     { TNil }
-
-#[pub]
-literal -> Spanned<Literal>
-    = l:_literal { mkspanned(l, start_pos, pos) }
-
-binop -> BinOp
-    = "==" {BinOp::Eq} / "!=" {BinOp::NEq} / "~=" {BinOp::NEqLua} / ">=" {BinOp::GEq}
-    / "<=" {BinOp::LEq} / ">>" {BinOp::ShiftR} / "<<" {BinOp::ShiftL} / "<" {BinOp::Less}
-    / ">" {BinOp::Greater} / "&&" {BinOp::LAnd} / "and" {BinOp::LAndLua} / "||" {BinOp::LOr}
-    / "or" {BinOp::LOrLua} / "&" {BinOp::BAnd} / "~" {BinOp::BXor} / "|" {BinOp::BOr}
-    / "+" {BinOp::Add} / "-" {BinOp::Sub} / "*" {BinOp::Mul} / "/" {BinOp::Div} / "%" {BinOp::Mod}
-    / "^" {BinOp::Pow} / ".." {BinOp::Concat}
-
-unop -> UnOp
-    = "-" {UnOp::Negate} / "!" {UnOp::LNot} / "not" {UnOp::LNotLua} / "~" {UnOp::BNot}
-    / "#" {UnOp::Len}
-
-listsep -> ()
-    = whitespace* "," whitespace*
 
 /// Returns the expression with which something is indexed and a boolean indicating if dot-notation
 /// was used.
@@ -178,8 +37,7 @@ variable -> Variable
     }
     / i:ident { mkspanned(VNamed(i.value.to_string()), start_pos, pos) }
 
-/// Returns the expressions to pass as arguments, and a bool indicating if the "special" form was
-/// used (ie. `StringCall` or `TableCall`)
+/// Returns the expressions to pass as arguments to an invoked function
 callargs -> CallArgs
     = whitespace* "(" args:expression ** listsep whitespace* ")" { CallArgs::Normal(args) }
     / whitespace* strn:string { CallArgs::String(strn) }
@@ -190,7 +48,7 @@ methodname -> Spanned<&'input str>
 
 callee -> Expr
     = v:variable { mkspanned(EVar(v), start_pos, pos) }
-    / "(" e:expression ")" { e }
+    / "(" e:expression ")" { mkspanned(EBraced(Box::new(e)), start_pos, pos) }
 
 call -> Call
     = callee:callee name:methodname? args:callargs+ {
@@ -213,7 +71,7 @@ call -> Call
 
 atom_inner -> Expr
     = c:call { mkspanned(ECall(c), start_pos, pos) }
-    / "(" expr:expression ")" { mkspanned(expr.value, start_pos, pos) }
+    / "(" expr:expression ")" { mkspanned(EBraced(Box::new(expr)), start_pos, pos) }
     / "..." { mkspanned(EVarArgs, start_pos, pos) }
     / lit:literal { Spanned::new(lit.span, ELit(lit.value)) }
     / op:unop a:atom { mkspanned(EUnOp(op, Box::new(a)), start_pos, pos) }
@@ -301,16 +159,6 @@ stmt_if -> Stmt
         }, start_pos, pos)
     }
 
-stmt_while -> Stmt
-    = "while" cond:expression "do" whitespace+ body:block "end" {
-        mkspanned(SWhile { cond: cond, body: body }, start_pos, pos)
-    }
-
-stmt_repeat -> Stmt
-    = "repeat" whitespace+ body:block "until" cond:expression {
-        mkspanned(SRepeat { abort_on: cond, body: body }, start_pos, pos)
-    }
-
 // List of comma-separated identifiers with at least one element
 identlist -> Vec<String>
     = ids:ident ++ listsep {
@@ -330,29 +178,16 @@ eidentlist -> Vec<String>
 varlist -> Vec<Variable>
     = vars:variable ++ listsep { vars }
 
-_forexp -> Expr
+for_step -> Expr
     = "," expression
 
 stmt_for -> Stmt
-    = "for" whitespace+ var:ident whitespace* "=" start:expression "," end:expression step:_forexp? "do" whitespace+ body:block "end" {
-        let stepspan = end.span;
+    = "for" whitespace+ var:ident whitespace* "=" start:expression "," end:expression step:for_step? "do" whitespace+ body:block "end" {
         mkspanned(SFor {
             var: var.value.to_string(),
             start: start,
+            step: step,
             end: end,
-            step: match step {
-                None => Spanned::new(stepspan, ELit(TInt(1))),
-                Some(e) => e,
-            },
-            body: body,
-        }, start_pos, pos)
-    }
-
-stmt_for_in -> Stmt
-    = "for" whitespace+ vars:identlist whitespace+ "in" it:expression_list "do" whitespace+ body:block "end" {
-        mkspanned(SForIn {
-            vars: vars,
-            iter: it,
             body: body,
         }, start_pos, pos)
     }
@@ -374,27 +209,31 @@ funcbody -> Function
         Function::new(pars, varargs, body)
     }
 
-stmt_func -> Stmt
-    = "function" whitespace+ var:variable method:methodname? f:funcbody {
+stmt_inner -> Stmt
+    = stmt_if
+    / "while" cond:expression "do" whitespace+ body:block "end" {
+        mkspanned(SWhile { cond: cond, body: body }, start_pos, pos)
+    }
+    / "repeat" whitespace+ body:block "until" cond:expression {
+        mkspanned(SRepeat { abort_on: cond, body: body }, start_pos, pos)
+    }
+    / "for" whitespace+ vars:identlist whitespace+ "in" it:expression_list "do" whitespace+ body:block "end" {
+        mkspanned(SForIn {
+            vars: vars,
+            iter: it,
+            body: body,
+        }, start_pos, pos)
+    }
+    / stmt_for
+    / "function" whitespace+ var:variable method:methodname? f:funcbody {
         mkspanned(match method {
             None => SFunc(var, f),
             Some(method) => SMethod(var, method.value.to_string(), f),
         }, start_pos, pos)
     }
-
-stmt_lfunc -> Stmt
-    = "local" whitespace+ "function" whitespace+ name:ident f:funcbody {
+    / "local" whitespace+ "function" whitespace+ name:ident f:funcbody {
         mkspanned(SLFunc(name.value.to_string(), f), start_pos, pos)
     }
-
-stmt_inner -> Stmt
-    = stmt_if
-    / stmt_while
-    / stmt_repeat
-    / stmt_for_in
-    / stmt_for
-    / stmt_func
-    / stmt_lfunc
     / "do" whitespace+ b:block "end" { mkspanned(SDo(b), start_pos, pos) }
     / "break" { mkspanned(SBreak, start_pos, pos) }
     / "return" vals:expression_list { mkspanned(SReturn(vals), start_pos, pos) }
@@ -415,3 +254,150 @@ statement -> Stmt
 #[pub]
 block -> Block
     = s:statement* { Block::new(s, Span::new(start_pos, pos)) }
+
+
+/// Lexical elements
+
+
+/// Parses Lua's "long bracket" and returns the content. A long bracket is opened with '[',
+/// followed by any number of '=' (including 0), followed by '[' and is closed with ']', followed
+/// by the same number of '=' used in the opening bracket, followed by ']'.
+longbracket -> &'input str
+    = "[" open:"="* "[" ( !("]" close:"="* "]" {?
+        if open.len() == close.len() { Ok(()) } else { Err("") }
+    }) . )* "]" "="* "]" { &match_str[open.len()+2 .. match_str.len() - open.len() - 2] }
+
+comment -> ()
+    = "--" longbracket {()}
+    / "--" [^\n]*
+
+real_whitespace -> ()
+    = " " / "\t" / "\n" / "\r"
+
+whitespace -> ()
+    = real_whitespace / comment
+
+#[pub]
+ident -> Spanned<&'input str>
+    = [_a-zA-Z][_a-zA-Z0-9]* { mkspanned(match_str, start_pos, pos) }
+
+decstr -> &'input str
+    = [0-9]+ { match_str }
+
+hexdigit -> char
+    = [0-9a-fA-F] { match_str.char_at(0) }
+
+hexstr -> &'input str
+    = hexdigit+ { match_str }
+
+octstr -> &'input str
+    = [0-7]+ { match_str }
+
+// integer without preceding sign
+uinteger -> i64
+    = "0x" hex:hexstr { i64::from_str_radix(hex, 16).unwrap() }
+    / "0o" oct:octstr { i64::from_str_radix(oct, 8).unwrap() }
+    / [0-9]+ { match_str.parse().unwrap() }
+
+integer -> i64
+    = minus:"-"? i:uinteger {
+        match minus {
+            None => i,
+            Some(_) => -i,
+        }
+    }
+
+/// C-like float (only one part before/after the decimal point is required)
+cfloat -> &'input str
+    = [0-9]* "." decstr { match_str }
+    / decstr "." ! "."  { match_str }   // no second "." allowed, since that's the concat operator
+
+/// Float in exponential notation
+efloat -> &'input str
+    = ( cfloat / decstr ) "e" [+-]? decstr { match_str }
+
+float -> f64
+    = "-"? ( efloat / cfloat ) { match_str.parse().unwrap() }
+
+/// Matches the decimal notation of a single byte: 0-255
+/// (leading '0's are ignored)
+dec_byte -> u8
+    = [0-9]{,3} {?
+        match match_str.parse() {
+            Ok(num) => Ok(num),
+            Err(_) => Err("decimal byte"),
+        }
+    }
+
+esc_seq -> char
+    = "\\a" { '\x07' }  // bell
+    / "\\b" { '\x08' }  // backspace
+    / "\\f" { '\x0c' }  // form feed
+    / "\\n" { '\n' }
+    / "\\r" { '\r' }
+    / "\\t" { '\t' }
+    / "\\v" { '\x0b' }  // vertical tab
+    / "\\\\" { '\\' }
+    / "\\\"" { '\"' }
+    / "\\'" { '\'' }
+    / "\\\n" { '\n' }   // '\' at the end of a line continues the string and embeds a "\n"
+    / "\\\r\n" { '\n' } // There's a bug in Windows where a newline is preceded by a "\r"
+    / "\\x" digits:hexdigit{2} {
+        let string: String = digits.into_iter().collect();
+        let i = u8::from_str_radix(string.as_ref(), 16).unwrap();
+
+        i as char
+    }
+    / "\\0" { 0 as char }
+    / "\\" val:dec_byte { val as char }
+
+/// \z will skip all whitespace that follows it. Useful for breaking string literals into multiple
+/// lines: "bla\z
+///         bla"
+blank_esc -> ()
+    = "\\z" real_whitespace*
+
+_double_quote_content -> char
+    = esc_seq
+    / blank_esc _double_quote_content
+    / [^\\"\n]  { match_str.char_at(0) }    //" to make this work with simple highlighters
+
+_single_quote_content -> char
+    = esc_seq
+    / blank_esc _single_quote_content
+    / [^\\'\n]  { match_str.char_at(0) }
+
+#[pub]
+string -> String
+    = '"' chars:_double_quote_content* blank_esc? '"' { chars.into_iter().collect() }
+    / '\'' chars:_single_quote_content* blank_esc? '\'' { chars.into_iter().collect() }
+    / content:longbracket { content.to_string() }
+
+boolean -> bool
+    = "true" { true } / "false" { false }
+
+_literal -> Literal
+    = f:float   { TFloat(f) }
+    / i:integer { TInt(i) }
+    / s:string  { TStr(s) }
+    / b:boolean { TBool(b) }
+    / "nil"     { TNil }
+
+#[pub]
+literal -> Spanned<Literal>
+    = l:_literal { mkspanned(l, start_pos, pos) }
+
+binop -> BinOp
+    = "==" {BinOp::Eq} / "!=" {BinOp::NEq} / "~=" {BinOp::NEqLua} / ">=" {BinOp::GEq}
+    / "<=" {BinOp::LEq} / ">>" {BinOp::ShiftR} / "<<" {BinOp::ShiftL} / "<" {BinOp::Less}
+    / ">" {BinOp::Greater} / "&&" {BinOp::LAnd} / "and" {BinOp::LAndLua} / "||" {BinOp::LOr}
+    / "or" {BinOp::LOrLua} / "&" {BinOp::BAnd} / "~" {BinOp::BXor} / "|" {BinOp::BOr}
+    / "+" {BinOp::Add} / "-" {BinOp::Sub} / "*" {BinOp::Mul} / "/" {BinOp::Div} / "%" {BinOp::Mod}
+    / "^" {BinOp::Pow} / ".." {BinOp::Concat}
+
+unop -> UnOp
+    = "-" {UnOp::Negate} / "!" {UnOp::LNot} / "not" {UnOp::LNotLua} / "~" {UnOp::BNot}
+    / "#" {UnOp::Len}
+
+listsep -> ()
+    = whitespace* "," whitespace*
