@@ -554,35 +554,35 @@ mod tests {
     use compiler::parse_and_resolve;
     use opcode::*;
 
-    use std::fmt::Debug;
-
     /// A simple test that compiles a main function and compares the emitted opcodes
-    fn test_simple<T: AsRef<[Opcode]> + Debug>(code: &str, ops: T) {
-        let opvec = emit_func(&parse_and_resolve(code).unwrap(), "<test>").unwrap().opcodes;
+    macro_rules! test {
+        ($code:expr => [ $($op:expr,)* ]) => {{
+            let opvec = emit_func(&parse_and_resolve($code).unwrap(), "<test>").unwrap().opcodes;
 
-        assert_eq!(opvec, ops.as_ref());
+            assert_eq!(opvec, vec![ $($op),* ]);
+        }}
     }
 
     #[test]
     fn assign_simple() {
-        test_simple("local i, j    i, j = j, i, 0", vec![
+        test!("local i, j    i, j = j, i, 0" => [
             LOADNIL(0,1),
             MOV(2,1),
             MOV(1,0),
             MOV(0,2),
             RETURN(0,1),
         ]);
-        test_simple("local i, j    i, j = i, j", vec![
+        test!("local i, j    i, j = i, j" => [
             LOADNIL(0,1),
             MOV(2,0),
             MOV(0,2),
             RETURN(0,1),
         ]);
-        test_simple("local i = 0, 1, 2", vec![
+        test!("local i = 0, 1, 2" => [
             LOADK(0,0),
             RETURN(0,1),
         ]);
-        test_simple("local i, j    i, j = j", vec![
+        test!("local i, j    i, j = j" => [
             LOADNIL(0,1),
             MOV(0,1),
             LOADNIL(1,0),
