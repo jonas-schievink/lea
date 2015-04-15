@@ -281,6 +281,23 @@ impl _Expr {
             _ => false,
         }
     }
+
+    /// Returns a boolean that indicates if this expression can have side effects (such as
+    /// function invocation, including metamethods, errors, etc.). This is true for most
+    /// expressions, but allows the emitter to ignore unused expressions that can't have side
+    /// effects.
+    pub fn has_side_effects(&self) -> bool {
+        match *self {
+            ELit(_) | EVarArgs => false,
+            EBinOp(ref lhs, _, ref rhs) => lhs.has_side_effects() || rhs.has_side_effects(),
+            EUnOp(_, ref e) | EBraced(ref e) => e.has_side_effects(),
+            EVar(ref var) => match **var {
+                VLocal(_) | VUpval(_) => false,
+                _ => true,  // might cause a table index, which can error
+            },
+            _ => true,
+        }
+    }
 }
 
 pub type Expr = Spanned<_Expr>;

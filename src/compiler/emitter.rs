@@ -4,6 +4,7 @@
 
 use compiler::ast::*;
 use compiler::visit::*;
+use compiler::span::Spanned;
 use opcode::*;
 use program::FnData;
 use limits;
@@ -150,6 +151,14 @@ impl Emitter {
                             None
                         }
                     } else { None },
+                    LOADK(a, _) => match new {
+                        LOADK(b, _) if a == b => Some(new),  // overwrites just-loaded constant
+                        LOADNIL(start, dist) if start <= a && a <= start + dist => {
+                            // `a` is in the LOADNIL range and will be overwritten
+                            Some(new)
+                        },
+                        _ => None,
+                    },
                     _ => None,
                 }
             }
@@ -352,31 +361,23 @@ impl Emitter {
         match s.value {
             SDecl(ref names, ref exprs) => {
                 // allocate stack slots for locals
-                let mut it = exprs.iter();
+                let mut locals = Vec::<Variable>::new();
                 for name in names {
-                    let id = block.get_local(name).unwrap();
+                    let id = *block.get_local(name).unwrap();
                     let slot = self.alloc_slots(1);
-                    self.alloc.insert(*id, slot);
+                    self.alloc.insert(id, slot);
+                    locals.push(Spanned::default(VLocal(id)));
 
-                    println!(" {} -> {}", name, slot);
-
-                    match it.next() {
-                        Some(e) => {
-                            let real_slot = self.emit_expr(e, slot);
-                            if slot != real_slot { self.emit(MOV(slot, real_slot)); }
-                        }
-                        None => {
-                            self.emit(LOADNIL(slot, 0));
-                        }
-                    }
+                    println!(" {} ({}) -> {}", name, id, slot);
                 }
 
-                // excess expressions must be evaluated as well
-                for rest in it {
-                    let slot = self.alloc_slots(1);
-                    self.emit_expr(rest, slot);
-                    self.dealloc_slots(1);
-                }
+                // build fake assignment node and use generic assigment code to emit code
+                let mut vals = exprs.clone();
+                vals.push(Spanned::default(ELit(TNil)));
+
+                let assign = SAssign(locals, vals);
+                //println!(">>> {:?}", assign);
+                self.emit_stmt(&Spanned::new(s.span, assign), block);
             }
             SAssign(ref vars, ref vals) => {
                 // We need `min(varcount-1, valcount-1)` temps (= `tmpcount`). Eval first `tmpcount`
@@ -472,11 +473,14 @@ impl Emitter {
 
                 self.dealloc_slots(tmpcount);
 
-                // eval. excess expressions
+                // eval. excess expressions (if they could cause side effects)
                 for i in tmpcount+1..vals.len() {
-                    let slot = self.alloc_slots(1);
-                    self.emit_expr(&vals[i], slot);
-                    self.dealloc_slots(1);
+                    let expr = &vals[i];
+                    if expr.has_side_effects() {
+                        let slot = self.alloc_slots(1);
+                        self.emit_expr(expr, slot);
+                        self.dealloc_slots(1);
+                    }
                 }
             }
             _ => panic!("NYI stmt: {:?}", s),    // TODO remove, this is just for testing
@@ -566,7 +570,6 @@ mod tests {
             MOV(2,1),
             MOV(1,0),
             MOV(0,2),
-            LOADK(2,0), 	// evaluates `0`
             RETURN(0,1),
         ]);
         test_simple("local i, j    i, j = i, j", vec![
@@ -577,8 +580,6 @@ mod tests {
         ]);
         test_simple("local i = 0, 1, 2", vec![
             LOADK(0,0),
-            LOADK(1,1),
-            LOADK(1,2),
             RETURN(0,1),
         ]);
         test_simple("local i, j    i, j = j", vec![
