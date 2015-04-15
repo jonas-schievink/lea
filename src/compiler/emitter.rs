@@ -24,7 +24,7 @@ pub struct EmitError {
 /// produced are returned.
 pub type EmitResult = Result<FnData, Vec<EmitError>>;
 
-struct Emitter<'a> {
+struct Emitter {
     source_name: String,
     /// List of errors that have occurred while emitting. They are ignored until the main function
     /// is traversed. If this list isn't empty when the emitter is done, it will not complete the
@@ -34,25 +34,16 @@ struct Emitter<'a> {
     /// last `FnData` is popped off and added to the child function list of the parent.
     funcs: Vec<FnData>,
 
-    block: Option<&'a Block>,
     alloc: HashMap<usize, u8>,
 }
 
-impl <'a> Emitter<'a> {
-    fn new(source_name: &str) -> Emitter<'a> {
+impl Emitter {
+    fn new(source_name: &str) -> Emitter {
         Emitter {
             source_name: source_name.to_string(),
             errs: Vec::new(),
             funcs: Vec::with_capacity(4),
-            block: None,
             alloc: HashMap::with_capacity(8),
-        }
-    }
-
-    fn cur_block(&self) -> &'a Block {
-        match self.block {
-            Some(b) => b,
-            None => panic!("emitter has no current block"),
         }
     }
 
@@ -180,8 +171,8 @@ impl <'a> Emitter<'a> {
 
     /// Emits an assignment to a variable. The function `f` is called with an emitter reference and
     /// a slot hint to get the slot the assigned value is located in.
-    fn emit_assign<F>(&mut self, target: &'a Variable, f: F)
-    where F: FnOnce(&mut Emitter<'a>, u8) -> u8 {
+    fn emit_assign<F>(&mut self, target: &Variable, f: F)
+    where F: FnOnce(&mut Emitter, u8) -> u8 {
         match target.value {
             VLocal(id) => {
                 let slot = self.get_slot(id);
@@ -241,7 +232,7 @@ impl <'a> Emitter<'a> {
     }
 
     /// Emits a variable used as an expression
-    fn emit_var(&mut self, v: &'a Variable, hint_slot: u8) -> u8 {
+    fn emit_var(&mut self, v: &Variable, hint_slot: u8) -> u8 {
         match v.value {
             VLocal(id) => self.get_slot(id),    // ignores hint
             VUpval(id) => {
@@ -296,7 +287,7 @@ impl <'a> Emitter<'a> {
     ///
     /// This method makes sure that all unused slots are filled with nil, either at runtime
     /// (handled by the VM), or by emitting LOADNIL instructions to fill all `max_res` slots.
-    fn emit_expr_multi(&mut self, e: &'a Expr, start_slot: u8, max_res: u8) {
+    fn emit_expr_multi(&mut self, e: &Expr, start_slot: u8, max_res: u8) {
         match e.value {
             ECall(_) => {
                 unimplemented!();   // TODO
@@ -333,7 +324,7 @@ impl <'a> Emitter<'a> {
     ///
     /// Expressions that can result in multiple values (calls, varargs) are adjusted to a single
     /// result.
-    fn emit_expr(&mut self, e: &'a Expr, hint_slot: u8) -> u8 {
+    fn emit_expr(&mut self, e: &Expr, hint_slot: u8) -> u8 {
         match e.value {
             ELit(ref lit) => {
                 match *lit {
@@ -356,16 +347,14 @@ impl <'a> Emitter<'a> {
             _ => panic!("NYI expression {:?}", e),  // TODO remove
         }
     }
-}
 
-impl <'a> Visitor<'a> for Emitter<'a> {
-    fn visit_stmt(&mut self, s: &'a Stmt) {
+    fn emit_stmt(&mut self, s: &Stmt, block: &Block) {
         match s.value {
             SDecl(ref names, ref exprs) => {
                 // allocate stack slots for locals
                 let mut it = exprs.iter();
                 for name in names {
-                    let id = self.cur_block().get_local(name).unwrap();
+                    let id = block.get_local(name).unwrap();
                     let slot = self.alloc_slots(1);
                     self.alloc.insert(*id, slot);
 
@@ -493,17 +482,22 @@ impl <'a> Visitor<'a> for Emitter<'a> {
             _ => panic!("NYI stmt: {:?}", s),    // TODO remove, this is just for testing
         }
     }
+}
 
-    fn visit_expr(&mut self, _e: &Expr) {
+impl <'a> Visitor<'a> for Emitter {
+    fn visit_stmt(&mut self, _: &Stmt) {
+        panic!("Emitter::visit_stmt entered (this should never happen)");
+    }
+
+    fn visit_expr(&mut self, _: &Expr) {
         panic!("Emitter::visit_expr entered (this should never happen)");
     }
 
-    fn visit_block(&mut self, b: &'a Block) {
-        let old_block = self.block;
+    fn visit_block(&mut self, b: &Block) {
         let oldstack = self.cur_func().stacksize;
-        self.block = Some(b);
-
-        walk_block_ref(b, self);
+        for stmt in &b.stmts {
+            self.emit_stmt(stmt, b);
+        }
 
         // deallocate stack slots
         for entry in &b.localmap {
@@ -511,11 +505,9 @@ impl <'a> Visitor<'a> for Emitter<'a> {
             self.alloc.remove(&id);
         }
         self.cur_func().stacksize = oldstack;
-
-        self.block = old_block;
     }
 
-    fn visit_func(&mut self, f: &'a Function) {
+    fn visit_func(&mut self, f: &Function) {
         self.funcs.push(FnData::new(f));
 
         self.visit_block(&f.body);
