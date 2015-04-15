@@ -582,6 +582,12 @@ mod tests {
             LOADK(0,0),
             RETURN(0,1),
         ]);
+        test!("local i, j = true, false" => [
+            LOADBOOL(2,0,true),
+            LOADBOOL(1,0,false),
+            MOV(0,2),
+            RETURN(0,1),
+        ]);
         test!("local i, j    i, j = j" => [
             LOADNIL(0,1),
             MOV(0,1),
