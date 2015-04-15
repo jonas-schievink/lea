@@ -590,10 +590,14 @@ mod tests {
         ]);
     }
 
-    /*#[test]
+    #[test]
     fn assign_multi() {
-        test_simple("local i, j   i, j = ...", vec![
-
+        test!("local i, j   i, j = ..." => [
+            LOADNIL(0,1),
+            VARARGS(2,2),   // slots 2 and 3
+            MOV(0,2),       // TODO the MOV isn't necessary, since i and j are in order
+            MOV(1,3),
+            RETURN(0,1),
         ]);
-    }*/
+    }
 }
