@@ -145,7 +145,7 @@ pub enum Opcode {
     CONCAT(u8, u8, u8),
 
     /// > R[A] := -R[B]
-    MINUS(u8, u8),
+    NEG(u8, u8),
     /// > R[A] := !R[B]
     ///
     /// Any "truthy" value will be converted to `false`, the values `false` and `nil` will be
