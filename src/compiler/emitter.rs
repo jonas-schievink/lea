@@ -7,9 +7,10 @@ use compiler::visit::*;
 use compiler::span::Spanned;
 use opcode::*;
 use program::FnData;
+use op::{BinOp, UnOp};
 use limits;
 
-use std::{u8, u16};
+use std::{u8, u16, i16};
 use std::collections::HashMap;
 use std::cmp;
 use std::mem;
@@ -132,8 +133,29 @@ impl Emitter {
         }
     }
 
+    /// Emits an opcode into the opcodestream and returns its address/index. Does not apply
+    /// optimizations.
+    fn emit_raw(&mut self, op: Opcode) -> usize {
+        let opcodes = &mut self.cur_func().opcodes;
+        let index = opcodes.len();
+        opcodes.push(op);
+
+        index
+    }
+
+    /// Replaces the opcode at the given index.
+    fn replace_op(&mut self, index: usize, new: Opcode) {
+        self.cur_func().opcodes[index] = new;
+    }
+
+    /// Gets the opcode index ("instruction pointer") after the last opcode that was emitted.
+    fn get_next_addr(&mut self) -> usize {
+        // TODO needs &mut self since cur_func is always &mut
+        self.cur_func().opcodes.len()
+    }
+
     /// Emits an opcode into the current function. Note that this might not add the opcode, but
-    /// instead modify the last opcode emitted.
+    /// instead modify the last opcode emitted if a peephole optimization can be applied.
     fn emit(&mut self, op: Opcode) {
         println!("{:?}", op);
 
@@ -353,6 +375,85 @@ impl Emitter {
                 }
             }
             EVar(ref var) => self.emit_var(var, hint_slot),
+            EBinOp(ref lhs, op, ref rhs) => {
+                match op {
+                    BinOp::LAnd | BinOp::LAndLua => {
+                        // A && B  <=>  if A then B else A
+                        let lslot = self.emit_expr(lhs, hint_slot);
+                        let jmp = self.emit_raw(IFNOT(lslot, 0));
+                        let rslot = self.emit_expr(rhs, hint_slot);
+                        if rslot != hint_slot { self.emit(MOV(hint_slot, rslot)); }
+
+                        // jump here if A is false
+                        let rel = self.get_next_addr() - jmp - 1;
+                        if rel > i16::MAX as usize {
+                            self.err("relative jump exceeds limit", Some(format!("jump dist is {}, limit is {}", rel, i16::MAX)));
+                        } else {
+                            self.replace_op(jmp, IFNOT(lslot, rel as i16));
+                            if lslot != hint_slot { self.emit(MOV(hint_slot, lslot)); }
+                        }
+                    },
+                    BinOp::LOr | BinOp::LOrLua => {
+                        // A || B  <=>  if A then A else B
+                        let lslot = self.emit_expr(lhs, hint_slot);
+                        let jmp = self.emit_raw(IF(lslot, 0));
+                        let rslot = self.emit_expr(rhs, hint_slot);
+                        if rslot != hint_slot { self.emit(MOV(hint_slot, rslot)); }
+
+                        // jump here if A is true
+                        let rel = self.get_next_addr() - jmp - 1;
+                        if rel > i16::MAX as usize {
+                            self.err("relative jump exceeds limit", Some(format!("jump dist is {}, limit is {}", rel, i16::MAX)));
+                        } else {
+                            self.replace_op(jmp, IF(lslot, rel as i16));
+                            if lslot != hint_slot { self.emit(MOV(hint_slot, lslot)); }
+                        }
+                    },
+                    _ => {
+                        // normal bin op. eval lhs and rhs first.
+                        let lslotalloc = self.alloc_slots(1);
+                        let lslot = self.emit_expr(lhs, lslotalloc);
+                        if lslot != lslotalloc { self.dealloc_slots(1); }
+                        let rslotalloc = self.alloc_slots(1);
+                        let rslot = self.emit_expr(rhs, rslotalloc);
+                        if rslot != rslotalloc { self.dealloc_slots(1); }
+                        match op {
+                            BinOp::Add => self.emit(ADD(hint_slot, lslot, rslot)),
+                            BinOp::Sub => self.emit(SUB(hint_slot, lslot, rslot)),
+                            BinOp::Mul => self.emit(MUL(hint_slot, lslot, rslot)),
+                            BinOp::Div => self.emit(DIV(hint_slot, lslot, rslot)),
+                            BinOp::Mod => self.emit(MOD(hint_slot, lslot, rslot)),
+                            BinOp::Pow => self.emit(POW(hint_slot, lslot, rslot)),
+
+                            BinOp::Eq => self.emit(EQ(hint_slot, lslot, rslot)),
+                            BinOp::NEq | BinOp::NEqLua => self.emit(NEQ(hint_slot, lslot, rslot)),
+                            BinOp::LEq => self.emit(LEQ(hint_slot, lslot, rslot)),
+                            BinOp::GEq => self.emit(GEQ(hint_slot, lslot, rslot)),
+                            BinOp::Less => self.emit(LESS(hint_slot, lslot, rslot)),
+                            BinOp::Greater => self.emit(GREATER(hint_slot, lslot, rslot)),
+
+                            BinOp::BAnd => self.emit(BAND(hint_slot, lslot, rslot)),
+                            BinOp::BOr => self.emit(BOR(hint_slot, lslot, rslot)),
+                            BinOp::BXor => self.emit(BXOR(hint_slot, lslot, rslot)),
+                            BinOp::ShiftL => self.emit(SHIFTL(hint_slot, lslot, rslot)),
+                            BinOp::ShiftR => self.emit(SHIFTR(hint_slot, lslot, rslot)),
+
+                            BinOp::Concat => {
+                                assert_eq!(lslot + 1, rslot);    // TODO ensure this is always true
+                                // TODO make use of CONCAT's special behaviour (concat a range of regs)
+                                self.emit(CONCAT(hint_slot, lslot, 0));
+                            },
+
+                            BinOp::LAnd | BinOp::LAndLua | BinOp::LOr | BinOp::LOrLua => unreachable!(),
+                        };
+
+                        if lslot == lslotalloc { self.dealloc_slots(1); }
+                        if rslot == rslotalloc { self.dealloc_slots(1); }
+                    },
+                }
+
+                hint_slot
+            },
             _ => panic!("NYI expression {:?}", e),  // TODO remove
         }
     }
@@ -604,6 +705,41 @@ mod tests {
             MOV(0,2),       // TODO the MOV isn't necessary, since i and j are in order
             MOV(1,3),
             RETURN(0,1),
+        ]);
+    }
+
+    #[test]
+    fn arith() {
+        test!("local i, j  i = i + j" => [
+            LOADNIL(0,1),
+            ADD(0,0,1),
+            RETURN(0,1),
+        ]);
+        test!("local i, j  i = i + j - i * i / i" => [
+            LOADNIL(0,1),
+            ADD(2,0,1),
+            MUL(4,0,0),     // TODO unnecessary temp reg
+            DIV(3,4,0),
+            SUB(0,2,3),
+            RETURN(0,1),
+        ]);
+        test!("local i, j  i = i == j > j" => [
+            LOADNIL(0,1),
+            EQ(2,0,1),
+            GREATER(0,2,1),
+            RETURN(0,1),
+        ]);
+    }
+
+    #[test]
+    fn shortcut() {
+        test!("local i, j, k   i = i && j || k" => [
+            LOADNIL(0,2),
+            IFNOT(0,1),     // -> [1]
+            MOV(0,1),       // i := j (since i is truthy)
+            IF(0,1),        //[1] -> [2] TODO this jump is always taken
+            MOV(0,2),       // i := k (since i is false)
+            RETURN(0,1),    //[2]
         ]);
     }
 }

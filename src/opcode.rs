@@ -77,7 +77,11 @@ pub enum Opcode {
     ///
     /// Conditional jump. If the value in `R[A]` is "truthy" (not `false` or `nil`), offsets `PC`
     /// by `Xs`.
-    CJMP(u8, i16),
+    IF(u8, i16),
+    /// > if not R[A]: PC += Xs
+    ///
+    /// If the value in `R[A]` is `false` or `nil`, offsets `PC` by `Xs`.
+    IFNOT(u8, i16),
     /// > R[A] := U[B]
     GETUPVAL(u8, u8),
     /// > U[A] := R[B]
@@ -134,6 +138,12 @@ pub enum Opcode {
     /// > R[A] := R[B] >> R[C]
     SHIFTR(u8, u8, u8),
 
+    /// > R[A] := R[B] .. R[B+1] .. ... .. R[B+C+1]
+    ///
+    /// Concatenates the values in `R[B]` through `R[B+C+1]`: If C is 0, concatenates `R[B]` and
+    /// `R[B+1]`.
+    CONCAT(u8, u8, u8),
+
     /// > R[A] := -R[B]
     MINUS(u8, u8),
     /// > R[A] := !R[B]
@@ -145,12 +155,6 @@ pub enum Opcode {
     INV(u8, u8),
     /// > R[A] := #R[B]
     LEN(u8, u8),
-
-    /// > R[A] := R[B] .. R[B+1] .. ... .. R[B+C+1]
-    ///
-    /// Concatenates the values in `R[B]` through `R[B+C+1]`: If C is 0, concatenates `R[B]` and
-    /// `R[B+1]`.
-    CONCAT(u8, u8, u8),
 }
 
 #[cfg(test)]
