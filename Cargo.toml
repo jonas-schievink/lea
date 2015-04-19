@@ -4,6 +4,7 @@ name = "lea"
 version = "0.0.1"
 authors = ["jonas-schievink <jonas@schievink.net>"]
 repository = "https://github.com/jonas-schievink/lea"
+documentation = "https://jonas-schievink.github.io/lea/lea/index.html"
 readme = "README.md"
 description = """
 A Lua-based language written in Rust
@@ -14,4 +15,3 @@ peg = "*"
 rustc-serialize = "*"
 lazy_static = "*"
 term = "*"
-
