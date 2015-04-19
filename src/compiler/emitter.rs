@@ -457,16 +457,16 @@ impl Emitter {
             EUnOp(op, ref expr) => {
                 let slot = self.alloc_slots(1);
                 let realslot = self.emit_expr(expr, slot);
+                if slot != realslot { self.dealloc_slots(1); }
 
                 match op {
-                    UnOp::Negate => self.emit(NEG(slot, realslot)),
-                    UnOp::LNot | UnOp::LNotLua => self.emit(NOT(slot, realslot)),
-                    UnOp::BNot => self.emit(INV(slot, realslot)),
-                    UnOp::Len => self.emit(LEN(slot, realslot)),
+                    UnOp::Negate => self.emit(NEG(hint_slot, realslot)),
+                    UnOp::LNot | UnOp::LNotLua => self.emit(NOT(hint_slot, realslot)),
+                    UnOp::BNot => self.emit(INV(hint_slot, realslot)),
+                    UnOp::Len => self.emit(LEN(hint_slot, realslot)),
                 }
 
-                self.emit(MOV(hint_slot, slot));
-                self.dealloc_slots(1);
+                if slot == realslot { self.dealloc_slots(1); }
                 hint_slot
             },
             _ => panic!("NYI expression {:?}", e),  // TODO remove
@@ -750,10 +750,8 @@ mod tests {
     fn unops() {
         test!("local i  i = -#i" => [
             LOADNIL(0,0),
-            LEN(2,0),
-            MOV(1,2),
-            NEG(1,1),
-            MOV(0,1),
+            LEN(1,0),
+            NEG(0,1),
             RETURN(0,1),
         ]);
     }
