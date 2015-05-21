@@ -4,6 +4,8 @@
 use term::{Terminal, Attr};
 use term::color::{self, Color};
 
+use unicode_segmentation::UnicodeSegmentation;
+
 use std::fmt;
 use std::cmp;
 use std::default::Default;
@@ -82,7 +84,8 @@ impl Span {
         try!(t.reset());
         try!(write!(t, "{}", s));
 
-        Ok(s.graphemes(true).count())
+        let st: &str = &s;
+        Ok(UnicodeSegmentation::graphemes(st, true).count())
     }
 
     pub fn print_info<W: Write>(source_name: &str, line: usize, col: Option<usize>, info: &str,

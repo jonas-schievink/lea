@@ -1,6 +1,6 @@
 //! Lea is a scripting language derived from Lua.
 
-#![feature(plugin, core, collections, log_syntax, hash, alloc, staged_api, str_char, unicode)]
+#![feature(plugin, core, collections, log_syntax, hash, alloc, staged_api, str_char)]
 
 #![allow(trivial_casts)]
 
@@ -14,6 +14,7 @@ extern crate lazy_static;
 
 extern crate rustc_serialize;
 extern crate term;
+extern crate unicode_segmentation;
 
 pub mod compiler;
 pub mod op;
