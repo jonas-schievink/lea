@@ -20,6 +20,8 @@
 
 // TODO: Finalizers, weak tables, less horrific code
 
+#![allow(mutable_transmutes)]
+
 use program::{Function, FunctionProto};
 use array::Array;
 use table::Table;
