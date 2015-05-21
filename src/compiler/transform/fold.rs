@@ -6,7 +6,6 @@ use compiler::ast::*;
 use compiler::span::Spanned;
 use op::*;
 
-use std::num::{Int, Float};
 use std::i64::BITS;
 
 struct Folder {
