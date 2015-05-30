@@ -19,7 +19,6 @@ pub use self::Opcode::*;
 /// * `Lu` = `((A << 16) | Xu) as u32` emulates one 24 bit parameter (eg. for jumps)
 /// * `Ls` = `((A << 16) | Xu) as i32` signed version of `Lu`
 /// * `PC` is the program counter, which holds the number of the next opcode by default
-#[packed]
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, RustcEncodable, RustcDecodable)]
 pub enum Opcode {
     /// > R[A] := R[B]
