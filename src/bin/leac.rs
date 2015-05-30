@@ -19,23 +19,32 @@ use std::path::Path;
 
 macro_rules! printerr {
     ($($arg:tt)*) => {
-        print_err_fmt(format_args!($($arg)*));
+        print_err_fmt(format_args!($($arg)*))
     }
 }
 
-#[inline]
-#[allow(unused_must_use)]
-fn print_err_fmt(fmt: fmt::Arguments) {
-    writeln!(&mut io::stderr(), "{}", fmt);
+fn print_err_fmt(fmt: fmt::Arguments) -> io::Result<()> {
+    writeln!(&mut io::stderr(), "{}", fmt)
 }
 
 fn print_usage() {
-    println!("Usage: leac [file]");
-    println!("");
-    println!("Parses and checks the given file. If file is \"-\", reads stdin.");
-    println!("When the compiler is done, this will actually compile the source code.");
+    print!("\
+usage: leac [options] <file>
+
+Parses and checks the given file. If file is \"-\", reads stdin. When the compiler is done, this will actually compile the source code.
+
+Options:
+ -h, --help     Display this help text
+ -v, --version  Display the version of the Lea package
+");
 }
 
+fn print_version() {
+    println!("Lea {}", env!("CARGO_PKG_VERSION"));
+}
+
+/// Compiles a piece of code. Prints all errors / warnings to stderr, using color if stderr is a
+/// terminal.
 fn compile(code: &str, filename: &str) -> io::Result<()> {
     let mut term = term::stderr();
     let mut stderr = io::stderr();
@@ -105,19 +114,17 @@ fn compile_file(filename: &str) -> io::Result<()> {
             let mut code = String::new();
             match file.read_to_string(&mut code) {
                 Ok(_) => {
-                    try!(compile(code.as_ref(), filename.as_ref()));
+                    compile(code.as_ref(), filename.as_ref())
                 },
                 Err(err) => {
-                    printerr!("error reading file \"{}\": {}", filename, err);
+                    printerr!("error reading file \"{}\": {}", filename, err)
                 }
             }
         },
         Err(err) => {
-            printerr!("error opening file \"{}\": {}", filename, err);
+            printerr!("error opening file \"{}\": {}", filename, err)
         }
-    };
-
-    Ok(())
+    }
 }
 
 pub fn main() {
@@ -128,27 +135,31 @@ pub fn main() {
     iter.next();    // Consume first argument (exec name)
     for arg in iter {
         if let Some(..) = inputarg {
-            printerr!("Invalid argument: {}", lastarg.unwrap());
+            printerr!("invalid argument: {}", lastarg.unwrap()).unwrap();
             print_usage();
             return;
         }
 
         match arg.as_ref() {
-            "--help" | "-h" => {
+            "-h" | "--help" => {
                 print_usage();
                 return;
-            },
+            }
+            "-v" | "--version" => {
+                print_version();
+                return;
+            }
             _ => {
                 // Unknown arg, must be input file
                 inputarg = Some(arg.clone());
-            },
+            }
         }
 
         lastarg = Some(arg);
     }
 
     if let None = inputarg {
-        printerr!("error: no input file");
+        printerr!("error: no input file").unwrap();
         print_usage();
         return;
     }
@@ -159,7 +170,6 @@ pub fn main() {
         let mut code = String::new();
         io::stdin().read_to_string(&mut code).unwrap();
 
-        println!("");   // print newline to seperate leac output from source input
         compile(code.as_ref(), "<stdin>").unwrap();
     } else {
         compile_file(f).unwrap();
