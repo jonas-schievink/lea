@@ -285,7 +285,7 @@ decstr -> &'input str
     = [0-9]+ { match_str }
 
 hexdigit -> char
-    = [0-9a-fA-F] { match_str.char_at(0) }
+    = [0-9a-fA-F] { match_str.chars().next().unwrap() }
 
 hexstr -> &'input str
     = hexdigit+ { match_str }
@@ -320,7 +320,8 @@ float -> f64
     = "-"? ( efloat / cfloat ) { match_str.parse().unwrap() }
 
 /// Matches the decimal notation of a single byte: 0-255
-/// (leading '0's are ignored)
+/// (leading '0's are ignored, but bytes are limited to at most 3 digits, so "0001" for example
+/// will return 0 here and parse the "000", but stop at the "1")
 dec_byte -> u8
     = [0-9]{,3} {?
         match match_str.parse() {
@@ -360,12 +361,12 @@ blank_esc -> ()
 _double_quote_content -> char
     = esc_seq
     / blank_esc _double_quote_content
-    / [^\\"\n]  { match_str.char_at(0) }    //" to make this work with simple highlighters
+    / [^\\"\n]  { match_str.chars().next().unwrap() }   //" to fix syntax highlighting
 
 _single_quote_content -> char
     = esc_seq
     / blank_esc _single_quote_content
-    / [^\\'\n]  { match_str.char_at(0) }
+    / [^\\'\n]  { match_str.chars().next().unwrap() }
 
 #[pub]
 string -> String
