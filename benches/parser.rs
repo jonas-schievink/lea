@@ -5,21 +5,27 @@ extern crate lea;
 
 use test::Bencher;
 
-use lea::compiler::parser::*;
+use lea::compiler::parser;
 
 #[bench]
-fn bench_simple(b: &mut Bencher) {
-    b.iter(|| {
-        block(r#"
+fn simple(b: &mut Bencher) {
+    let code = r#"
 local i, j, k = 0, 1, 2+3
 i, j = j, i*2
-"#).unwrap();
+"#;
+
+    b.bytes = code.len() as u64;
+    b.iter(|| {
+        parser::block(code).unwrap();
     });
 }
 
 #[bench]
-fn bench_expression(b: &mut Bencher) {
+fn expression(b: &mut Bencher) {
+    let code = "f(1,2,3,4,5,6,6,7,87,8,9,9,5,5,4)";
+
+    b.bytes = code.len() as u64;
     b.iter(|| {
-        expression("f(1,2,3,4,5,6,6,7,87,8,9,9,5,5,4)").unwrap();
+        parser::expression(code).unwrap();
     });
 }
