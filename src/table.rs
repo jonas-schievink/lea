@@ -20,23 +20,23 @@
 #![macro_use]
 
 use value::{Value, TNil};
-use mem::GcRef;
+use mem::{TracedRef, Tracer, Traceable, GcObj};
 
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
 /// A table that maps Lea values to Lea values.
-#[derive(RustcEncodable, Debug)]
-pub struct Table {
-    data: HashMap<Value, Value>,
-    metatable: Option<GcRef<Table>>,
+#[derive(Debug)]
+pub struct Table<'gc> {
+    data: HashMap<Value<'gc>, Value<'gc>>,
+    metatable: Option<TracedRef<'gc, Table<'gc>>>,
     weak_keys: bool,
     weak_vals: bool,
 }
 
-impl Table {
+impl <'gc> Table<'gc> {
     /// Creates a new table, using the given `HashMap<Value, Value>` as the internal storage.
-    pub fn new(data: HashMap<Value, Value>) -> Table {
+    pub fn new(data: HashMap<Value<'gc>, Value<'gc>>) -> Table<'gc> {
         Table {
             data: data,
             metatable: None,
@@ -64,7 +64,7 @@ impl Table {
     /// Equivalent to assignment by Lea code. If the value is nil, the mapping is deleted. Returns
     /// the old value stored with the given key or `Err(())` if the key is nil (this is not
     /// supported).
-    pub fn set(&mut self, k: Value, v: Value) -> Result<Option<Value>, ()> {
+    pub fn set(&mut self, k: Value<'gc>, v: Value<'gc>) -> Result<Option<Value<'gc>>, ()> {
         if k == TNil { return Err(()); }
 
         if v == TNil {
@@ -75,15 +75,25 @@ impl Table {
     }
 }
 
-impl Deref for Table {
-    type Target = HashMap<Value, Value>;
+impl <'gc> GcObj for Table<'gc> {}
+impl <'gc> Traceable for Table<'gc> {
+    fn trace<T: Tracer>(&self, t: &mut T) {
+        for (ref k, ref v) in &self.data {
+            k.trace(t);
+            v.trace(t);
+        }
+    }
+}
+
+impl <'gc> Deref for Table<'gc> {
+    type Target = HashMap<Value<'gc>, Value<'gc>>;
 
     fn deref(&self) -> &<Self as Deref>::Target {
         &self.data
     }
 }
 
-impl DerefMut for Table {
+impl <'gc> DerefMut for Table<'gc> {
     fn deref_mut(&mut self) -> &mut <Self as Deref>::Target {
         &mut self.data
     }

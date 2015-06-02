@@ -4,7 +4,7 @@
 use opcode::Opcode;
 use value::Value;
 use compiler::ast::{self, Literal};
-use mem::{GcRef, Gc};
+use mem::{Traceable, TracedRef, Tracer, GcStrategy, GcObj};
 
 use std::vec::Vec;
 
@@ -53,15 +53,15 @@ impl FnData {
 
     /// Converts this `FnData` instance to a `FunctionProto`. Registers all child functions with
     /// the given garbage collector.
-    pub fn to_proto(self, _gc: &mut Gc) -> FunctionProto {
+    pub fn to_proto<'gc, G: GcStrategy>(self, _gc: &'gc mut G) -> FunctionProto<'gc> {
         // TODO
         unimplemented!();
     }
 }
 
 /// A compiled function. When instantiated by the VM, becomes a `Function`.
-#[derive(Clone, Debug, RustcEncodable)]
-pub struct FunctionProto {
+#[derive(Clone, Debug)]
+pub struct FunctionProto<'gc> {
     /// The name of the source from which this function was compiled
     pub source_name: String,
     /// The number of stack slots required by this function (might be dynamically increased)
@@ -70,7 +70,7 @@ pub struct FunctionProto {
     pub params: u8,
     /// True if declared as a varargs function
     pub varargs: bool,
-    /// The opcodes emitted for the code in the function body
+    /// The opcodes emitted for the code in the function bodyt.mark_traceable(r),
     pub opcodes: Vec<Opcode>,
     /// Constants used by this function.
     pub consts: Vec<Literal>,
@@ -82,27 +82,46 @@ pub struct FunctionProto {
     pub lines: Vec<usize>,
     /// References to the prototypes of all function declared within the body of this function.
     /// When dynamically compiling code, this allows the GC to collect prototypes that are unused.
-    pub child_protos: Vec<GcRef<FunctionProto>>,
+    pub child_protos: Vec<TracedRef<'gc, FunctionProto<'gc>>>,
 }
 
-
-//////// Runtime types below ////////
+impl <'gc> GcObj for FunctionProto<'gc> {}
+impl <'gc> Traceable for FunctionProto<'gc> {
+    fn trace<T: Tracer>(&self, t: &mut T) {
+        for ch in &self.child_protos {
+            t.mark_traceable(*ch);
+        }
+    }
+}
 
 /// An active Upvalue
-#[derive(Debug, RustcEncodable)]
-pub enum Upval {
+#[derive(Debug)]
+pub enum Upval<'gc> {
     /// Upvalue owned by parent. usize is either the stack slot or the index in the parent's upval
     /// list (stored in Upvalue definition in function prototype).
     Open(usize),
     /// Closed upvalue owned by the function that references it
-    Closed(Value),
+    Closed(Value<'gc>),
 }
 
 /// Instantiated function
-#[derive(Debug, RustcEncodable)]
-pub struct Function {
+#[derive(Debug)]
+pub struct Function<'gc> {
     /// The prototype from which this function was instantiated
-    pub proto: GcRef<FunctionProto>,
+    pub proto: TracedRef<'gc, FunctionProto<'gc>>,
     /// Upvalue references, indexed by upvalue ID
-    pub upvalues: Vec<Upval>,
+    pub upvalues: Vec<Upval<'gc>>,
+}
+
+impl <'gc> GcObj for Function<'gc> {}
+impl <'gc> Traceable for Function<'gc> {
+    fn trace<T: Tracer>(&self, t: &mut T) {
+        t.mark_traceable(self.proto);
+
+        for uv in &self.upvalues {
+            if let Upval::Closed(ref val) = *uv {
+                val.trace(t);
+            }
+        }
+    }
 }

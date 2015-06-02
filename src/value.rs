@@ -5,7 +5,7 @@ pub use self::Value::*;
 use table::Table;
 use array::Array;
 use program::Function;
-use mem::GcRef;
+use mem::{TracedRef, Tracer};
 
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
@@ -47,19 +47,19 @@ impl DerefMut for HashedFloat {
 }
 
 
-#[derive(RustcEncodable, PartialEq, Eq, Debug, Hash)]
-pub enum Value {
+#[derive(PartialEq, Eq, Debug, Hash)]
+pub enum Value<'gc> {
     TNil,
     TBool(bool),
     TInt(i64),
     TFloat(HashedFloat),
-    TStr(GcRef<String>),
-    TFunc(GcRef<Function>),
-    TArray(GcRef<Array>),
-    TTable(GcRef<Table>),
+    TStr(TracedRef<'gc, String>),
+    TFunc(TracedRef<'gc, Function<'gc>>),
+    TArray(TracedRef<'gc, Array<'gc>>),
+    TTable(TracedRef<'gc, Table<'gc>>),
 }
 
-impl Value {
+impl <'gc> Value<'gc> {
     /// The equivalent of Lua's `type()` function, returns the type name of a value.
     pub fn get_type_name(&self) -> &'static str {
         match *self {
@@ -70,6 +70,17 @@ impl Value {
             TTable(..) => "table",
             TArray(..) => "array",
             TFunc(..) => "function",
+        }
+    }
+
+    /// If this `Value` references a GC-object, marks it using the given `Tracer`.
+    pub fn trace<T: Tracer>(&self, t: &mut T) {
+        match *self {
+            TNil | TBool(_) | TInt(_) | TFloat(_) => {},
+            TStr(r) => unsafe { t.mark_untraceable(r) },    // Safe, since T is String
+            TFunc(r) => t.mark_traceable(r),
+            TArray(r) => t.mark_traceable(r),
+            TTable(r) => t.mark_traceable(r),
         }
     }
 }
