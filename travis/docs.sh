@@ -16,6 +16,8 @@ echo "<meta http-equiv=refresh content=0;url=`echo $TRAVIS_REPO_SLUG | cut -d '/
 
 # Init a new git repo in the docs
 cd target/doc
+git config --global user.email "jonas@schievink.net"
+git config --global user.name "Travis CI"
 git init
 git add .
 git commit -m "Update docs"
