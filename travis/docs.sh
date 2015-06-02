@@ -17,9 +17,7 @@ echo "<meta http-equiv=refresh content=0;url=`echo $TRAVIS_REPO_SLUG | cut -d '/
 # Init a new git repo in the docs
 cd target/doc
 git init
-git branch gh-pages
-git checkout gh-pages
 git add .
 git commit -m "Update docs"
-git push -fq https://${GH_SECRET}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
+git push -fq https://${GH_SECRET}@github.com/${TRAVIS_REPO_SLUG}.git master:gh-pages
 cd ../..
