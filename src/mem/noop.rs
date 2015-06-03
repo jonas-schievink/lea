@@ -97,4 +97,15 @@ mod tests {
 
         drop(rooted2);
     }
+
+    #[test]
+    fn mut_ref() {
+        let mut gc = NoopGc::new();
+        let traced = gc.register_obj("teststr".to_string());
+        let r: &String = unsafe { traced.get_ref() };
+        let m: &mut String = unsafe { traced.get_mut_ref() };
+
+        // The references now alias. User code must avoid this.
+        assert_eq!(r as *const String, m as *const String);
+    }
 }

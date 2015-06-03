@@ -18,10 +18,6 @@
 //! marked. This makes sure that the finalization function can access the object and all reachable
 //! objects. The object is removed from the finalized-object list and its finalizer is invoked.
 
-// TODO: Finalizers, weak tables, less horrific code
-
-#![allow(mutable_transmutes)]
-
 use vm::VM;
 
 use std::cell::{Cell, RefCell};
@@ -37,6 +33,7 @@ pub mod noop;
 
 // TODO we might want to use #[no_move] like servo does
 // TODO properly check for unsafety and annotate unsafe fns
+// TODO finalizers and weak references (with callback)
 
 
 /// A garbage-collectable object.
@@ -129,6 +126,13 @@ impl <'gc, T: GcObj + 'gc> TracedRef<'gc, T> {
         transmute(self.ptr)
     }
 
+    /// Obtains a mutable reference to the object. This is unsafe, because you can create 2
+    /// aliasing mutable references this way (the same unsafeness of `get_ref` applies here as
+    /// well).
+    pub /*very*/ unsafe fn get_mut_ref<'a>(&'a self) -> &'a mut T {
+        transmute(self.ptr)
+    }
+
     /// Roots the referenced object, allowing safe access as long as the created `Rooted<T>` is
     /// alive. Unsafe because the user has to ensure that the `TracedRef` is valid when this is
     /// called.
@@ -154,7 +158,7 @@ impl <'gc, T: GcObj> Clone for TracedRef<'gc, T> {
 
 /// Contains the roots of a garbage collector. The rooted objects will not be collected.
 pub struct Roots {
-    // we store pointers to () and only allow `GcObj`s inside, since `GcObj` isn't object safe
+    // we store pointers to () and only allow `GcObj`s inside
     stack: RefCell<Vec<*const ()>>,
     /// Set to true when a panic is caused by an invalid unroot ordering. Used to prevent double-
     /// panic when dropping more `Rooted<T>`s.
@@ -250,9 +254,8 @@ impl <'a, T: GcObj> Deref for RootedRef<'a, T> {
     }
 }
 
-/// A `Tracer` provides methods to mark objects as reachable (to be used by the `trace` method of
-/// `Traceable` objects). A `GcStrategy` will pass an object that implements `Tracer` to all
-/// `Traceable` and reachable objects.
+/// A `Tracer` provides methods to mark objects as reachable. A `GcStrategy` will pass an object
+/// that implements `Tracer` to the `trace` method of all `Traceable` and reachable objects.
 pub trait Tracer {
     /// Marks a `TracedRef` as reachable without following the referenced object's own references
     /// (ie. without tracing it).
@@ -281,10 +284,10 @@ pub trait GcStrategy {
     /// collection according to some internal heuristic (just make sure to not free `T`).
     ///
     /// TODO Clarify the different lifetimes. `TracedRef<'gc, T>` causes Rust to see `self` as
-    /// mutably borrowed as long as any `TracedRef` was obtained using `register_obj`, which is
-    /// obviously not what we want. The additional lifetime 'a fixed this, but I'm not sure about
-    /// the semantics here. The lifetime param of `TracedRef`s is supposed to say "this TracedRef
-    /// lives at most as long as the GC from which it was obtained".
+    /// mutably borrowed as long as any `TracedRef` exists that was obtained using `register_obj`,
+    /// which is obviously not what we want. The additional lifetime 'a fixed this, but I'm not
+    /// sure about the semantics here. The lifetime param of `TracedRef`s is supposed to say "this
+    /// TracedRef lives at most as long as the GC from which it was obtained".
     fn register_obj<'gc, 'a: 'gc, T: GcObj>(&'gc mut self, T) -> TracedRef<'a, T>;
 
     /// Get a reference to the collector's root set. Since `Roots` uses interior mutability, this
