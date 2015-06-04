@@ -1,6 +1,7 @@
 //! The Abstract Syntax Tree (AST) used by the Lea compiler
 
 // TODO: Represent comments in the AST
+// TODO decide on syntax sugar handling (either seperate parse tree and AST, metadata on desugared operations or a `desugar` pass)
 
 pub use self::_Variable::*;
 pub use self::_Stmt::*;

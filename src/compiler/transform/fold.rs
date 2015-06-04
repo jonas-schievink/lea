@@ -31,8 +31,7 @@ fn fold_truth(lit: &Literal) -> bool {
 /// Tries to fold a unary operator applied to a literal.
 ///
 /// Returns `Ok(Literal)` on success and `Err(String)` with an appropriate error message if the
-/// type of the literal mismatched the operator's expected type or domain. This causes a warning to
-/// be emitted.
+/// type of the literal mismatched the operator's expected type or domain.
 fn fold_unop(op: UnOp, lit: &Literal) -> Result<Literal, String> {
     match op {
         UnOp::Negate => match *lit { // -
@@ -58,7 +57,10 @@ fn fold_unop(op: UnOp, lit: &Literal) -> Result<Literal, String> {
     }
 }
 
-/// `fold_unop` for binary operators
+/// Tries to fold a binary operator applied to 2 literals.
+///
+/// Returns `Ok(Literal)` on success and `Err(String)` if the operator is applied to invalid types
+/// or values.
 fn fold_binop(lhs: &Literal, op: BinOp, rhs: &Literal) -> Result<Literal, String> {
     match op {
         BinOp::Add => match (lhs, rhs) {

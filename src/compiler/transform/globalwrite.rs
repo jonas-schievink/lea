@@ -34,9 +34,10 @@ impl <'a> Visitor<'a> for GlobalWrite {
                     match v.value {
                         VResGlobal(_, ref name) => {
                             let message = format!("write to global variable `{}` (you should prefer locals)", name);
-                            let info0 = format!("declare a local variable with `local {}`", name);
-                            let info1 = format!("or explicitly access the global with `_ENV.{}`", name);
-                            self.push(Warning::with_info(v.span, message, vec![info0, info1]));
+                            self.push(Warning::with_info(v.span, message, vec![
+                                format!("declare a local variable with `local {}`", name),
+                                format!("or explicitly access the global with `_ENV.{}`", name),
+                            ]));
                         },
                         _ => {},
                     }
