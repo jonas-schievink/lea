@@ -44,13 +44,20 @@ impl Emitter {
         Emitter {
             source_name: source_name.to_string(),
             errs: Vec::new(),
-            funcs: Vec::with_capacity(4),
+            funcs: Vec::new(),
             alloc: HashMap::with_capacity(8),
         }
     }
 
     /// Get the FnData of the currently emitted function
-    fn cur_func(&mut self) -> &mut FnData {
+    fn cur_func(&self) -> &FnData {
+        let len = self.funcs.len();
+        debug_assert!(len > 0);
+        &self.funcs[len-1]
+    }
+
+    /// Get the FnData of the currently emitted function as a mutable reference
+    fn cur_func_mut(&mut self) -> &mut FnData {
         let len = self.funcs.len();
         debug_assert!(len > 0);
         &mut self.funcs[len-1]
@@ -71,14 +78,14 @@ impl Emitter {
                 "limit {} was reached when attempting to allocate {} slots", u8::MAX, count)));
             u8::MAX
         } else {
-            self.cur_func().stacksize += count as u8;
+            self.cur_func_mut().stacksize += count as u8;
             stacksz
         }
     }
 
     fn dealloc_slots(&mut self, count: usize) {
         debug_assert!(self.cur_func().stacksize as usize >= count);
-        self.cur_func().stacksize -= count as u8;
+        self.cur_func_mut().stacksize -= count as u8;
     }
 
     /// Adds a constant to the program's constant table and returns its index (does not add it if
@@ -108,7 +115,7 @@ impl Emitter {
             u16::MAX
         } else {
             println!(" CONST {} = {:?}", id, lit);
-            self.cur_func().consts.push(lit.clone());
+            self.cur_func_mut().consts.push(lit.clone());
             id as u16
         }
     }
@@ -136,7 +143,7 @@ impl Emitter {
     /// Emits an opcode into the opcodestream and returns its address/index. Does not apply
     /// optimizations.
     fn emit_raw(&mut self, op: Opcode) -> usize {
-        let opcodes = &mut self.cur_func().opcodes;
+        let opcodes = &mut self.cur_func_mut().opcodes;
         let index = opcodes.len();
         opcodes.push(op);
 
@@ -145,12 +152,11 @@ impl Emitter {
 
     /// Replaces the opcode at the given index.
     fn replace_op(&mut self, index: usize, new: Opcode) {
-        self.cur_func().opcodes[index] = new;
+        self.cur_func_mut().opcodes[index] = new;
     }
 
     /// Gets the opcode index ("instruction pointer") after the last opcode that was emitted.
-    fn get_next_addr(&mut self) -> usize {
-        // TODO needs &mut self since cur_func is always &mut
+    fn get_next_addr(&self) -> usize {
         self.cur_func().opcodes.len()
     }
 
@@ -187,7 +193,7 @@ impl Emitter {
 
             if self.cur_func().opcodes.len() != 0 {
                 let len = self.cur_func().opcodes.len();
-                let lastref = &mut self.cur_func().opcodes[len - 1];
+                let lastref = &mut self.cur_func_mut().opcodes[len - 1];
                 let last = *lastref;
 
                 if let Some(new) = peephole_opt(last, op) {
@@ -196,7 +202,7 @@ impl Emitter {
                 }
             }
 
-            self.cur_func().opcodes.push(op);
+            self.cur_func_mut().opcodes.push(op);
         }
     }
 
@@ -484,7 +490,7 @@ impl Emitter {
                     self.alloc.insert(id, slot);
                     locals.push(Spanned::default(VLocal(id)));
 
-                    println!(" {} ({}) -> {}", name, id, slot);
+                    //println!(" {} ({}) -> {}", name, id, slot);
                 }
 
                 // build fake assignment node and use generic assigment code to emit code
@@ -496,9 +502,9 @@ impl Emitter {
                 self.emit_stmt(&Spanned::new(s.span, assign), block);
             }
             SAssign(ref vars, ref vals) => {
-                // We need `min(varcount-1, valcount-1)` temps (= `tmpcount`). Eval first `tmpcount`
-                // expressions on the right-hand side into the temps (these all must exist since
-                // `tmpcount` < `valcount`).
+                // We need `min(varcount-1, valcount-1)` temps (= `tmpcount`). Eval first
+                // `tmpcount` expressions on the right-hand side into the temps (these all must
+                // exist since `tmpcount` < `valcount`).
                 //
                 // Now, emit the next value into the last target (the value must exist, since the
                 // last step has consumed at most `valcount-1` values): If it is a normal
@@ -529,7 +535,7 @@ impl Emitter {
                     return;
                 }
 
-                println!("{} tmps", tmpcount);
+                //println!("{} tmps", tmpcount);
 
                 for i in 0..tmpcount {
                     let slot: usize = tmpstart + i;
@@ -624,7 +630,7 @@ impl <'a> Visitor<'a> for Emitter {
             let (_, id) = entry;
             self.alloc.remove(&id);
         }
-        self.cur_func().stacksize = oldstack;
+        self.cur_func_mut().stacksize = oldstack;
     }
 
     fn visit_func(&mut self, f: &Function) {
