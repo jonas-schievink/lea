@@ -20,7 +20,8 @@
 
 use vm::VM;
 
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
+use std::thread;
 use std::fmt::{self, Debug};
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
@@ -160,16 +161,12 @@ impl <'gc, T: GcObj> Clone for TracedRef<'gc, T> {
 pub struct Roots {
     // we store pointers to () and only allow `GcObj`s inside
     stack: RefCell<Vec<*const ()>>,
-    /// Set to true when a panic is caused by an invalid unroot ordering. Used to prevent double-
-    /// panic when dropping more `Rooted<T>`s.
-    panic: Cell<bool>,
 }
 
 impl Roots {
     fn new() -> Roots {
         Roots {
             stack: RefCell::new(Vec::new()),
-            panic: Cell::new(false),
         }
     }
 
@@ -184,7 +181,6 @@ impl Roots {
 
         // assert that we popped the correct object (keep LIFO ordering)
         if last as *const T != rooted {
-            self.panic.set(true);
             panic!("wrong unrooting order: attempted to unroot {:?}, should unroot {:?} first",
                 rooted, last);
         }
@@ -229,7 +225,9 @@ impl <'gc, T: GcObj> Rooted<'gc, T> {
 impl <'gc, T: GcObj> Drop for Rooted<'gc, T> {
     /// Unroots the object
     fn drop(&mut self) {
-        if !self.roots.panic.get() {
+        // Don't unroot while panicking, since that might lead to another panic. If the GC drops
+        // all objects when it's destroyed (it should), this won't leak memory.
+        if !thread::panicking() {
             self.roots.unroot(self.ptr);
         }
     }
