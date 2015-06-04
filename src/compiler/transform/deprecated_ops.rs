@@ -50,8 +50,10 @@ impl <'a> Visitor<'a> for DeprOps {
 
                 match DEPR_BINOPS.get(&op) {
                     Some(newop) => {
-                        self.push(Warning::with_info(e.span, format!("use of deprecated operator `{}`", op),
-                            vec![format!("use `{}` instead", newop)]));
+                        self.push(Warning::with_info(e.span,
+                            format!("use of deprecated operator `{}`", op),
+                            vec![format!("use `{}` instead", newop)]
+                        ));
                     }
                     _ => {},
                 }
@@ -61,8 +63,10 @@ impl <'a> Visitor<'a> for DeprOps {
 
                 match DEPR_UNOPS.get(&op) {
                     Some(newop) => {
-                        self.push(Warning::with_info(e.span, format!("use of deprecated operator `{}`", op),
-                            vec![format!("use `{}` instead", newop)]));
+                        self.push(Warning::with_info(e.span,
+                            format!("use of deprecated operator `{}`", op),
+                            vec![format!("use `{}` instead", newop)]
+                        ));
                     },
                     _ => {},
                 }
@@ -75,6 +79,6 @@ impl <'a> Visitor<'a> for DeprOps {
 pub fn run(main: Function) -> (Function, Vec<Warning>) {
     let mut v = DeprOps(vec![]);
     v.visit_func(&main);
-    
+
     (main, v.0)
 }
