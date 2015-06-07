@@ -1,5 +1,5 @@
 # Lea - A sane Lua-like language
-[![Build Status](https://travis-ci.org/jonas-schievink/lea.svg?branch=master)](https://travis-ci.org/jonas-schievink/lea) [![Coverage Status](https://coveralls.io/repos/jonas-schievink/lea/badge.svg?branch=master)](https://coveralls.io/r/jonas-schievink/lea?branch=master)
+[![Build Status](https://travis-ci.org/jonas-schievink/lea.svg?branch=master)](https://travis-ci.org/jonas-schievink/lea) <!--[![Coverage Status](https://coveralls.io/repos/jonas-schievink/lea/badge.svg?branch=master)](https://coveralls.io/r/jonas-schievink/lea?branch=master)-->
 
 [Documentation](https://jonas-schievink.github.io/lea/lea/index.html)
 
@@ -25,4 +25,3 @@ Lea makes the following changes to plain Lua 5.3:
 This project does not have the same goal as Lua does. Lua is a very minimal language (including its reference implementation). Lea is basically the same language, but the implementation is much bigger, since the library provides an AST, multiple transformation passes, and a seperate bytecode emission pass. Lua does all of this basically while it's parsing the source code, which makes it much faster, but prevents operations on the whole AST (since there is none).
 
 I chose this approach to make the project more modular and easier to understand. This also makes the Lea (byte code) compiler more flexible (for example, different stdlibs can register different Lints to emit warnings/errors when deprecated functions are used).
-
