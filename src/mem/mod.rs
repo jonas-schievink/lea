@@ -271,11 +271,11 @@ pub trait Tracer {
 pub trait GcStrategy {
     /// Instruct the GC to perform a collection step. This can be called by user code. A VM
     /// instance is passed so the GC can run finalizers.
-    fn collect_step(&mut self, &mut VM);
+    fn collect_step(&mut self, &mut VM<Self>);
 
     /// Perform an atomic collection. The GC shall perform all necessary tracing and free all
     /// currently unreachable objects.
-    fn collect_atomic(&mut self, &mut VM);
+    fn collect_atomic(&mut self, &mut VM<Self>);
 
     /// Called when a garbage-collected object is created. The GC should take ownership of the
     /// object and can dispose of it when collecting. The GC may also use this to trigger a

@@ -20,9 +20,9 @@ pub struct NoopGc {
     roots: Roots,
 }
 
-impl NoopGc {
+impl Default for NoopGc {
     #[inline]
-    pub fn new() -> NoopGc {
+    fn default() -> NoopGc {
         NoopGc {
             roots: Roots::new(),
         }
@@ -32,11 +32,11 @@ impl NoopGc {
 impl GcStrategy for NoopGc {
     /// Does nothing (hence `NoopGc`)
     #[inline]
-    fn collect_step(&mut self, _: &mut VM) {}
+    fn collect_step(&mut self, _: &mut VM<NoopGc>) {}
 
     /// Does nothing (hence `NoopGc`)
     #[inline]
-    fn collect_atomic(&mut self, _: &mut VM) {}
+    fn collect_atomic(&mut self, _: &mut VM<NoopGc>) {}
 
     /// Allocates `T` on the heap and leaks it.
     #[inline]
@@ -64,7 +64,7 @@ mod tests {
 
     #[test]
     fn rooted() {
-        let mut gc = NoopGc::new();
+        let mut gc = NoopGc::default();
         let traced: TracedRef<String> = gc.register_obj("teststr".to_string());
         let traced2: TracedRef<String> = gc.register_obj("Second Test-String".to_string());
         let rooted: Rooted<String> = unsafe { traced.root(&gc) };
@@ -85,7 +85,7 @@ mod tests {
 
     #[test] #[should_panic(expected = "unrooting order")]
     fn unroot_order() {
-        let mut gc = NoopGc::new();
+        let mut gc = NoopGc::default();
         let traced = gc.register_obj("teststr".to_string());
         let traced2 = gc.register_obj("teststr2".to_string());
         let rooted = unsafe { traced.root(&gc) };
@@ -100,7 +100,7 @@ mod tests {
 
     #[test]
     fn mut_ref() {
-        let mut gc = NoopGc::new();
+        let mut gc = NoopGc::default();
         let traced = gc.register_obj("teststr".to_string());
         let r: &String = unsafe { traced.get_ref() };
         let m: &mut String = unsafe { traced.get_mut_ref() };
