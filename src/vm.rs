@@ -22,4 +22,8 @@ impl <G: GcStrategy> VM<G> {
             gc: gc,
         }
     }
+
+    pub fn gc(&self) -> &G {
+        &self.gc
+    }
 }
