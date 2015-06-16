@@ -1,18 +1,21 @@
 //! This module implements the byte code emitter.
 
-#![allow(dead_code)]
+#![allow(dead_code)]    // XXX
 
 use compiler::ast::*;
 use compiler::visit::*;
-use compiler::span::Spanned;
+use compiler::span::{Span, Spanned};
 use opcode::*;
 use program::FnData;
 use op::{BinOp, UnOp};
 use limits;
 
+use term::{color, Terminal, Attr};
+
 use std::{u8, u16, i16};
 use std::collections::HashMap;
 use std::cmp;
+use std::io::{self, Write};
 use std::mem;
 
 
@@ -20,6 +23,32 @@ use std::mem;
 pub struct EmitError {
     pub msg: &'static str,
     pub detail: Option<String>,
+    pub span: Option<Span>,
+}
+
+impl EmitError {
+    pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<W>) -> io::Result<()> {
+        let mut msg = self.msg.to_string();
+        if let Some(ref detail) = self.detail {
+            msg.push_str(&detail);
+        }
+
+        match self.span {
+            None => {
+                try!(t.fg(color::RED));
+                try!(write!(t, "error: "));
+                try!(t.attr(Attr::Bold));
+                try!(t.fg(color::WHITE));
+                try!(write!(t, "{}", &msg));
+                try!(t.reset());
+            }
+            Some(span) => {
+                try!(span.print_with_err(code, source_name, &msg, t));
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// On success, the main function is returned as an `FnData` object. On error, the `EmitError`s
@@ -127,6 +156,15 @@ impl Emitter {
         self.errs.push(EmitError {
             msg: msg,
             detail: detail,
+            span: None,
+        });
+    }
+
+    fn err_span(&mut self, msg: &'static str, detail: Option<String>, span: Span) {
+        self.errs.push(EmitError {
+            msg: msg,
+            detail: detail,
+            span: Some(span),
         });
     }
 
@@ -222,8 +260,8 @@ impl Emitter {
 
             VUpval(id) => {
                 if id > u8::MAX as usize {
-                    self.err("upvalue limit reached", Some(format!(
-                        "upvalue #{} over limit {}", id, u8::MAX)));
+                    self.err_span("upvalue limit reached",
+                        Some(format!("upvalue #{} over limit {}", id, u8::MAX)), target.span);
                 } else {
                     let valslot = self.alloc_slots(1);
                     let valslot = f(self, valslot);
@@ -274,8 +312,9 @@ impl Emitter {
             VLocal(id) => self.get_slot(id),    // ignores hint
             VUpval(id) => {
                 if id > u8::MAX as usize {
-                    self.err("upvalue limit reached", Some(format!("upvalue #{} over limit {}",
-                        id, u8::MAX)));
+                    self.err_span("upvalue limit reached",
+                        Some(format!("upvalue #{} over limit {}", id, u8::MAX)),
+                        v.span);
                 } else {
                     self.emit(GETUPVAL(hint_slot, id as u8));
                 }
@@ -393,7 +432,9 @@ impl Emitter {
                         // jump here if A is false
                         let rel = self.get_next_addr() - jmp - 1;
                         if rel > i16::MAX as usize {
-                            self.err("relative jump exceeds limit", Some(format!("jump dist is {}, limit is {}", rel, i16::MAX)));
+                            self.err_span("relative jump exceeds limit",
+                                Some(format!("jump dist is {}, limit is {}", rel, i16::MAX)),
+                                e.span);
                         } else {
                             self.replace_op(jmp, IFNOT(lslot, rel as i16));
                             if lslot != hint_slot { self.emit(MOV(hint_slot, lslot)); }
@@ -409,7 +450,9 @@ impl Emitter {
                         // jump here if A is true
                         let rel = self.get_next_addr() - jmp - 1;
                         if rel > i16::MAX as usize {
-                            self.err("relative jump exceeds limit", Some(format!("jump dist is {}, limit is {}", rel, i16::MAX)));
+                            self.err_span("relative jump exceeds limit",
+                                Some(format!("jump dist is {}, limit is {}", rel, i16::MAX)),
+                                e.span);
                         } else {
                             self.replace_op(jmp, IF(lslot, rel as i16));
                             if lslot != hint_slot { self.emit(MOV(hint_slot, lslot)); }
@@ -475,6 +518,10 @@ impl Emitter {
                 if slot == realslot { self.dealloc_slots(1); }
                 hint_slot
             },
+            EBraced(ref e) => {
+                self.emit_expr(&**e, hint_slot)
+            },
+            ERawOp(..) => panic!("ERawOp encountered by emitter"),
             _ => panic!("NYI expression {:?}", e),  // TODO remove
         }
     }
@@ -531,7 +578,7 @@ impl Emitter {
 
                 if varcount > u8::MAX as usize || valcount > u8::MAX as usize ||
                 tmpcount > u8::MAX as usize {
-                    self.err("assignment doesn't fit into u8", None);   // XXX
+                    self.err_span("assignment doesn't fit into u8", None, s.span);   // XXX
                     return;
                 }
 
@@ -540,7 +587,7 @@ impl Emitter {
                 for i in 0..tmpcount {
                     let slot: usize = tmpstart + i;
                     if slot > u8::MAX as usize {
-                        self.err("slot limit reached", None);
+                        self.err_span("slot limit reached", None, s.span);
                         return;
                     }
 
@@ -641,8 +688,9 @@ impl <'a> Visitor<'a> for Emitter {
 
         let func = self.funcs.pop().unwrap();
         if func.stacksize as u64 > limits::STACK_LIMIT {
-            self.err("stack size exceeds maximum value",
-                Some(format!("got size {}, max is {}", func.stacksize, limits::STACK_LIMIT)));
+            self.err_span("stack size exceeds maximum value",
+                Some(format!("got size {}, max is {}", func.stacksize, limits::STACK_LIMIT)),
+                f.body.span);
             return;
         }
 
@@ -660,8 +708,8 @@ impl <'a> Visitor<'a> for Emitter {
 }
 
 
-/// Builds a `FunctionProto` for the given main function and emits byte code for execution by the
-/// VM.
+/// Builds a `FnData` structure for the given main function and emits byte code for execution by
+/// the VM.
 pub fn emit_func(f: &Function, source_name: &str) -> EmitResult {
     let mut emitter = Emitter::new(source_name);
     emitter.visit_func(f);
