@@ -14,9 +14,11 @@ use std::io::{self, Write};
 
 
 /// Wraps a `Write` and implements `Terminal`
-pub struct DummyTerm<'a, W: Write + 'a>(pub &'a mut W);
+pub struct DummyTerm<W: Write>(pub W);
 
-impl <'a, W: Write> Terminal<W> for DummyTerm<'a, W> {
+impl <W: Write> Terminal for DummyTerm<W> {
+    type Output = W;
+
     fn fg(&mut self, _color: Color) -> io::Result<bool> {
         Ok(false)
     }
@@ -37,6 +39,18 @@ impl <'a, W: Write> Terminal<W> for DummyTerm<'a, W> {
         Ok(false)
     }
 
+    fn cursor_up(&mut self) -> io::Result<bool> {
+        Ok(false)
+    }
+
+    fn delete_line(&mut self) -> io::Result<bool> {
+        Ok(false)
+    }
+
+    fn carriage_return(&mut self) -> io::Result<bool> {
+        Ok(false)
+    }
+
     fn get_ref<'b>(&'b self) -> &'b W {
         &self.0
     }
@@ -44,9 +58,13 @@ impl <'a, W: Write> Terminal<W> for DummyTerm<'a, W> {
     fn get_mut<'b>(&'b mut self) -> &'b mut W {
         &mut self.0
     }
+
+    fn into_inner(self) -> W where Self: Sized {
+        self.0
+    }
 }
 
-impl <'a, W: Write> Write for DummyTerm<'a, W> {
+impl <W: Write> Write for DummyTerm<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
     }
@@ -76,8 +94,7 @@ impl Span {
 
     /// Prints the file name, line and (optionally) column. Returns the number of graphemes
     /// written (to allow proper indentation).
-    pub fn print_loc<W: Write>(source_name: &str, line: usize, col: Option<usize>, t: &mut Terminal<W>)
-    -> io::Result<usize> {
+    pub fn print_loc<W: Write>(source_name: &str, line: usize, col: Option<usize>, t: &mut Terminal<Output=W>) -> io::Result<usize> {
         let mut s = format!("{}:{}:", source_name, line);
         if let Some(col) = col { s.push_str(format!("{}:", col).as_ref()); }
         s.push_str(" ");
@@ -89,7 +106,7 @@ impl Span {
     }
 
     pub fn print_info<W: Write>(source_name: &str, line: usize, col: Option<usize>, info: &str,
-    t: &mut Terminal<W>) -> io::Result<()> {
+    t: &mut Terminal<Output=W>) -> io::Result<()> {
         try!(Span::print_loc(source_name, line, col, t));
         try!(t.fg(color::CYAN));
         try!(write!(t, "info: "));
@@ -99,14 +116,14 @@ impl Span {
     }
 
     /// Prints a string with code formatting, followed by a line break
-    fn print_code<W: Write>(code: &str, t: &mut Terminal<W>) -> io::Result<()> {
+    fn print_code<W: Write>(code: &str, t: &mut Terminal<Output=W>) -> io::Result<()> {
         try!(t.reset());
         try!(write!(t, "{}\n", code));
         Ok(())
     }
 
     /// Prints a message followed by a line break
-    fn print_msg<W: Write>(msg: &str, t: &mut Terminal<W>) -> io::Result<()> {
+    fn print_msg<W: Write>(msg: &str, t: &mut Terminal<Output=W>) -> io::Result<()> {
         try!(t.attr(Attr::Bold));
         try!(t.fg(color::WHITE));
         try!(write!(t, "{}\n", msg));
@@ -117,7 +134,7 @@ impl Span {
     /// Given the source code from which this span was created (while compiling it), this prints
     /// the part of the source code this span points to. All lines contained in this span are
     /// printed and below each line, a marker shows which part belongs to the span.
-    pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<W>, c: Color)
+    pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<Output=W>, c: Color)
     -> io::Result<()> {
         let mut start = self.start;
         let mut len_left = self.len;
@@ -151,7 +168,7 @@ impl Span {
 
     /// Prints an error message with file position info, followed by this span (and the source line
     /// it points to).
-    pub fn print_with_err<W: Write>(&self, code: &str, source_name: &str, err: &str, t: &mut Terminal<W>)
+    pub fn print_with_err<W: Write>(&self, code: &str, source_name: &str, err: &str, t: &mut Terminal<Output=W>)
     -> io::Result<()> {
         let (start, _end) = self.get_lines(code);
         try!(Span::print_loc(source_name, start, None, t));
@@ -162,7 +179,7 @@ impl Span {
         Ok(())
     }
 
-    pub fn print_with_warn<W: Write>(&self, code: &str, source_name: &str, warn: &str, t: &mut Terminal<W>)
+    pub fn print_with_warn<W: Write>(&self, code: &str, source_name: &str, warn: &str, t: &mut Terminal<Output=W>)
     -> io::Result<()> {
         let (start, _end) = self.get_lines(code);
         try!(Span::print_loc(source_name, start, None, t));

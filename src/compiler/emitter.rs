@@ -27,7 +27,7 @@ pub struct EmitError {
 }
 
 impl EmitError {
-    pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<W>) -> io::Result<()> {
+    pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<Output=W>) -> io::Result<()> {
         let mut msg = self.msg.to_string();
         if let Some(ref detail) = self.detail {
             msg.push_str(&detail);

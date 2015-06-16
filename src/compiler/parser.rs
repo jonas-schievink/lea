@@ -23,7 +23,7 @@ pub struct ParseError {
 }
 
 impl ParseError {
-    pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<W>)
+    pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<Output=W>)
     -> io::Result<()> {
         try!(self.span.print_with_err(code, source_name, format!("{}", self.err).as_ref(), t));
 

@@ -44,6 +44,7 @@ pub struct CallInfo<'gc> {
 /// local and temporary variables, the callstack, etc.
 pub struct VM<'gc, G: GcStrategy + 'gc> {
     gc: G,
+    main: TracedRef<'gc, Function<'gc>>,
     /// Call stack
     calls: Vec<CallInfo<'gc>>,
     /// "VM stack", "value stack" or just stack. Stores the activation of functions in the form of
@@ -55,9 +56,9 @@ impl <'gc, G: GcStrategy + 'gc> VM<'gc, G> {
     pub fn new(gc: G, main: TracedRef<'gc, Function<'gc>>) -> VM<'gc, G> {
         VM {
             gc: gc,
+            main: main,
             calls: Vec::new(),
             stack: Vec::new(),
-            main: main,
         }
     }
 
