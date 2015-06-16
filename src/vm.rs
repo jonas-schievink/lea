@@ -25,6 +25,8 @@
 //! Otherwise, the topmost `CallInfo` on the call stack is the caller of the function that just
 //! returned.
 
+#![allow(dead_code)]
+
 use mem::{TracedRef, GcStrategy};
 use program::Function;
 use value::Value;

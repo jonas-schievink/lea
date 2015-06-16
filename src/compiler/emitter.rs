@@ -1,7 +1,5 @@
 //! This module implements the byte code emitter.
 
-#![allow(dead_code)]    // XXX
-
 use compiler::ast::*;
 use compiler::visit::*;
 use compiler::span::{Span, Spanned};
@@ -681,7 +679,7 @@ impl <'a> Visitor<'a> for Emitter {
     }
 
     fn visit_func(&mut self, f: &Function) {
-        self.funcs.push(FnData::new(f));
+        self.funcs.push(FnData::new(f, self.source_name.clone()));
 
         self.visit_block(&f.body);
         self.emit(RETURN(0, 1));

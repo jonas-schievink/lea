@@ -34,11 +34,12 @@ pub struct FnData {
     pub consts: Vec<Literal>,
     pub upvals: Vec<UpvalDesc>,
     pub lines: Vec<usize>,
+    pub source_name: String,
     pub child_protos: Vec<Box<FnData>>,
 }
 
 impl FnData {
-    pub fn new(f: &ast::Function) -> FnData {
+    pub fn new(f: &ast::Function, source_name: String) -> FnData {
         FnData {
             stacksize: 0,
             params: f.params.len(),
@@ -47,6 +48,7 @@ impl FnData {
             consts: Vec::with_capacity(8),
             upvals: Vec::with_capacity(f.upvalues.len()),
             lines: Vec::new(),  // TODO: emit line info
+            source_name: source_name,
             child_protos: Vec::new(),
         }
     }
