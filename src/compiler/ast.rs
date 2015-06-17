@@ -103,7 +103,7 @@ pub enum Call<'a> {
     SimpleCall(Box<Expr<'a>>, CallArgs<'a>),
 
     /// some.thing:name(...) - passes `some.thing` as the first argument
-    MethodCall(Box<Expr<'a>>, Spanned<String>, CallArgs<'a>),
+    MethodCall(Box<Expr<'a>>, Spanned<&'a str>, CallArgs<'a>),
 }
 
 #[derive(Clone, PartialEq, Debug)]

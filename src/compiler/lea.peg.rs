@@ -58,7 +58,7 @@ call -> Call<'input>
         let callee = Box::new(callee);
         let mut what = Spanned::new(callee_span, match name {
             None => SimpleCall(callee, first_args),
-            Some(name) => MethodCall(callee, Spanned::new(name.span, name.to_string()), first_args),
+            Some(name) => MethodCall(callee, name, first_args),
         });
 
         for list in it {
