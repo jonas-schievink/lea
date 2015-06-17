@@ -473,9 +473,9 @@ mod tests {
         // The first "i" is not visited, since it's stored as a string. Everything else is a
         // "VNamed" since variable resolution hasn't yet taken place.
         assert_eq!(v.vars, vec![
-            Spanned::default(VNamed("a".to_string())),
-            Spanned::default(VNamed("j".to_string())),
-            Spanned::default(VNamed("i".to_string())),
+            Spanned::default(VNamed("a")),
+            Spanned::default(VNamed("j")),
+            Spanned::default(VNamed("i")),
         ]);
     }
 

@@ -17,7 +17,7 @@ index -> (Expr<'input>, bool)
 
 variable -> Variable<'input>
     = i:ident idxs:index+    {
-        let mut v = Spanned::new(i.span, VNamed(i.value.to_string()));
+        let mut v = Spanned::new(i.span, VNamed(i.value));
         for idx in idxs {
             let (expr, dot) = idx;
 
@@ -35,7 +35,7 @@ variable -> Variable<'input>
 
         v
     }
-    / i:ident { mkspanned(VNamed(i.value.to_string()), start_pos, pos) }
+    / i:ident { mkspanned(VNamed(i.value), start_pos, pos) }
 
 /// Returns the expressions to pass as arguments to an invoked function
 callargs -> CallArgs<'input>

@@ -273,12 +273,12 @@ mod tests {
     #[test]
     fn expr_idx() {
         assert_eq!(expression("t").unwrap().value,
-            EVar(Spanned::default(VNamed("t".to_string()))));
+            EVar(Spanned::default(VNamed("t"))));
         assert!(expression("t.i") != expression("t[\"i\"]"));
 
         assert_eq!(expression("t.i.j").unwrap().value, EVar(Spanned::default(VDotIndex(
             Box::new(Spanned::default(VDotIndex(
-                Box::new(Spanned::default(VNamed("t".to_string()))),
+                Box::new(Spanned::default(VNamed("t"))),
                 "i".to_string(),
             ))),
             "j".to_string(),
@@ -353,26 +353,26 @@ mod tests {
         assert!(expression("f(1)").is_ok());
         assert_eq!(statement("f(1, 2)"), statement("f ( 1 , 2 )"));
         assert_eq!(statement("f ( 1 , 2 )").unwrap().value, SCall(SimpleCall(
-            Box::new(Spanned::default(EVar(Spanned::default(VNamed("f".to_string()))))),
+            Box::new(Spanned::default(EVar(Spanned::default(VNamed("f"))))),
             CallArgs::Normal(vec![
                 Spanned::default(ELit(TInt(1))),
                 Spanned::default(ELit(TInt(2))),
             ]),
         )));
         assert_eq!(expression("f()").unwrap().value, ECall(SimpleCall(
-            Box::new(Spanned::default(EVar(Spanned::default(VNamed("f".to_string()))))),
+            Box::new(Spanned::default(EVar(Spanned::default(VNamed("f"))))),
             CallArgs::Normal(vec![]),
         )));
         assert_eq!(expression("f()()").unwrap().value, ECall(SimpleCall(
             Box::new(Spanned::default(ECall(SimpleCall(
-                Box::new(Spanned::default(EVar(Spanned::default(VNamed("f".to_string()))))),
+                Box::new(Spanned::default(EVar(Spanned::default(VNamed("f"))))),
                 CallArgs::Normal(vec![]),
             )))),
             CallArgs::Normal(vec![]),
         )));
 
         assert_eq!(expression("f ''").unwrap().value, ECall(SimpleCall(
-            Box::new(Spanned::default(EVar(Spanned::default(VNamed("f".to_string()))))),
+            Box::new(Spanned::default(EVar(Spanned::default(VNamed("f"))))),
             CallArgs::String("".to_string()),
         )));
 
@@ -408,13 +408,13 @@ mod tests {
         ));
 
         assert_eq!(statement("i, j = k, l").unwrap().value, SAssign(vec![
-            Spanned::default(VNamed("i".to_string())), Spanned::default(VNamed("j".to_string())),
+            Spanned::default(VNamed("i")), Spanned::default(VNamed("j")),
         ], vec![
-            Spanned::default(EVar(Spanned::default(VNamed("k".to_string())))),
-            Spanned::default(EVar(Spanned::default(VNamed("l".to_string())))),
+            Spanned::default(EVar(Spanned::default(VNamed("k")))),
+            Spanned::default(EVar(Spanned::default(VNamed("l")))),
         ]));
         assert_eq!(statement("i, j = 1, 2, 3").unwrap().value, SAssign(vec![
-            Spanned::default(VNamed("i".to_string())), Spanned::default(VNamed("j".to_string())),
+            Spanned::default(VNamed("i")), Spanned::default(VNamed("j")),
         ], vec![
             Spanned::default(ELit(TInt(1))),
             Spanned::default(ELit(TInt(2))),
@@ -432,7 +432,7 @@ mod tests {
         ));
 
         assert_eq!(statement("function g.f(i,j) end").unwrap().value, SFunc(
-            Spanned::default(VDotIndex(Box::new(Spanned::default(VNamed("g".to_string()))), "f".to_string())),
+            Spanned::default(VDotIndex(Box::new(Spanned::default(VNamed("g"))), "f".to_string())),
             Function {
                 params: vec![Spanned::default("i"), Spanned::default("j")],
                 locals: vec![],
@@ -443,7 +443,7 @@ mod tests {
         ));
 
         assert_eq!(statement("function g.f:j(i,j) end").unwrap().value, SMethod(
-            Spanned::default(VDotIndex(Box::new(Spanned::default(VNamed("g".to_string()))), "f".to_string())),
+            Spanned::default(VDotIndex(Box::new(Spanned::default(VNamed("g"))), "f".to_string())),
             "j".to_string(),
             Function {
                 params: vec![Spanned::default("i"), Spanned::default("j")],
@@ -471,7 +471,7 @@ mod tests {
 
         assert_eq!(statement("for i in j do end").unwrap().value, SForIn {
             vars: vec![Spanned::default("i")],
-            iter: vec![Spanned::default(EVar(Spanned::default(VNamed("j".to_string()))))],
+            iter: vec![Spanned::default(EVar(Spanned::default(VNamed("j"))))],
             body: Block::new(vec![], Default::default()),
         });
         assert_eq!(statement(" for  i,j, k , l in 1, 2,3 , 4 do break end").unwrap().value, SForIn {
@@ -492,7 +492,7 @@ mod tests {
             start: Spanned::default(ELit(TInt(1))),
             end: Spanned::default(EUnOp(
                 UnOp::Len,
-                Box::new(Spanned::default(EVar(Spanned::default(VNamed("t".to_string())))))
+                Box::new(Spanned::default(EVar(Spanned::default(VNamed("t")))))
             )),
             step: None,
             body: Block::new(vec![
@@ -574,7 +574,7 @@ mod tests {
     function f(g, ...) do end end
     "#).unwrap(), Block::new(vec![
             Spanned::default(SAssign(
-                vec![Spanned::default(VNamed("t".to_string()))],
+                vec![Spanned::default(VNamed("t"))],
                 vec![Spanned::default(ELit(TInt(1)))]
             )),
             Spanned::default(SDecl(vec![Spanned::default("r"), Spanned::default("s")], vec![
@@ -582,7 +582,7 @@ mod tests {
                 Spanned::default(ELit(TInt(2))),
                 Spanned::default(ELit(TInt(1)))
             ])),
-            Spanned::default(SFunc(Spanned::default(VNamed("f".to_string())), Function {
+            Spanned::default(SFunc(Spanned::default(VNamed("f")), Function {
                 params: vec![Spanned::default("g")],
                 locals: vec![],
                 upvalues: vec![],

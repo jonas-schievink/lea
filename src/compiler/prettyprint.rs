@@ -474,23 +474,26 @@ impl <'a, 'v, W: Write> Visitor<'v> for PrettyPrinter<'a, W> {
     #[allow(unused_must_use)]
     fn visit_var(&mut self, var: &Variable) {
         match var.value {
-            VNamed(ref s) | VGlobal(ref s) | VResGlobal(_, ref s) => {
+            VNamed(s) => {
                 write!(self.writer, "{}", s);
-            },
+            }
+            VGlobal(ref s) | VResGlobal(_, ref s) => {
+                write!(self.writer, "{}", s);
+            }
             VLocal(..) | VUpval(..) => {
                 // TODO resolve name
                 panic!("VLocal not supported in pretty-printer");
-            },
+            }
             VIndex(ref var, ref expr) => {
                 self.visit_var(var);
                 write!(self.writer, "[");
                 self.visit_expr(expr);
                 write!(self.writer, "]");
-            },
+            }
             VDotIndex(ref var, ref strn) => {
                 self.visit_var(var);
                 write!(self.writer, ".{}", strn);
-            },
+            }
         };
     }
 }

@@ -51,12 +51,12 @@ impl FuncData {
     }
 
     /// Finds a reachable local (no upvalues are considered) with the given name and returns its id
-    fn get_local(&self, name: &String) -> Option<usize> {
+    fn get_local(&self, name: &str) -> Option<usize> {
         // scan backwards through scopes
         let mut level = self.scopes.len() - 1;
         loop {
             for id in &self.scopes[level] {
-                if *name == self.locals[*id] {
+                if name == &self.locals[*id] {
                     return Some(*id);
                 }
             }
@@ -77,17 +77,17 @@ struct Resolver {
 
 impl Resolver {
     /// Finds an upvalue in a parent function
-    fn find_upval(&mut self, name: &String, userlvl: usize) -> Option<usize> {
+    fn find_upval(&mut self, name: &str, userlvl: usize) -> Option<usize> {
         if userlvl == 0 {
             return None;
         }
 
         // search parent functions for locals / upvalues that match
         if let Some(id) = self.funcs[userlvl - 1].get_local(name) {
-            return Some(self.funcs[userlvl].add_upval(name.clone(), UpvalDesc::Local(id)));
+            return Some(self.funcs[userlvl].add_upval(name.to_string(), UpvalDesc::Local(id)));
         } else {
             if let Some(id) = self.find_upval(name, userlvl - 1) {
-                return Some(self.funcs[userlvl].add_upval(name.clone(), UpvalDesc::Upval(id)));
+                return Some(self.funcs[userlvl].add_upval(name.to_string(), UpvalDesc::Upval(id)));
             } else {
                 return None;
             }
@@ -97,7 +97,7 @@ impl Resolver {
     }
 
     /// Searches for an upvalue with the given name
-    fn get_upval(&mut self, name: &String) -> Option<usize> {
+    fn get_upval(&mut self, name: &str) -> Option<usize> {
         let level = self.funcs.len() - 1;
 
         {
@@ -160,9 +160,9 @@ impl Resolver {
     }
 
     /// Resolves the given named variable
-    fn resolve_var<'a>(&mut self, name: &String, span: Span) -> _Variable<'a> {
+    fn resolve_var<'a>(&mut self, name: &str, span: Span) -> _Variable<'a> {
         // first, try a local with that name
-        if let Some(id) = self.funcs[self.funcs.len() - 1].get_local(&name) {
+        if let Some(id) = self.funcs[self.funcs.len() - 1].get_local(name) {
             VLocal(id)
         } else {
             // find an upvalue
@@ -173,7 +173,7 @@ impl Resolver {
                 let envvar = Box::new(Spanned::new(span,
                     self.resolve_var(&"_ENV".to_string(), span)));
 
-                VResGlobal(envvar, name.clone())
+                VResGlobal(envvar, name.to_string())
             }
         }
     }
@@ -212,7 +212,7 @@ impl <'a> Transform<'a> for Resolver {
 
     fn visit_var(&mut self, mut v: Variable<'a>) -> Variable<'a> {
         if let VNamed(name) = v.value {
-            v.value = self.resolve_var(&name, v.span);
+            v.value = self.resolve_var(name, v.span);
             v
         } else {
             walk_var(v, self)

@@ -135,7 +135,7 @@ impl <'a> Function<'a> {
 #[derive(Clone, PartialEq, Debug)]
 pub enum _Variable<'a> {
     /// References a named variable; later resolved to local, global or upvalue references
-    VNamed(String),
+    VNamed(&'a str),
 
     /// References the local variable with the given ID.
     ///
