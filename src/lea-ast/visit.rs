@@ -411,72 +411,46 @@ pub fn walk_var_ref<'a, V: Visitor<'a>>(var: &'a Variable, visitor: &mut V) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use parser::block;
 
     use ast::*;
-    use ast::span::Spanned;
+    use ::span::{Span, Spanned};
 
     use core::literal::*;
 
     #[test]
-    fn visit_noop() {
+    fn visit_count() {
         struct NoopVisitor {
             stmts: u8,
             exprs: u8,
             vars: u8,
         };
         impl <'a> Visitor<'a> for NoopVisitor {
-            fn visit_stmt(&mut self, _stmt: &Stmt) {
+            fn visit_stmt(&mut self, stmt: &Stmt) {
                 self.stmts += 1;
-            }
-            fn visit_expr(&mut self, _expr: &Expr) {
-                self.exprs += 1;
-            }
-            fn visit_var(&mut self, _var: &Variable) {
-                self.vars += 1;
-            }
-        }
-
-        let myblock = block("i = 0").unwrap();
-        let mut v = NoopVisitor {stmts: 0, exprs: 0, vars: 0};
-        walk_block_ref(&myblock, &mut v);
-
-        // The statement is always visited, the expr and var are skipped because we don't call
-        // the walk_* functions.
-        assert_eq!(v.stmts, 1);
-        assert_eq!(v.exprs, 0);
-        assert_eq!(v.vars, 0);
-    }
-
-    #[test]
-    fn visit_vars() {
-        struct VarVisitor<'a> {
-            vars: Vec<Variable<'a>>,
-        }
-        impl <'a> Visitor<'a> for VarVisitor<'a> {
-            fn visit_stmt(&mut self, stmt: &'a Stmt<'a>) {
                 walk_stmt_ref(stmt, self);
             }
-            fn visit_expr(&mut self, expr: &'a Expr<'a>) {
+            fn visit_expr(&mut self, expr: &Expr) {
+                self.exprs += 1;
                 walk_expr_ref(expr, self);
             }
-            fn visit_var(&mut self, var: &'a Variable<'a>) {
-                self.vars.push(var.clone());
+            fn visit_var(&mut self, var: &Variable) {
+                self.vars += 1;
                 walk_var_ref(var, self);
             }
         }
 
-        let myblock = block("local i = a\nj = i").unwrap();
-        let mut v = VarVisitor { vars: Vec::new() };
+        let myblock = Block::new(vec![
+            Spanned::default(SAssign(
+                vec![Spanned::default(VNamed("i"))],
+                vec![Spanned::default(ELit(TInt(0)))],
+            )),
+        ], Span::new(0, 0));
+        let mut v = NoopVisitor {stmts: 0, exprs: 0, vars: 0};
         walk_block_ref(&myblock, &mut v);
 
-        // The first "i" is not visited, since it's stored as a string. Everything else is a
-        // "VNamed" since variable resolution hasn't yet taken place.
-        assert_eq!(v.vars, vec![
-            Spanned::default(VNamed("a")),
-            Spanned::default(VNamed("j")),
-            Spanned::default(VNamed("i")),
-        ]);
+        assert_eq!(v.stmts, 1);
+        assert_eq!(v.exprs, 1);
+        assert_eq!(v.vars, 1);
     }
 
     #[test]
@@ -493,7 +467,9 @@ mod tests {
             }
         }
 
-        let mut b = block("return 1").unwrap();
+        let mut b = Block::new(vec![
+            Spanned::default(SReturn(vec![Spanned::default(ELit(TInt(1)))])),
+        ], Span::new(0, 0));
         b = walk_block(b, &mut MutVisitor);
 
         assert_eq!(b.stmts, vec![

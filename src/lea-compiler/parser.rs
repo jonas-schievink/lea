@@ -1,10 +1,9 @@
 //! Wrapper around rust-peg generated parser methods.
 
-use super::visit;
-use super::visit::Transform;
 use super::expr_parser::ExprParser;
 
 use ast::*;
+use ast::visit::Transform;
 use ast::span::*;
 
 use term::Terminal;

@@ -1,9 +1,8 @@
 //! Checks if an AST is valid
 
-use visit::*;
-
 use ast::*;
 use ast::span::*;
+use ast::visit::*;
 
 use term::Terminal;
 

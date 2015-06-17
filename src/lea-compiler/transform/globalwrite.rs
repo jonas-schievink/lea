@@ -5,7 +5,8 @@
 //! the global access is intended (mostly when setting up new function environments / sandboxes).
 
 use ::Warning;
-use visit::*;
+
+use ast::visit::*;
 use ast::*;
 
 use std::ops::{Deref, DerefMut};

@@ -1,11 +1,11 @@
 //! Performs constant folding on literals
 
 use ::Warning;
-use visit::*;
 
 use ast::*;
 use ast::span::Spanned;
 use ast::op::*;
+use ast::visit::*;
 
 use core::literal::*;
 

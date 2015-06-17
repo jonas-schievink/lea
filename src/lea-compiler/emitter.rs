@@ -1,10 +1,9 @@
 //! This module implements the byte code emitter.
 
-use visit::*;
-
 use ast::*;
-use ast::span::{Span, Spanned};
 use ast::op::{BinOp, UnOp};
+use ast::span::{Span, Spanned};
+use ast::visit::*;
 
 use core::limits;
 use core::fndata::FnData;

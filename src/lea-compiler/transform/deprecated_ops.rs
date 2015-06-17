@@ -1,10 +1,10 @@
 //! Warns when a deprecated Lua operator is used (such as `~=` or `not`).
 
 use ::Warning;
-use visit::*;
 
 use ast::*;
 use ast::op::*;
+use ast::visit::*;
 
 use std::ops::{Deref, DerefMut};
 use std::collections::HashMap;

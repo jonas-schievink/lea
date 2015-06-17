@@ -105,7 +105,6 @@ pub mod emitter;
 pub mod parser;
 pub mod prettyprint;
 pub mod resolve;
-pub mod visit;
 
 use transform::{Transform, LintMode};
 use emitter::emit_func;

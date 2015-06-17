@@ -3,11 +3,10 @@
 //!
 //! This makes a tree out of the "raw" expressions parsed by the generated parser.
 
-use super::visit::*;
-
 use ast::*;
-use ast::span::*;
 use ast::op::*;
+use ast::span::*;
+use ast::visit::*;
 
 #[derive(Copy, Clone)]
 pub struct ExprParser;

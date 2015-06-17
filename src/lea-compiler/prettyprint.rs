@@ -1,8 +1,9 @@
 //! AST pretty printer
 
 use super::parser;
-use super::ast::*;
-use super::visit::*;
+
+use ast::*;
+use ast::visit::*;
 
 use core::literal::*;
 
@@ -504,8 +505,8 @@ impl <'a, 'v, W: Write> Visitor<'v> for PrettyPrinter<'a, W> {
 mod tests {
     use super::*;
     use parser::block;
-    use visit::walk_block_ref;
     use ast::Block;
+    use ast::visit::walk_block_ref;
 
     fn print_block(block: &Block) -> String {
         let mut v = Vec::new();
