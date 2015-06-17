@@ -1,11 +1,11 @@
 #![feature(test)]
 
 extern crate test;
-extern crate lea;
+extern crate lea_compiler;
 
 use test::Bencher;
 
-use lea::compiler::parser;
+use lea_compiler::parser;
 
 #[bench]
 fn simple(b: &mut Bencher) {

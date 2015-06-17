@@ -415,7 +415,7 @@ mod tests {
     use ast::*;
     use ::span::{Span, Spanned};
 
-    use core::literal::*;
+    use lea_core::literal::*;
 
     #[test]
     fn visit_count() {

@@ -10,7 +10,7 @@ use ast::ast::*;
 use ast::span::{Span, Spanned};
 use ast::visit::*;
 
-use core::fndata::UpvalDesc;
+use lea_core::fndata::UpvalDesc;
 
 use std::collections::HashMap;
 use std::default::Default;
@@ -258,8 +258,8 @@ mod tests {
     use ast::span::Spanned;
     use ast::*;
 
-    use core::fndata::UpvalDesc;
-    use core::literal::*;
+    use lea_core::fndata::UpvalDesc;
+    use lea_core::literal::*;
 
     use std::default::Default;
 

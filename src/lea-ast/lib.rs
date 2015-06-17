@@ -2,9 +2,10 @@
 
 #![feature(collections)]
 
-extern crate core;
 extern crate term;
 extern crate unicode_segmentation;
+
+extern crate lea_core;
 
 pub mod op;
 pub mod ast;

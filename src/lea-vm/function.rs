@@ -1,9 +1,9 @@
 //! Defines the `FunctionProto` type, which is a garbage-collected version of core's `FnData`, as
 //! well as the `Function` type, which is an instantiated, runnable function inside the VM.
 
-use core::fndata::{UpvalDesc, FnData};
-use core::opcode::*;
-use core::literal::*;
+use lea_core::fndata::{UpvalDesc, FnData};
+use lea_core::opcode::*;
+use lea_core::literal::*;
 
 use mem::*;
 use value::Value;

@@ -7,7 +7,7 @@ use ast::span::Spanned;
 use ast::op::*;
 use ast::visit::*;
 
-use core::literal::*;
+use lea_core::literal::*;
 
 use std::i64::BITS;
 

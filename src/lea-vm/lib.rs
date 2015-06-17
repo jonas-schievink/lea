@@ -2,7 +2,7 @@
 
 #![feature(hash)]
 
-extern crate core;
+extern crate lea_core;
 
 pub mod value;
 pub mod array;

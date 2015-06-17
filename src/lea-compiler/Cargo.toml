@@ -20,8 +20,8 @@ term = "*"
 unicode-segmentation = "*"
 log = "*"
 
-[dependencies.core]
-path = "../core"
+[dependencies.lea-core]
+path = "../lea-core"
 
 [dependencies.lea-ast]
 path = "../lea-ast"

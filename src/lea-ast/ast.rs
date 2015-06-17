@@ -11,8 +11,8 @@ pub use self::Call::*;
 use span::{Span, Spanned};
 use op::*;
 
-use core::literal::*;
-use core::fndata::UpvalDesc;
+use lea_core::literal::*;
+use lea_core::fndata::UpvalDesc;
 
 use std::collections::HashMap;
 use std::default::Default;

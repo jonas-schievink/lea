@@ -5,7 +5,7 @@ use super::parser;
 use ast::*;
 use ast::visit::*;
 
-use core::literal::*;
+use lea_core::literal::*;
 
 use std::io::{self, Write};
 

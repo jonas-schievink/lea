@@ -90,7 +90,7 @@ mod tests {
     use ast::span::Spanned;
     use ast::op::*;
 
-    use core::literal::*;
+    use lea_core::literal::*;
 
     use std::default::Default;
 

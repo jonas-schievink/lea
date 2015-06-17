@@ -8,7 +8,7 @@ use ast::span::{Span, Spanned, mkspanned};
 use ast::op::*;
 use ast::*;
 
-use core::literal::*;
+use lea_core::literal::*;
 
 
 /// Returns the expression with which something is indexed and a boolean indicating if dot-notation

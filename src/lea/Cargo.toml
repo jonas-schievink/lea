@@ -18,5 +18,5 @@ path = "lib.rs"
 [dependencies.lea-compiler]
 path = "../lea-compiler"
 
-[dependencies.vm]
-path = "../vm"
+[dependencies.lea-vm]
+path = "../lea-vm"

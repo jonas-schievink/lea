@@ -5,10 +5,10 @@ use ast::op::{BinOp, UnOp};
 use ast::span::{Span, Spanned};
 use ast::visit::*;
 
-use core::limits;
-use core::fndata::FnData;
-use core::opcode::*;
-use core::literal::*;
+use lea_core::limits;
+use lea_core::fndata::FnData;
+use lea_core::opcode::*;
+use lea_core::literal::*;
 
 use term::{color, Terminal, Attr};
 
@@ -729,7 +729,7 @@ mod tests {
     use super::*;
     use ::parse_and_resolve;
 
-    use core::opcode::*;
+    use lea_core::opcode::*;
 
     /// A simple test that compiles a main function and compares the emitted opcodes
     macro_rules! test {

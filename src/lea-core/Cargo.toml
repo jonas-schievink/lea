@@ -1,12 +1,12 @@
 [package]
 
-name = "vm"
+name = "lea-core"
 version = "0.0.1"
 authors = ["Jonas Schievink <jonas@schievink.net>"]
 
 [lib]
-name = "vm"
+name = "lea_core"
 path = "lib.rs"
 
-[dependencies.core]
-path = "../core"
+[dependencies]
+rustc-serialize = "*"
