@@ -110,11 +110,12 @@ pub enum Call<'a> {
 pub struct Function<'a> {
     /// Parameters this function takes. Each one also declares a local in the body block.
     pub params: Vec<Spanned<&'a str>>,
+    pub varargs: bool,
+    pub body: Block<'a>,
+
     /// Vector of all locals declared in blocks inside this function (multiple with same name
     /// possible). The index into this vector serves as an identification for the local
     pub locals: Vec<Spanned<&'a str>>,
-    pub varargs: bool,
-    pub body: Block<'a>,
     /// Upvalues referenced by this function. Collected while resolving.
     pub upvalues: Vec<UpvalDesc>,
 }
@@ -123,9 +124,10 @@ impl <'a> Function<'a> {
     pub fn new(params: Vec<Spanned<&'a str>>, varargs: bool, body: Block<'a>) -> Function<'a> {
         Function {
             params: params,
-            locals: vec![],
             varargs: varargs,
             body: body,
+
+            locals: vec![],
             upvalues: vec![],
         }
     }

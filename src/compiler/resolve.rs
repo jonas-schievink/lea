@@ -21,9 +21,8 @@ struct FuncData<'a> {
 
     /// Upvalues referenced from within the function
     upvals: Vec<UpvalDesc>,
-    upval_names: Vec<String>,
     /// Maps known upvalue names to their id
-    upval_map: HashMap<String, usize>,
+    upval_map: HashMap<&'a str, usize>,
 
     /// Stack of lists of locals. Tracks all active scopes and thus all available locals.
     scopes: Vec<Vec<usize>>,
@@ -34,17 +33,15 @@ impl <'a> FuncData<'a> {
         FuncData {
             locals: locals,
             upvals: vec![],
-            upval_names: vec![],
             upval_map: Default::default(),
             scopes: vec![],
         }
     }
 
     /// Registers an upvalue and returns its id
-    fn add_upval(&mut self, name: String, desc: UpvalDesc) -> usize {
+    fn add_upval(&mut self, name: &'a str, desc: UpvalDesc) -> usize {
         let id = self.upvals.len();
         self.upvals.push(desc);
-        self.upval_names.push(name.clone());
         self.upval_map.insert(name, id);
 
         id
@@ -77,17 +74,17 @@ struct Resolver<'a> {
 
 impl <'a> Resolver<'a> {
     /// Finds an upvalue in a parent function
-    fn find_upval(&mut self, name: &str, userlvl: usize) -> Option<usize> {
+    fn find_upval(&mut self, name: &'a str, userlvl: usize) -> Option<usize> {
         if userlvl == 0 {
             return None;
         }
 
         // search parent functions for locals / upvalues that match
         if let Some(id) = self.funcs[userlvl - 1].get_local(name) {
-            return Some(self.funcs[userlvl].add_upval(name.to_string(), UpvalDesc::Local(id)));
+            return Some(self.funcs[userlvl].add_upval(name, UpvalDesc::Local(id)));
         } else {
             if let Some(id) = self.find_upval(name, userlvl - 1) {
-                return Some(self.funcs[userlvl].add_upval(name.to_string(), UpvalDesc::Upval(id)));
+                return Some(self.funcs[userlvl].add_upval(name, UpvalDesc::Upval(id)));
             } else {
                 return None;
             }
@@ -97,7 +94,7 @@ impl <'a> Resolver<'a> {
     }
 
     /// Searches for an upvalue with the given name
-    fn get_upval(&mut self, name: &str) -> Option<usize> {
+    fn get_upval(&mut self, name: &'a str) -> Option<usize> {
         let level = self.funcs.len() - 1;
 
         {
@@ -159,7 +156,7 @@ impl <'a> Resolver<'a> {
     }
 
     /// Resolves the given named variable
-    fn resolve_var(&mut self, name: &str, span: Span) -> _Variable<'a> {
+    fn resolve_var(&mut self, name: &'a str, span: Span) -> _Variable<'a> {
         // first, try a local with that name
         if let Some(id) = self.funcs[self.funcs.len() - 1].get_local(name) {
             VLocal(id)
@@ -170,7 +167,7 @@ impl <'a> Resolver<'a> {
             } else {
                 // fall back to global access; resolve environment
                 let envvar = Box::new(Spanned::new(span,
-                    self.resolve_var(&"_ENV".to_string(), span)));
+                    self.resolve_var("_ENV", span)));
 
                 VResGlobal(envvar, name.to_string())
             }
@@ -225,7 +222,9 @@ impl <'a> Transform<'a> for Resolver<'a> {
     fn visit_func(&mut self, mut f: Function<'a>) -> Function<'a> {
         let mut data = FuncData::new(f.params.clone());
         if self.funcs.len() == 0 {
-            data.add_upval("_ENV".to_string(), UpvalDesc::Upval(0));    // the UpvalDesc is ignored
+            // add implicit _ENV upvalue to main function.
+            // (the UpvalDesc is ignored)
+            data.add_upval("_ENV", UpvalDesc::Upval(0));
         }
 
         self.funcs.push(data);
