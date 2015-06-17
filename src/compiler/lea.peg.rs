@@ -12,8 +12,12 @@ use op::*;
 /// Returns the expression with which something is indexed and a boolean indicating if dot-notation
 /// was used.
 index -> (Expr<'input>, bool)
-    = "." id:ident          { (mkspanned(ELit(TStr(id.value.to_string())), start_pos, pos), true) }
-    / "[" e:expression "]"  { (mkspanned(e.value, start_pos, pos), false) }
+    = __* "." __* id:ident {
+        (mkspanned(ELit(TStr(id.value.to_string())), start_pos, pos), true)
+    }
+    / __* "[" e:expression "]" {
+        (mkspanned(e.value, start_pos, pos), false)
+    }
 
 variable -> Variable<'input>
     = i:ident idxs:index+    {
