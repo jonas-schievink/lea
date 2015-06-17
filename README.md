@@ -1,5 +1,5 @@
 # Lea - A sane Lua-like language
-[![Build Status](https://travis-ci.org/jonas-schievink/lea.svg?branch=master)](https://travis-ci.org/jonas-schievink/lea) <!--[![Coverage Status](https://coveralls.io/repos/jonas-schievink/lea/badge.svg?branch=master)](https://coveralls.io/r/jonas-schievink/lea?branch=master)-->
+[![Build Status](https://travis-ci.org/jonas-schievink/lea.svg?branch=master)](https://travis-ci.org/jonas-schievink/lea)
 
 [Documentation](https://jonas-schievink.github.io/lea/lea/index.html)
 
