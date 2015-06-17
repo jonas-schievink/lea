@@ -3,5 +3,5 @@
 //!
 //! This crate also contains a few utility functions that make usage of Lea easier.
 
-extern crate compiler;
+extern crate lea_compiler as compiler;
 extern crate vm;

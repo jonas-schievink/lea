@@ -15,8 +15,8 @@ A Lua-based language written in Rust
 name = "lea"
 path = "lib.rs"
 
-[dependencies.compiler]
-path = "../compiler"
+[dependencies.lea-compiler]
+path = "../lea-compiler"
 
 [dependencies.vm]
 path = "../vm"

@@ -2,8 +2,9 @@
 
 use ::Warning;
 use visit::*;
+
 use ast::*;
-use op::*;
+use ast::op::*;
 
 use std::ops::{Deref, DerefMut};
 use std::collections::HashMap;

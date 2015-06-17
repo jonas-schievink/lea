@@ -6,9 +6,10 @@
 
 // TODO better code style would be neat
 
-use super::ast::*;
 use super::visit::*;
-use super::span::{Span, Spanned};
+
+use ast::ast::*;
+use ast::span::{Span, Spanned};
 
 use core::fndata::UpvalDesc;
 
@@ -254,7 +255,8 @@ pub fn resolve_func(f: Function) -> Function {
 mod tests {
     use super::*;
     use parser::parse_main;
-    use span::Spanned;
+    
+    use ast::span::Spanned;
     use ast::*;
 
     use core::fndata::UpvalDesc;

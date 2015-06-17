@@ -93,25 +93,25 @@ extern crate log;
 extern crate rustc_serialize;
 extern crate term;
 extern crate unicode_segmentation;
+
 extern crate core;
+extern crate lea_ast as ast;
 
 
 mod expr_parser;
 pub mod transform;
-pub mod ast;
 pub mod check;
 pub mod emitter;
-pub mod op;
 pub mod parser;
 pub mod prettyprint;
 pub mod resolve;
-pub mod span;
 pub mod visit;
 
-use ast::Function;
 use transform::{Transform, LintMode};
 use emitter::emit_func;
-use span::*;
+
+use ast::Function;
+use ast::span::*;
 
 use core::fndata::FnData;
 

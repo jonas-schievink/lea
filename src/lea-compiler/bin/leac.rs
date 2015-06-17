@@ -2,12 +2,15 @@
 
 #![feature(libc)]
 
-extern crate compiler;
+extern crate lea_compiler as compiler;
+extern crate lea_ast as ast;
+
 extern crate term;
 extern crate libc;
 
 use compiler::*;
-use compiler::span::*;
+
+use ast::span::*;
 
 use std::env;
 use std::fmt;

@@ -2,9 +2,10 @@
 
 use ::Warning;
 use visit::*;
+
 use ast::*;
-use span::Spanned;
-use op::*;
+use ast::span::Spanned;
+use ast::op::*;
 
 use core::literal::*;
 

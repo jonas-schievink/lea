@@ -411,13 +411,12 @@ pub fn walk_var_ref<'a, V: Visitor<'a>>(var: &'a Variable, visitor: &mut V) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ast::*;
     use parser::block;
-    use span::Spanned;
+
+    use ast::*;
+    use ast::span::Spanned;
 
     use core::literal::*;
-
-    use std::default::Default;
 
     #[test]
     fn visit_noop() {

@@ -1,19 +1,22 @@
 //! Wrapper around rust-peg generated parser methods.
 
-peg_file! parse("lea.peg.rs");
-
-pub use self::parse::{ident, literal};
-
-use super::ast::*;
-use super::span::*;
 use super::visit;
 use super::visit::Transform;
 use super::expr_parser::ExprParser;
+
+use ast::*;
+use ast::span::*;
 
 use term::Terminal;
 
 use std::convert::From;
 use std::io::{self, Write};
+
+
+peg_file! parse("lea.peg.rs");
+
+pub use self::parse::{ident, literal};
+
 
 /// Custom error type adding a dummy span and providing a `format` method.
 #[derive(Debug, PartialEq, Eq)]
@@ -85,8 +88,8 @@ mod tests {
     use super::*;
 
     use ast::*;
-    use span::Spanned;
-    use op::*;
+    use ast::span::Spanned;
+    use ast::op::*;
 
     use core::literal::*;
 

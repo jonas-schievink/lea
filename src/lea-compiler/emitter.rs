@@ -1,9 +1,10 @@
 //! This module implements the byte code emitter.
 
-use ast::*;
 use visit::*;
-use span::{Span, Spanned};
-use op::{BinOp, UnOp};
+
+use ast::*;
+use ast::span::{Span, Spanned};
+use ast::op::{BinOp, UnOp};
 
 use core::limits;
 use core::fndata::FnData;
@@ -728,7 +729,7 @@ pub fn emit_func(f: &Function, source_name: &str) -> EmitResult {
 mod tests {
     use super::*;
     use ::parse_and_resolve;
-    
+
     use core::opcode::*;
 
     /// A simple test that compiles a main function and compares the emitted opcodes

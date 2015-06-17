@@ -4,9 +4,9 @@
 
 use std::mem;
 
-use span::{Span, Spanned, mkspanned};
+use ast::span::{Span, Spanned, mkspanned};
+use ast::op::*;
 use ast::*;
-use op::*;
 
 use core::literal::*;
 

@@ -4,9 +4,10 @@
 //! This makes a tree out of the "raw" expressions parsed by the generated parser.
 
 use super::visit::*;
-use super::ast::*;
-use super::span::*;
-use op::*;
+
+use ast::*;
+use ast::span::*;
+use ast::op::*;
 
 #[derive(Copy, Clone)]
 pub struct ExprParser;
