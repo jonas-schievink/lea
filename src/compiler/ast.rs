@@ -146,9 +146,6 @@ pub enum _Variable<'a> {
     /// References the upvalue with the given id (index into the `upvalues` field of the Function)
     VUpval(usize),
 
-    /// References a named global
-    VGlobal(String),
-
     /// References a resolved global. The left variable is the environment, which is indexed with
     /// the string on the right.
     VResGlobal(Box<Variable<'a>>, String),

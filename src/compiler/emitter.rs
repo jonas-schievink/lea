@@ -299,7 +299,6 @@ impl Emitter {
                 self.dealloc_slots(3);
             },
 
-            VGlobal(_) => panic!("VGlobal encountered by emitter, resolver is broken"),
             VNamed(_) => panic!("VNamed encountered by emitter, resolver is broken"),
         }
     }
@@ -344,7 +343,6 @@ impl Emitter {
                 hint_slot
             },
 
-            VGlobal(_) => panic!("VGlobal encountered by emitter, resolver is broken"),
             VNamed(_) => panic!("VNamed encountered by emitter, resolver is broken"),
         }
     }

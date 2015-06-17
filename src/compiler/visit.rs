@@ -387,7 +387,6 @@ pub fn walk_var<'a, V: Transform<'a>>(mut var: Variable<'a>, visitor: &mut V) ->
         VNamed(name) => VNamed(name),
         VLocal(id) => VLocal(id),
         VUpval(id) => VUpval(id),
-        VGlobal(name) => VGlobal(name),
     };
 
     var
@@ -405,7 +404,7 @@ pub fn walk_var_ref<'a, V: Visitor<'a>>(var: &'a Variable, visitor: &mut V) {
         VResGlobal(ref env, _) => {
             visitor.visit_var(&**env);
         }
-        VNamed(_) | VLocal(_) | VUpval(_) | VGlobal(_) => {},
+        VNamed(_) | VLocal(_) | VUpval(_) => {},
     }
 }
 

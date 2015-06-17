@@ -477,7 +477,7 @@ impl <'a, 'v, W: Write> Visitor<'v> for PrettyPrinter<'a, W> {
             VNamed(s) => {
                 write!(self.writer, "{}", s);
             }
-            VGlobal(ref s) | VResGlobal(_, ref s) => {
+            VResGlobal(_, ref s) => {
                 write!(self.writer, "{}", s);
             }
             VLocal(..) | VUpval(..) => {

@@ -240,13 +240,11 @@ impl <'a> Transform<'a> for Resolver {
     }
 }
 
-/// Resolves all locals used in the given block. Recursively resolves all blocks found inside.
+/// Resolves all locals used in the given main function and all functions defined within. This will
+/// also resolve the environment of all functions.
 ///
-/// Allows blocks inside the given block to access locals declared within the parent block
-/// (assuming they are declared before the block). Does not allow the given block to access outer
-/// locals.
-///
-/// This also resolves any `VGlobal` to `VResGlobal` and resolves the function environments.
+/// All occurrences of `VNamed` will be converted to `VLocal`, `VUpval`, or `VResGlobal` after this
+/// function returns.
 pub fn resolve_func(f: Function) -> Function {
     Resolver {
         funcs: vec![],
