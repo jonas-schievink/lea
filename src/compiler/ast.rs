@@ -48,7 +48,7 @@ pub struct Block<'a> {
     pub stmts: Vec<Stmt<'a>>,
 
     /// Maps names of locals declared in this block to their id
-    pub localmap: HashMap<String, usize>,
+    pub localmap: HashMap<&'a str, usize>,
 
     ph: PhantomData<&'a ()>,
 }
@@ -68,7 +68,7 @@ impl <'a> Block<'a> {
     ///
     /// Note that this does not check if the local map is valid. This would require access to the
     /// enclosing Function.
-    pub fn with_locals(stmts: Vec<Stmt<'a>>, span: Span, localmap: HashMap<String, usize>)
+    pub fn with_locals(stmts: Vec<Stmt<'a>>, span: Span, localmap: HashMap<&'a str, usize>)
     -> Block<'a> {
         Block {
             span: span,
@@ -112,7 +112,7 @@ pub struct Function<'a> {
     pub params: Vec<Spanned<&'a str>>,
     /// Vector of all locals declared in blocks inside this function (multiple with same name
     /// possible). The index into this vector serves as an identification for the local
-    pub locals: Vec<String>,
+    pub locals: Vec<Spanned<&'a str>>,
     pub varargs: bool,
     pub body: Block<'a>,
     /// Upvalues referenced by this function. Collected while resolving.

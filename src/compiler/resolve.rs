@@ -16,8 +16,8 @@ use std::default::Default;
 
 
 /// Data used by the resolver, associated to a function
-struct FuncData {
-    locals: Vec<String>,
+struct FuncData<'a> {
+    locals: Vec<Spanned<&'a str>>,
 
     /// Upvalues referenced from within the function
     upvals: Vec<UpvalDesc>,
@@ -29,8 +29,8 @@ struct FuncData {
     scopes: Vec<Vec<usize>>,
 }
 
-impl FuncData {
-    fn new(locals: Vec<String>) -> FuncData {
+impl <'a> FuncData<'a> {
+    fn new(locals: Vec<Spanned<&'a str>>) -> FuncData<'a> {
         FuncData {
             locals: locals,
             upvals: vec![],
@@ -56,7 +56,7 @@ impl FuncData {
         let mut level = self.scopes.len() - 1;
         loop {
             for id in &self.scopes[level] {
-                if name == &self.locals[*id] {
+                if name == self.locals[*id].value {
                     return Some(*id);
                 }
             }
@@ -70,12 +70,12 @@ impl FuncData {
 }
 
 /// A resolver will resolve any `VNamed` references in a function
-struct Resolver {
+struct Resolver<'a> {
     /// Stack of active functions
-    funcs: Vec<FuncData>,
+    funcs: Vec<FuncData<'a>>,
 }
 
-impl Resolver {
+impl <'a> Resolver<'a> {
     /// Finds an upvalue in a parent function
     fn find_upval(&mut self, name: &str, userlvl: usize) -> Option<usize> {
         if userlvl == 0 {
@@ -112,7 +112,7 @@ impl Resolver {
     }
 
     /// Declares a new local with the given name in the currently active scope and function.
-    fn add_local(&mut self, name: String) -> usize {
+    fn add_local(&mut self, name: Spanned<&'a str>) -> usize {
         let level = self.funcs.len() - 1;
 
         // this might be a redeclaration, in which case we ignore it (the emitter handles it)
@@ -122,8 +122,7 @@ impl Resolver {
         {
             let scope = &func.scopes[scopelvl];
             for id in scope {
-                let lname = &func.locals[*id];
-                if *lname == name {
+                if name.value == func.locals[*id].value {
                     // already declared
                     return *id;
                 }
@@ -140,11 +139,11 @@ impl Resolver {
     }
 
     /// Resolves a block and declares a list of locals inside of it
-    fn resolve_block<'a>(&mut self, mut b: Block<'a>, locals: Vec<Spanned<&'a str>>) -> Block<'a> {
+    fn resolve_block(&mut self, mut b: Block<'a>, locals: Vec<Spanned<&'a str>>) -> Block<'a> {
         let level = self.funcs.len() - 1;
         self.funcs[level].scopes.push(vec![]);
         for name in locals {
-            self.add_local(name.value.to_owned());
+            self.add_local(name);
         }
 
         b = walk_block(b, self);
@@ -153,14 +152,14 @@ impl Resolver {
         let scope = data.scopes.pop().unwrap();
         for id in scope {
             let name = &data.locals[id];
-            b.localmap.insert(name.clone(), id);
+            b.localmap.insert(name.value, id);
         }
 
         b
     }
 
     /// Resolves the given named variable
-    fn resolve_var<'a>(&mut self, name: &str, span: Span) -> _Variable<'a> {
+    fn resolve_var(&mut self, name: &str, span: Span) -> _Variable<'a> {
         // first, try a local with that name
         if let Some(id) = self.funcs[self.funcs.len() - 1].get_local(name) {
             VLocal(id)
@@ -179,20 +178,20 @@ impl Resolver {
     }
 }
 
-impl <'a> Transform<'a> for Resolver {
+impl <'a> Transform<'a> for Resolver<'a> {
     fn visit_stmt(&mut self, mut s: Stmt<'a>) -> Stmt<'a> {
         s.value = match s.value {
             SDecl(names, mut exprs) => {
                 exprs = exprs.into_iter().map(|e| walk_expr(e, self)).collect();
 
                 for name in &names {
-                    self.add_local(name.value.to_owned());
+                    self.add_local(*name);
                 }
 
                 SDecl(names, exprs)
             },
             SLFunc(name, mut f) => {
-                self.add_local(name.value.to_string());
+                self.add_local(name);
                 f = self.visit_func(f);
                 SLFunc(name, f)
             },
@@ -224,7 +223,7 @@ impl <'a> Transform<'a> for Resolver {
     }
 
     fn visit_func(&mut self, mut f: Function<'a>) -> Function<'a> {
-        let mut data = FuncData::new(f.params.iter().map(|p| p.value.to_owned()).collect());
+        let mut data = FuncData::new(f.params.clone());
         if self.funcs.len() == 0 {
             data.add_upval("_ENV".to_string(), UpvalDesc::Upval(0));    // the UpvalDesc is ignored
         }
@@ -263,11 +262,11 @@ mod tests {
 
     macro_rules! localmap {
         () => {{
-            ::std::collections::HashMap::<String, usize>::new()
+            ::std::collections::HashMap::<&str, usize>::new()
         }};
         ( $($key:ident: $e:expr),* ) => {{
-            let mut m = ::std::collections::HashMap::<String, usize>::new();
-            $( m.insert(stringify!($key).to_string(), $e); )*
+            let mut m = ::std::collections::HashMap::<&str, usize>::new();
+            $( m.insert(stringify!($key), $e); )*
 
             m
         }};
@@ -333,14 +332,14 @@ end
         assert_eq!(f, Function {
             params: vec![],
             varargs: true,
-            locals: vec!["a".to_string(), "f".to_string()],
+            locals: vec![Spanned::default("a"), Spanned::default("f")],
             upvalues: vec![UpvalDesc::Upval(0)],    // `_ENV`; the UpvalDesc is ignored
             body: Block::with_locals(vec![
                 Spanned::default(SDecl(vec![Spanned::default("a")], vec![])),
                 Spanned::default(SLFunc(Spanned::default("f"), Function {
                     params: vec![],
                     varargs: false,
-                    locals: vec!["f".to_string(), "g".to_string()],
+                    locals: vec![Spanned::default("f"), Spanned::default("g")],
                     upvalues: vec![UpvalDesc::Local(1), UpvalDesc::Local(0)],
                     body: Block::with_locals(vec![
                         Spanned::default(SAssign(vec![
@@ -398,7 +397,7 @@ local function h() local function h1() r = nil end end
         assert_eq!(f, Function {
             params: vec![],
             varargs: true,
-            locals: vec!["_ENV".to_string(), "f".to_string(), "g".to_string(), "h".to_string()],
+            locals: vec![Spanned::default("_ENV"), Spanned::default("f"), Spanned::default("g"), Spanned::default("h")],
             upvalues: vec![UpvalDesc::Upval(0)],
             body: Block::with_locals(vec![
                 Spanned::default(SAssign(vec![
@@ -410,7 +409,7 @@ local function h() local function h1() r = nil end end
                 Spanned::default(SLFunc(Spanned::default("f"), Function {
                     params: vec![],
                     varargs: false,
-                    locals: vec!["_ENV".to_string()],
+                    locals: vec![Spanned::default("_ENV")],
                     upvalues: vec![],
                     body: Block::with_locals(vec![
                         Spanned::default(SDecl(vec![Spanned::default("_ENV")], vec![])),
@@ -437,7 +436,7 @@ local function h() local function h1() r = nil end end
                 Spanned::default(SLFunc(Spanned::default("h"), Function {
                     params: vec![],
                     varargs: false,
-                    locals: vec!["h1".to_string()],
+                    locals: vec![Spanned::default("h1")],
                     upvalues: vec![UpvalDesc::Local(0)],
                     body: Block::with_locals(vec![
                         Spanned::default(SLFunc(Spanned::default("h1"), Function {
