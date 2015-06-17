@@ -13,14 +13,14 @@ pub struct ExprParser;
 
 /// Builds an `EBinOp` node and attaches the correct span. This requires that `lhs` and `rhs` are
 /// in the right "order" concerning their spans.
-fn mknode(lhs: Expr, op: BinOp, rhs: Expr) -> Expr {
+fn mknode<'a>(lhs: Expr<'a>, op: BinOp, rhs: Expr<'a>) -> Expr<'a> {
     let start = lhs.span.start;
     let end = rhs.span.start + rhs.span.len;
     mkspanned(EBinOp(Box::new(lhs), op, Box::new(rhs)), start, end)
 }
 
-impl Transform for ExprParser {
-    fn visit_expr(&mut self, mut expr: Expr) -> Expr {
+impl <'a> Transform<'a> for ExprParser {
+    fn visit_expr(&mut self, mut expr: Expr<'a>) -> Expr<'a> {
         expr = match expr.value {
             ERawOp(left, rest) => {
                 let mut operands: Vec<Expr> = Vec::new();

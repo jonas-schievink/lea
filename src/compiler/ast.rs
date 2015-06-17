@@ -11,6 +11,7 @@ pub use self::Call::*;
 
 use std::collections::HashMap;
 use std::default::Default;
+use std::marker::PhantomData;
 
 use super::span::{Span, Spanned};
 use program::UpvalDesc;
@@ -42,21 +43,24 @@ impl Literal {
 /// A block containing any number of statements. All blocks define a scope in which local variables
 /// can be declared.
 #[derive(Clone, Debug)]
-pub struct Block {
+pub struct Block<'a> {
     pub span: Span,
-    pub stmts: Vec<Stmt>,
+    pub stmts: Vec<Stmt<'a>>,
 
     /// Maps names of locals declared in this block to their id
     pub localmap: HashMap<String, usize>,
+
+    ph: PhantomData<&'a ()>,
 }
 
-impl Block {
+impl <'a> Block<'a> {
     /// Create a new block of statements
-    pub fn new(stmts: Vec<Stmt>, span: Span) -> Block {
+    pub fn new(stmts: Vec<Stmt<'a>>, span: Span) -> Block<'a> {
         Block {
             span: span,
             stmts: stmts,
             localmap: Default::default(),
+            ph: PhantomData,
         }
     }
 
@@ -64,57 +68,59 @@ impl Block {
     ///
     /// Note that this does not check if the local map is valid. This would require access to the
     /// enclosing Function.
-    pub fn with_locals(stmts: Vec<Stmt>, span: Span, localmap: HashMap<String, usize>) -> Block {
+    pub fn with_locals(stmts: Vec<Stmt<'a>>, span: Span, localmap: HashMap<String, usize>)
+    -> Block<'a> {
         Block {
             span: span,
             stmts: stmts,
             localmap: localmap,
+            ph: PhantomData,
         }
     }
 
-    pub fn get_local(&self, name: &String) -> Option<&usize> {
+    pub fn get_local(&self, name: &str) -> Option<&usize> {
         self.localmap.get(name)
     }
 }
 
-impl PartialEq for Block {
+impl <'a> PartialEq for Block<'a> {
     /// Compare two `Block`s without comparing their spans
-    fn eq(&self, rhs: &Block) -> bool {
+    fn eq(&self, rhs: &Block<'a>) -> bool {
         self.stmts == rhs.stmts && self.localmap == rhs.localmap
     }
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub enum CallArgs {
-    Normal(Vec<Expr>),
+pub enum CallArgs<'a> {
+    Normal(Vec<Expr<'a>>),
     String(String),
-    Table(TableCons),
+    Table(TableCons<'a>),
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub enum Call {
+pub enum Call<'a> {
     /// Regular call: f(e1, e2, ..)
-    SimpleCall(Box<Expr>, CallArgs),
+    SimpleCall(Box<Expr<'a>>, CallArgs<'a>),
 
     /// some.thing:name(...) - passes `some.thing` as the first argument
-    MethodCall(Box<Expr>, Spanned<String>, CallArgs),
+    MethodCall(Box<Expr<'a>>, Spanned<String>, CallArgs<'a>),
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct Function {
+pub struct Function<'a> {
     /// Parameters this function takes. Each one also declares a local in the body block.
-    pub params: Vec<String>,
+    pub params: Vec<Spanned<&'a str>>,
     /// Vector of all locals declared in blocks inside this function (multiple with same name
     /// possible). The index into this vector serves as an identification for the local
     pub locals: Vec<String>,
     pub varargs: bool,
-    pub body: Block,
+    pub body: Block<'a>,
     /// Upvalues referenced by this function. Collected while resolving.
     pub upvalues: Vec<UpvalDesc>,
 }
 
-impl Function {
-    pub fn new(params: Vec<String>, varargs: bool, body: Block) -> Function {
+impl <'a> Function<'a> {
+    pub fn new(params: Vec<Spanned<&'a str>>, varargs: bool, body: Block<'a>) -> Function<'a> {
         Function {
             params: params,
             locals: vec![],
@@ -127,7 +133,7 @@ impl Function {
 
 /// Something that can be assigned to a value
 #[derive(Clone, PartialEq, Debug)]
-pub enum _Variable {
+pub enum _Variable<'a> {
     /// References a named variable; later resolved to local, global or upvalue references
     VNamed(String),
 
@@ -145,23 +151,23 @@ pub enum _Variable {
 
     /// References a resolved global. The left variable is the environment, which is indexed with
     /// the string on the right.
-    VResGlobal(Box<Variable>, String),
+    VResGlobal(Box<Variable<'a>>, String),
 
     /// References an indexed variable (a field)
-    VIndex(Box<Variable>, Box<Expr>),
+    VIndex(Box<Variable<'a>>, Box<Expr<'a>>),
 
     /// References a variable indexed with dot notation
-    VDotIndex(Box<Variable>, String),
+    VDotIndex(Box<Variable<'a>>, String),
 }
 
 /// Statement nodes
 #[derive(Clone, Debug, PartialEq)]
-pub enum _Stmt {
+pub enum _Stmt<'a> {
     /// Declare a list of locals and assign initial values.
     ///
     /// Initial values are optional and default to `nil` (the second vector can have less elements
     /// than the first).
-    SDecl(Vec<String>, Vec<Expr>),
+    SDecl(Vec<Spanned<&'a str>>, Vec<Expr<'a>>),
 
     /// Assigns a list of expressions to a list of variables.
     ///
@@ -170,111 +176,111 @@ pub enum _Stmt {
     ///
     /// Might contain less variables than expressions or less expressions than variables. In the
     /// latter case, the leftover variables are assigned to nil.
-    SAssign(Vec<Variable>, Vec<Expr>),
+    SAssign(Vec<Variable<'a>>, Vec<Expr<'a>>),
 
     /// Execute a block in a new scope
-    SDo(Block),
+    SDo(Block<'a>),
 
     /// Abort the current loop
     SBreak,
 
     /// Return a possibly empty list of values to the caller
-    SReturn(Vec<Expr>),
+    SReturn(Vec<Expr<'a>>),
 
     /// Function call as statement
-    SCall(Call),
+    SCall(Call<'a>),
 
     /// Assign function to named variable (`function XY(...) ... end`)
-    SFunc(Variable, Function),
+    SFunc(Variable<'a>, Function<'a>),
 
     /// Method declaration a la `function some.thing:methodname(...) ... end`
     ///
     /// Assigns the function to `some.thing.methodname` and adds an implicit `self` parameter to
     /// the start of the parameter list.
-    SMethod(Variable, String, Function),
+    SMethod(Variable<'a>, String, Function<'a>),
 
     /// Assign function to newly declared local (`local function XY(...) ... end`)
-    SLFunc(String, Function),
+    SLFunc(String, Function<'a>),
 
     /// Executes `body` if `cond` is true and `el` if not
     SIf {
-        cond: Expr,
-        body: Block,
-        el: Block,
+        cond: Expr<'a>,
+        body: Block<'a>,
+        el: Block<'a>,
     },
 
     /// Loops a block while `cond` is true
     SWhile {
-        cond: Expr,
-        body: Block,
+        cond: Expr<'a>,
+        body: Block<'a>,
     },
 
     /// Loops a block until `abort_on` is true
     SRepeat {
-        abort_on: Expr,
-        body: Block,
+        abort_on: Expr<'a>,
+        body: Block<'a>,
     },
 
     /// Numeric for loop
     SFor {
-        var: String,    // named local
-        start: Expr,
-        step: Option<Expr>,
-        end: Expr,
-        body: Block,
+        var: Spanned<&'a str>,    // named local
+        start: Expr<'a>,
+        step: Option<Expr<'a>>,
+        end: Expr<'a>,
+        body: Block<'a>,
     },
 
     /// Generic for loop
     SForIn {
         /// The loop variables, returned by iterator
-        vars: Vec<String>,
+        vars: Vec<Spanned<&'a str>>,
         /// Expression list: Iterator function, invariant state, start value, [ignored ...]
-        iter: Vec<Expr>,
-        body: Block,
+        iter: Vec<Expr<'a>>,
+        body: Block<'a>,
     },
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub enum TableEntry {
+pub enum TableEntry<'a> {
     /// A key-value-pair
-    Pair(Expr, Expr),
+    Pair(Expr<'a>, Expr<'a>),
     /// An element of the table's array part
-    Elem(Expr),
+    Elem(Expr<'a>),
 }
 
-pub type TableCons = Vec<TableEntry>;
+pub type TableCons<'a> = Vec<TableEntry<'a>>;
 
 /// Expression nodes
 #[derive(Clone, PartialEq, Debug)]
-pub enum _Expr {
+pub enum _Expr<'a> {
     ELit(Literal),
-    EBinOp(Box<Expr>, BinOp, Box<Expr>),
-    EUnOp(UnOp, Box<Expr>),
-    EBraced(Box<Expr>),
+    EBinOp(Box<Expr<'a>>, BinOp, Box<Expr<'a>>),
+    EUnOp(UnOp, Box<Expr<'a>>),
+    EBraced(Box<Expr<'a>>),
 
     /// Raw binary expression returned from generated parser. Operator precedences are not yet
     /// applied, since the generated parser doesn't know about them.
     ///
     /// These expression are turned into EBinOp's right after the PEG-generated parser is run, so
     /// following code only has to deal with tree-like expressions.
-    ERawOp(Box<Expr>, Vec<(BinOp, Expr)>),
+    ERawOp(Box<Expr<'a>>, Vec<(BinOp, Expr<'a>)>),
     /// Variable used as expression
-    EVar(Variable),
+    EVar(Variable<'a>),
     /// Calls a function, might return multiple results
-    ECall(Call),
+    ECall(Call<'a>),
 
     /// Instantiates a function/closure
-    EFunc(Function),
+    EFunc(Function<'a>),
 
     /// Table constructor
-    ETable(TableCons),
+    ETable(TableCons<'a>),
     /// Array constructor, takes a list of initial values
-    EArray(Vec<Expr>),
+    EArray(Vec<Expr<'a>>),
     /// "..."; expands to var args. only valid if used inside varargs functions
     EVarArgs,
 }
 
-impl _Expr {
+impl <'a> _Expr<'a> {
     /// Returns true if this expression might evaluate to multiple results.
     pub fn is_multi_result(&self) -> bool {
         match *self {
@@ -301,6 +307,6 @@ impl _Expr {
     }
 }
 
-pub type Expr = Spanned<_Expr>;
-pub type Stmt = Spanned<_Stmt>;
-pub type Variable = Spanned<_Variable>;
+pub type Expr<'a> = Spanned<_Expr<'a>>;
+pub type Stmt<'a> = Spanned<_Stmt<'a>>;
+pub type Variable<'a> = Spanned<_Variable<'a>>;

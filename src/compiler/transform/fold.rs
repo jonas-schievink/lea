@@ -235,8 +235,8 @@ fn fold_binop(lhs: &Literal, op: BinOp, rhs: &Literal) -> Result<Literal, String
     }
 }
 
-impl Transform for Folder {
-    fn visit_expr(&mut self, mut e: Expr) -> Expr {
+impl <'a> Transform<'a> for Folder {
+    fn visit_expr(&mut self, mut e: Expr<'a>) -> Expr<'a> {
         e.value = match e.value {
             EBinOp(mut lhs, op, mut rhs) => {
                 lhs = Box::new(self.visit_expr(*lhs));
@@ -288,7 +288,7 @@ impl Transform for Folder {
     }
 }
 
-pub fn run(mut main: Function) -> (Function, Vec<Warning>) {
+pub fn run<'a>(mut main: Function<'a>) -> (Function<'a>, Vec<Warning>) {
     let mut v = Folder {
         warns: vec![],
     };
@@ -301,13 +301,14 @@ pub fn run(mut main: Function) -> (Function, Vec<Warning>) {
 mod tests {
     use super::*;
     use compiler::*;
-    use compiler::transform::LintMode;
+    use compiler::transform::{Transform, LintMode};
     use compiler::ast::Function;
 
 
-    fn parse_fold(code: &str) -> (Function, Vec<Warning>) {
+    fn parse_fold<'a>(code: &'a str) -> (Function<'a>, Vec<Warning>) {
+        let tr = run as Transform;
         let mut conf = CompileConfig::empty();
-        conf.add_transform(run, LintMode::Warn);
+        conf.add_transform(&tr, LintMode::Warn);
 
         let main = parse_and_resolve(code).unwrap();
         let (main, res) = apply_transforms(main, &conf);

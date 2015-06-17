@@ -336,7 +336,7 @@ mod tests {
         );
         assert_eq!(expression("function(i, j, ...) break end").unwrap().value,
             EFunc(Function {
-                params: vec!["i".to_string(), "j".to_string()],
+                params: vec![Spanned::default("i"), Spanned::default("j")],
                 locals: vec![],
                 upvalues: vec![],
                 varargs: true,
@@ -434,7 +434,7 @@ mod tests {
         assert_eq!(statement("function g.f(i,j) end").unwrap().value, SFunc(
             Spanned::default(VDotIndex(Box::new(Spanned::default(VNamed("g".to_string()))), "f".to_string())),
             Function {
-                params: vec!["i".to_string(), "j".to_string()],
+                params: vec![Spanned::default("i"), Spanned::default("j")],
                 locals: vec![],
                 upvalues: vec![],
                 varargs: false,
@@ -446,7 +446,7 @@ mod tests {
             Spanned::default(VDotIndex(Box::new(Spanned::default(VNamed("g".to_string()))), "f".to_string())),
             "j".to_string(),
             Function {
-                params: vec!["i".to_string(), "j".to_string()],
+                params: vec![Spanned::default("i"), Spanned::default("j")],
                 locals: vec![],
                 upvalues: vec![],
                 varargs: false,
@@ -458,24 +458,24 @@ mod tests {
         assert!(statement("function f(,i) end").is_err());
         assert!(statement("function f(i,,j) end").is_err());
 
-        assert_eq!(statement("local i").unwrap().value, SDecl(vec!["i".to_string()], vec![]));
-        assert_eq!(statement("local j,k").unwrap().value, SDecl(vec!["j".to_string(), "k".to_string()], vec![]));
-        assert_eq!(statement("local i = nil").unwrap().value, SDecl(vec!["i".to_string()], vec![
+        assert_eq!(statement("local i").unwrap().value, SDecl(vec![Spanned::default("i")], vec![]));
+        assert_eq!(statement("local j,k").unwrap().value, SDecl(vec![Spanned::default("j"), Spanned::default("k")], vec![]));
+        assert_eq!(statement("local i = nil").unwrap().value, SDecl(vec![Spanned::default("i")], vec![
             Spanned::default(ELit(TNil))
         ]));
         assert_eq!(statement("local i,j = 0, 2").unwrap().value, SDecl(vec![
-            "i".to_string(), "j".to_string(),
+            Spanned::default("i"), Spanned::default("j"),
         ], vec![
             Spanned::default(ELit(TInt(0))), Spanned::default(ELit(TInt(2))),
         ]));
 
         assert_eq!(statement("for i in j do end").unwrap().value, SForIn {
-            vars: vec!["i".to_string()],
+            vars: vec![Spanned::default("i")],
             iter: vec![Spanned::default(EVar(Spanned::default(VNamed("j".to_string()))))],
             body: Block::new(vec![], Default::default()),
         });
         assert_eq!(statement(" for  i,j, k , l in 1, 2,3 , 4 do break end").unwrap().value, SForIn {
-            vars: vec!["i".to_string(), "j".to_string(), "k".to_string(), "l".to_string()],
+            vars: vec![Spanned::default("i"), Spanned::default("j"), Spanned::default("k"), Spanned::default("l")],
             iter: vec![
                 Spanned::default(ELit(TInt(1))),
                 Spanned::default(ELit(TInt(2))),
@@ -488,7 +488,7 @@ mod tests {
         });
 
         assert_eq!(statement("for i = 1, #t do do end break end").unwrap().value, SFor {
-            var: "i".to_string(),
+            var: Spanned::default("i"),
             start: Spanned::default(ELit(TInt(1))),
             end: Spanned::default(EUnOp(
                 UnOp::Len,
@@ -501,7 +501,7 @@ mod tests {
             ], Default::default()),
         });
         assert_eq!(statement("for i = 1,2,3 do do end break end").unwrap().value, SFor {
-            var: "i".to_string(),
+            var: Spanned::default("i"),
             start: Spanned::default(ELit(TInt(1))),
             end: Spanned::default(ELit(TInt(2))),
             step: Some(Spanned::default(ELit(TInt(3)))),
@@ -577,13 +577,13 @@ mod tests {
                 vec![Spanned::default(VNamed("t".to_string()))],
                 vec![Spanned::default(ELit(TInt(1)))]
             )),
-            Spanned::default(SDecl(vec!["r".to_string(), "s".to_string()], vec![
+            Spanned::default(SDecl(vec![Spanned::default("r"), Spanned::default("s")], vec![
                 Spanned::default(ELit(TInt(4))),
                 Spanned::default(ELit(TInt(2))),
                 Spanned::default(ELit(TInt(1)))
             ])),
             Spanned::default(SFunc(Spanned::default(VNamed("f".to_string())), Function {
-                params: vec!["g".to_string()],
+                params: vec![Spanned::default("g")],
                 locals: vec![],
                 upvalues: vec![],
                 varargs: true,

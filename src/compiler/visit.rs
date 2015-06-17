@@ -7,20 +7,20 @@ use std::mem;
 
 
 /// A visitor that can transform AST nodes
-pub trait Transform : Sized {
-    fn visit_stmt(&mut self, stmt: Stmt) -> Stmt {
+pub trait Transform<'a> : Sized {
+    fn visit_stmt(&mut self, stmt: Stmt<'a>) -> Stmt<'a> {
         walk_stmt(stmt, self)
     }
-    fn visit_expr(&mut self, expr: Expr) -> Expr {
+    fn visit_expr(&mut self, expr: Expr<'a>) -> Expr<'a> {
         walk_expr(expr, self)
     }
-    fn visit_var(&mut self, var: Variable) -> Variable {
+    fn visit_var(&mut self, var: Variable<'a>) -> Variable<'a> {
         walk_var(var, self)
     }
-    fn visit_block(&mut self, block: Block) -> Block {
+    fn visit_block(&mut self, block: Block<'a>) -> Block<'a> {
         walk_block(block, self)
     }
-    fn visit_func(&mut self, mut func: Function) -> Function {
+    fn visit_func(&mut self, mut func: Function<'a>) -> Function<'a> {
         func.body = self.visit_block(func.body);
         func
     }
@@ -28,25 +28,25 @@ pub trait Transform : Sized {
 
 /// A "read-only" visitor that gets a shared reference to the AST node
 pub trait Visitor<'a> : Sized {
-    fn visit_stmt(&mut self, stmt: &'a Stmt) {
+    fn visit_stmt(&mut self, stmt: &'a Stmt<'a>) {
         walk_stmt_ref(stmt, self);
     }
-    fn visit_expr(&mut self, expr: &'a Expr) {
+    fn visit_expr(&mut self, expr: &'a Expr<'a>) {
         walk_expr_ref(expr, self);
     }
-    fn visit_var(&mut self, var: &'a Variable) {
+    fn visit_var(&mut self, var: &'a Variable<'a>) {
         walk_var_ref(var, self);
     }
-    fn visit_block(&mut self, block: &'a Block) {
+    fn visit_block(&mut self, block: &'a Block<'a>) {
         walk_block_ref(block, self);
     }
-    fn visit_func(&mut self, func: &'a Function) {
+    fn visit_func(&mut self, func: &'a Function<'a>) {
         self.visit_block(&func.body);
     }
 }
 
 
-pub fn walk_block<V: Transform>(mut b: Block, visitor: &mut V) -> Block {
+pub fn walk_block<'a, V: Transform<'a>>(mut b: Block<'a>, visitor: &mut V) -> Block<'a> {
     b.stmts = b.stmts.map_in_place(|stmt| visitor.visit_stmt(stmt));
 
     b
@@ -59,7 +59,7 @@ pub fn walk_block_ref<'a, V: Visitor<'a>>(b: &'a Block, visitor: &mut V) {
 }
 
 /// Helper function that walks the function's body.
-pub fn walk_func<V: Transform>(mut f: Function, visitor: &mut V) -> Function {
+pub fn walk_func<'a, V: Transform<'a>>(mut f: Function<'a>, visitor: &mut V) -> Function<'a> {
     // this is needed since rustc is too strict when doing something like:
     // func.body = walk_block(func.body, visitor);
     let mut body = mem::replace(&mut f.body, Block::new(vec![], Default::default()));
@@ -68,7 +68,7 @@ pub fn walk_func<V: Transform>(mut f: Function, visitor: &mut V) -> Function {
     f
 }
 
-fn walk_args<V: Transform>(args: CallArgs, visitor: &mut V) -> CallArgs {
+fn walk_args<'a, V: Transform<'a>>(args: CallArgs<'a>, visitor: &mut V) -> CallArgs<'a> {
     match args {
         CallArgs::Normal(mut argv) => {
             argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
@@ -97,7 +97,7 @@ fn walk_args_ref<'a, V: Visitor<'a>>(args: &'a CallArgs, visitor: &mut V) {
     }
 }
 
-fn walk_table<V: Transform>(cons: TableCons, visitor: &mut V) -> TableCons {
+fn walk_table<'a, V: Transform<'a>>(cons: TableCons<'a>, visitor: &mut V) -> TableCons<'a> {
     cons.map_in_place(|entry| match entry {
         TableEntry::Pair(k, v) => TableEntry::Pair(visitor.visit_expr(k), visitor.visit_expr(v)),
         TableEntry::Elem(elem) => TableEntry::Elem(visitor.visit_expr(elem)),
@@ -118,7 +118,7 @@ fn walk_table_ref<'a, V: Visitor<'a>>(cons: &'a TableCons, visitor: &mut V) {
     }
 }
 
-pub fn walk_stmt<V: Transform>(mut stmt: Stmt, visitor: &mut V) -> Stmt {
+pub fn walk_stmt<'a, V: Transform<'a>>(mut stmt: Stmt<'a>, visitor: &mut V) -> Stmt<'a> {
     stmt.value = match stmt.value {
         SDecl(names, mut vals) => {
             vals = vals.map_in_place(|val| visitor.visit_expr(val));
@@ -270,7 +270,7 @@ pub fn walk_stmt_ref<'a, V: Visitor<'a>>(stmt: &'a Stmt, visitor: &mut V) {
     };
 }
 
-pub fn walk_expr<V: Transform>(mut expr: Expr, visitor: &mut V) -> Expr {
+pub fn walk_expr<'a, V: Transform<'a>>(mut expr: Expr<'a>, visitor: &mut V) -> Expr<'a> {
     expr.value = match expr.value {
         ERawOp(mut lhs, mut rest) => {
             lhs = Box::new(visitor.visit_expr(*lhs));
@@ -369,7 +369,7 @@ pub fn walk_expr_ref<'a, V: Visitor<'a>>(expr: &'a Expr, visitor: &mut V) {
     };
 }
 
-pub fn walk_var<V: Transform>(mut var: Variable, visitor: &mut V) -> Variable {
+pub fn walk_var<'a, V: Transform<'a>>(mut var: Variable<'a>, visitor: &mut V) -> Variable<'a> {
     var.value = match var.value {
         VIndex(mut var, mut idx) => {
             var = Box::new(visitor.visit_var(*var));
@@ -450,17 +450,17 @@ mod tests {
 
     #[test]
     fn visit_vars() {
-        struct VarVisitor {
-            vars: Vec<Variable>,
+        struct VarVisitor<'a> {
+            vars: Vec<Variable<'a>>,
         }
-        impl <'a> Visitor<'a> for VarVisitor {
-            fn visit_stmt(&mut self, stmt: &Stmt) {
+        impl <'a> Visitor<'a> for VarVisitor<'a> {
+            fn visit_stmt(&mut self, stmt: &'a Stmt<'a>) {
                 walk_stmt_ref(stmt, self);
             }
-            fn visit_expr(&mut self, expr: &Expr) {
+            fn visit_expr(&mut self, expr: &'a Expr<'a>) {
                 walk_expr_ref(expr, self);
             }
-            fn visit_var(&mut self, var: &Variable) {
+            fn visit_var(&mut self, var: &'a Variable<'a>) {
                 self.vars.push(var.clone());
                 walk_var_ref(var, self);
             }
@@ -482,8 +482,8 @@ mod tests {
     #[test]
     fn visit_mut() {
         struct MutVisitor;
-        impl Transform for MutVisitor {
-            fn visit_expr(&mut self, mut expr: Expr) -> Expr {
+        impl <'a> Transform<'a> for MutVisitor {
+            fn visit_expr(&mut self, mut expr: Expr<'a>) -> Expr<'a> {
                 expr.value = match expr.value {
                     ELit(TInt(1)) => ELit(TInt(0)),
                     _ => { return expr; }

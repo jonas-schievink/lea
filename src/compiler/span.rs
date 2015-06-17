@@ -220,6 +220,7 @@ impl Default for Span {
 }
 
 /// Wraps a T and a Span.
+#[derive(Copy, Clone)]
 pub struct Spanned<T> {
     pub span: Span,
     pub value: T,
@@ -249,15 +250,6 @@ impl <T> Deref for Spanned<T> {
 impl <T> DerefMut for Spanned<T> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
         &mut self.value
-    }
-}
-
-impl <T: Clone> Clone for Spanned<T> {
-    fn clone(&self) -> Spanned<T> {
-        Spanned {
-            span: self.span,
-            value: self.value.clone(),
-        }
     }
 }
 

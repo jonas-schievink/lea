@@ -4,6 +4,8 @@
 //! easy to reference upvalues (see `UpvalDesc` in program.rs) and makes the bytecode emitter do
 //! less work.
 
+// TODO better code style would be neat
+
 use super::ast::*;
 use super::visit::*;
 use super::span::{Span, Spanned};
@@ -138,11 +140,11 @@ impl Resolver {
     }
 
     /// Resolves a block and declares a list of locals inside of it
-    fn resolve_block(&mut self, mut b: Block, locals: Vec<String>) -> Block {
+    fn resolve_block<'a>(&mut self, mut b: Block<'a>, locals: Vec<Spanned<&'a str>>) -> Block<'a> {
         let level = self.funcs.len() - 1;
         self.funcs[level].scopes.push(vec![]);
         for name in locals {
-            self.add_local(name);
+            self.add_local(name.value.to_owned());
         }
 
         b = walk_block(b, self);
@@ -158,7 +160,7 @@ impl Resolver {
     }
 
     /// Resolves the given named variable
-    fn resolve_var(&mut self, name: &String, span: Span) -> _Variable {
+    fn resolve_var<'a>(&mut self, name: &String, span: Span) -> _Variable<'a> {
         // first, try a local with that name
         if let Some(id) = self.funcs[self.funcs.len() - 1].get_local(&name) {
             VLocal(id)
@@ -177,14 +179,14 @@ impl Resolver {
     }
 }
 
-impl Transform for Resolver {
-    fn visit_stmt(&mut self, mut s: Stmt) -> Stmt {
+impl <'a> Transform<'a> for Resolver {
+    fn visit_stmt(&mut self, mut s: Stmt<'a>) -> Stmt<'a> {
         s.value = match s.value {
             SDecl(names, mut exprs) => {
                 exprs = exprs.into_iter().map(|e| walk_expr(e, self)).collect();
 
                 for name in &names {
-                    self.add_local(name.clone());
+                    self.add_local(name.value.to_owned());
                 }
 
                 SDecl(names, exprs)
@@ -195,7 +197,7 @@ impl Transform for Resolver {
                 SLFunc(name, f)
             },
             SFor{var, start, step, end, mut body} => {
-                body = self.resolve_block(body, vec![var.clone()]);
+                body = self.resolve_block(body, vec![var]);
                 SFor{var: var, start: start, step: step, end: end, body: body}
             },
             SForIn{vars, iter, mut body} => {
@@ -208,7 +210,7 @@ impl Transform for Resolver {
         s
     }
 
-    fn visit_var(&mut self, mut v: Variable) -> Variable {
+    fn visit_var(&mut self, mut v: Variable<'a>) -> Variable<'a> {
         if let VNamed(name) = v.value {
             v.value = self.resolve_var(&name, v.span);
             v
@@ -217,12 +219,12 @@ impl Transform for Resolver {
         }
     }
 
-    fn visit_block(&mut self, b: Block) -> Block {
+    fn visit_block(&mut self, b: Block<'a>) -> Block<'a> {
         self.resolve_block(b, vec![])
     }
 
-    fn visit_func(&mut self, mut f: Function) -> Function {
-        let mut data = FuncData::new(f.params.clone());
+    fn visit_func(&mut self, mut f: Function<'a>) -> Function<'a> {
+        let mut data = FuncData::new(f.params.iter().map(|p| p.value.to_owned()).collect());
         if self.funcs.len() == 0 {
             data.add_upval("_ENV".to_string(), UpvalDesc::Upval(0));    // the UpvalDesc is ignored
         }
@@ -292,10 +294,10 @@ j = i
                 vec![Spanned::default(VResGlobal(Box::new(Spanned::default(VUpval(0))), "i".to_string()))],
                 vec![Spanned::default(ELit(TInt(0)))],
             )),
-            Spanned::default(SDecl(vec!["a".to_string()], vec![])),
+            Spanned::default(SDecl(vec![Spanned::default("a")], vec![])),
             Spanned::default(SDo(Block::with_locals(vec![
-                Spanned::default(SDecl(vec!["i".to_string()], vec![])),
-                Spanned::default(SDecl(vec!["j".to_string()], vec![
+                Spanned::default(SDecl(vec![Spanned::default("i")], vec![])),
+                Spanned::default(SDecl(vec![Spanned::default("j")], vec![
                     Spanned::default(EVar(Spanned::default(VLocal(1)))),
                 ])),
                 Spanned::default(SAssign(
@@ -336,7 +338,7 @@ end
             locals: vec!["a".to_string(), "f".to_string()],
             upvalues: vec![UpvalDesc::Upval(0)],    // `_ENV`; the UpvalDesc is ignored
             body: Block::with_locals(vec![
-                Spanned::default(SDecl(vec!["a".to_string()], vec![])),
+                Spanned::default(SDecl(vec![Spanned::default("a")], vec![])),
                 Spanned::default(SLFunc("f".to_string(), Function {
                     params: vec![],
                     varargs: false,
@@ -348,7 +350,7 @@ end
                         ], vec![
                             Spanned::default(ELit(TNil))
                         ])),
-                        Spanned::default(SDecl(vec!["f".to_string()], vec![
+                        Spanned::default(SDecl(vec![Spanned::default("f")], vec![
                             Spanned::default(EVar(Spanned::default(VUpval(0))))
                         ])),
                         Spanned::default(SLFunc("g".to_string(), Function {
@@ -406,14 +408,14 @@ local function h() local function h1() r = nil end end
                 ], vec![
                     Spanned::default(ELit(TNil))
                 ])),
-                Spanned::default(SDecl(vec!["_ENV".to_string()], vec![])),
+                Spanned::default(SDecl(vec![Spanned::default("_ENV")], vec![])),
                 Spanned::default(SLFunc("f".to_string(), Function {
                     params: vec![],
                     varargs: false,
                     locals: vec!["_ENV".to_string()],
                     upvalues: vec![],
                     body: Block::with_locals(vec![
-                        Spanned::default(SDecl(vec!["_ENV".to_string()], vec![])),
+                        Spanned::default(SDecl(vec![Spanned::default("_ENV")], vec![])),
                         Spanned::default(SAssign(vec![
                             Spanned::default(VResGlobal(
                                 Box::new(Spanned::default(VLocal(0))), "i".to_string()

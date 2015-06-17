@@ -129,7 +129,7 @@ impl <'a, W: Write> PrettyPrinter<'a, W> {
         let mut first = true;
         for param in &f.params {
             if first { first = false; } else { write!(self.writer, ", "); }
-            write!(self.writer, "{}", param);
+            write!(self.writer, "{}", param.value);
         }
 
         if f.varargs {
@@ -202,7 +202,7 @@ impl <'a, 'v, W: Write> Visitor<'v> for PrettyPrinter<'a, W> {
                 let mut first = true;
                 for name in names {
                     if first { first = false; } else { write!(self.writer, ", "); }
-                    write!(self.writer, "{}", name);
+                    write!(self.writer, "{}", name.value);
                 }
 
                 if vals.len() > 0 {
@@ -302,7 +302,7 @@ impl <'a, 'v, W: Write> Visitor<'v> for PrettyPrinter<'a, W> {
                 self.visit_expr(abort_on);
             },
             SFor {ref var, ref start, ref step, ref end, ref body} => {
-                write!(self.writer, "for {} = ", var);
+                write!(self.writer, "for {} = ", var.value);
                 self.visit_expr(start);
                 write!(self.writer, ", ");
                 self.visit_expr(end);
@@ -324,7 +324,7 @@ impl <'a, 'v, W: Write> Visitor<'v> for PrettyPrinter<'a, W> {
                 let mut first = true;
                 for var in vars {
                     if first { first = false; } else { write!(self.writer, ", "); }
-                    write!(self.writer, "{}", var);
+                    write!(self.writer, "{}", var.value);
                 }
 
                 write!(self.writer, " in ");
@@ -429,7 +429,7 @@ impl <'a, 'v, W: Write> Visitor<'v> for PrettyPrinter<'a, W> {
                 let mut first = true;
                 for param in &f.params {
                     if first { first = false; } else { write!(self.writer, ", "); }
-                    write!(self.writer, "{}", &param);
+                    write!(self.writer, "{}", param.value);
                 }
                 if f.varargs { write!(self.writer, "..."); }
                 writeln!(self.writer, ")");
