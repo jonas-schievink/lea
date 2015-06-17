@@ -141,7 +141,7 @@ impl Emitter {
             self.err("constant limit reached", Some(format!("limit: {}", u16::MAX as u64 + 1)));
             u16::MAX
         } else {
-            println!(" CONST {} = {:?}", id, lit);
+            debug!(" CONST {} = {:?}", id, lit);
             self.cur_func_mut().consts.push(lit.clone());
             id as u16
         }
@@ -199,7 +199,7 @@ impl Emitter {
     /// Emits an opcode into the current function. Note that this might not add the opcode, but
     /// instead modify the last opcode emitted if a peephole optimization can be applied.
     fn emit(&mut self, op: Opcode) {
-        println!("{:?}", op);
+        debug!("{:?}", op);
 
         if self.cur_func().opcodes.len() as u64 >= limits::OP_LIMIT {
             self.err("opcode limit reached", Some(format!("limit: {}", limits::OP_LIMIT)));
@@ -229,11 +229,10 @@ impl Emitter {
 
             if self.cur_func().opcodes.len() != 0 {
                 let len = self.cur_func().opcodes.len();
-                let lastref = &mut self.cur_func_mut().opcodes[len - 1];
-                let last = *lastref;
+                let last = self.cur_func_mut().opcodes[len - 1];
 
                 if let Some(new) = peephole_opt(last, op) {
-                    mem::replace(lastref, new);
+                    mem::replace(&mut self.cur_func_mut().opcodes[len - 1], new);
                     return;
                 }
             }
@@ -533,7 +532,7 @@ impl Emitter {
                     self.alloc.insert(id, slot);
                     locals.push(Spanned::default(VLocal(id)));
 
-                    //println!(" {} ({}) -> {}", name, id, slot);
+                    debug!("alloc: {} (id {}) -> slot {}", name.value, id, slot);
                 }
 
                 // build fake assignment node and use generic assigment code to emit code
@@ -541,7 +540,6 @@ impl Emitter {
                 vals.push(Spanned::default(ELit(TNil)));
 
                 let assign = SAssign(locals, vals);
-                //println!(">>> {:?}", assign);
                 self.emit_stmt(&Spanned::new(s.span, assign), block);
             }
             SAssign(ref vars, ref vals) => {
@@ -578,7 +576,7 @@ impl Emitter {
                     return;
                 }
 
-                //println!("{} tmps", tmpcount);
+                debug!("assign: {} tmps", tmpcount);
 
                 for i in 0..tmpcount {
                     let slot: usize = tmpstart + i;
