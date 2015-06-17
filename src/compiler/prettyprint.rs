@@ -258,7 +258,7 @@ impl <'a, 'v, W: Write> Visitor<'v> for PrettyPrinter<'a, W> {
             SMethod(ref var, ref name, ref f) => {
                 write!(self.writer, "function ");
                 self.visit_var(var);
-                write!(self.writer, ":{}", name);
+                write!(self.writer, ":{}", name.value);
                 self.print_funcbody(f);
             },
             SLFunc(ref name, ref f) => {

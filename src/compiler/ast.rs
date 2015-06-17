@@ -197,7 +197,7 @@ pub enum _Stmt<'a> {
     ///
     /// Assigns the function to `some.thing.methodname` and adds an implicit `self` parameter to
     /// the start of the parameter list.
-    SMethod(Variable<'a>, String, Function<'a>),
+    SMethod(Variable<'a>, Spanned<&'a str>, Function<'a>),
 
     /// Assign function to newly declared local (`local function XY(...) ... end`)
     SLFunc(String, Function<'a>),

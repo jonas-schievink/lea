@@ -444,7 +444,7 @@ mod tests {
 
         assert_eq!(statement("function g.f:j(i,j) end").unwrap().value, SMethod(
             Spanned::default(VDotIndex(Box::new(Spanned::default(VNamed("g"))), "f".to_string())),
-            "j".to_string(),
+            Spanned::default("j"),
             Function {
                 params: vec![Spanned::default("i"), Spanned::default("j")],
                 locals: vec![],

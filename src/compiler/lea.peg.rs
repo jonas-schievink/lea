@@ -220,7 +220,7 @@ stmt_inner -> Stmt<'input>
     / "function" __+ var:variable method:methodname? f:funcbody {
         mkspanned(match method {
             None => SFunc(var, f),
-            Some(method) => SMethod(var, method.value.to_string(), f),
+            Some(method) => SMethod(var, method, f),
         }, start_pos, pos)
     }
     / "local" __+ "function" __+ name:ident f:funcbody {
