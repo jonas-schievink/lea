@@ -421,7 +421,8 @@ mod tests {
             Spanned::default(ELit(TInt(3))),
         ]));
 
-        assert_eq!(statement("local\nfunction\nt()\nend").unwrap().value, SLFunc("t".to_string(),
+        assert_eq!(statement("local\nfunction\nt()\nend").unwrap().value, SLFunc(
+            Spanned::default("t"),
             Function {
                 params: vec![],
                 locals: vec![],

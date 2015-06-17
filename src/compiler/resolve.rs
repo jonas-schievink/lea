@@ -192,7 +192,7 @@ impl <'a> Transform<'a> for Resolver {
                 SDecl(names, exprs)
             },
             SLFunc(name, mut f) => {
-                self.add_local(name.clone());
+                self.add_local(name.value.to_string());
                 f = self.visit_func(f);
                 SLFunc(name, f)
             },
@@ -339,7 +339,7 @@ end
             upvalues: vec![UpvalDesc::Upval(0)],    // `_ENV`; the UpvalDesc is ignored
             body: Block::with_locals(vec![
                 Spanned::default(SDecl(vec![Spanned::default("a")], vec![])),
-                Spanned::default(SLFunc("f".to_string(), Function {
+                Spanned::default(SLFunc(Spanned::default("f"), Function {
                     params: vec![],
                     varargs: false,
                     locals: vec!["f".to_string(), "g".to_string()],
@@ -353,7 +353,7 @@ end
                         Spanned::default(SDecl(vec![Spanned::default("f")], vec![
                             Spanned::default(EVar(Spanned::default(VUpval(0))))
                         ])),
-                        Spanned::default(SLFunc("g".to_string(), Function {
+                        Spanned::default(SLFunc(Spanned::default("g"), Function {
                             params: vec![],
                             varargs: false,
                             locals: vec![],
@@ -409,7 +409,7 @@ local function h() local function h1() r = nil end end
                     Spanned::default(ELit(TNil))
                 ])),
                 Spanned::default(SDecl(vec![Spanned::default("_ENV")], vec![])),
-                Spanned::default(SLFunc("f".to_string(), Function {
+                Spanned::default(SLFunc(Spanned::default("f"), Function {
                     params: vec![],
                     varargs: false,
                     locals: vec!["_ENV".to_string()],
@@ -423,7 +423,7 @@ local function h() local function h1() r = nil end end
                         ], vec![Spanned::default(ELit(TNil))])),
                     ], Default::default(), localmap!{ _ENV: 0 }),
                 })),
-                Spanned::default(SLFunc("g".to_string(), Function {
+                Spanned::default(SLFunc(Spanned::default("g"), Function {
                     params: vec![],
                     varargs: false,
                     locals: vec![],
@@ -436,13 +436,13 @@ local function h() local function h1() r = nil end end
                         ])),
                     ], Default::default(), localmap!{}),
                 })),
-                Spanned::default(SLFunc("h".to_string(), Function {
+                Spanned::default(SLFunc(Spanned::default("h"), Function {
                     params: vec![],
                     varargs: false,
                     locals: vec!["h1".to_string()],
                     upvalues: vec![UpvalDesc::Local(0)],
                     body: Block::with_locals(vec![
-                        Spanned::default(SLFunc("h1".to_string(), Function {
+                        Spanned::default(SLFunc(Spanned::default("h1"), Function {
                             params: vec![],
                             varargs: false,
                             locals: vec![],

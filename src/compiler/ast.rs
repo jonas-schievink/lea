@@ -200,7 +200,7 @@ pub enum _Stmt<'a> {
     SMethod(Variable<'a>, Spanned<&'a str>, Function<'a>),
 
     /// Assign function to newly declared local (`local function XY(...) ... end`)
-    SLFunc(String, Function<'a>),
+    SLFunc(Spanned<&'a str>, Function<'a>),
 
     /// Executes `body` if `cond` is true and `el` if not
     SIf {

@@ -224,7 +224,7 @@ stmt_inner -> Stmt<'input>
         }, start_pos, pos)
     }
     / "local" __+ "function" __+ name:ident f:funcbody {
-        mkspanned(SLFunc(name.value.to_string(), f), start_pos, pos)
+        mkspanned(SLFunc(name, f), start_pos, pos)
     }
     / "do" __+ b:block "end" { mkspanned(SDo(b), start_pos, pos) }
     / "break" { mkspanned(SBreak, start_pos, pos) }

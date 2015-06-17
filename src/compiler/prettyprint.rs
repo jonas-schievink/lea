@@ -262,7 +262,7 @@ impl <'a, 'v, W: Write> Visitor<'v> for PrettyPrinter<'a, W> {
                 self.print_funcbody(f);
             },
             SLFunc(ref name, ref f) => {
-                write!(self.writer, "local function {}", name);
+                write!(self.writer, "local function {}", name.value);
                 self.print_funcbody(f);
             },
             SIf {ref cond, ref body, ref el} => {
