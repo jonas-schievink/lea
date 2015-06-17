@@ -11,10 +11,12 @@ description = """
 A Lua-based language written in Rust
 """
 
-[dependencies]
-peg = "*"
-rustc-serialize = "*"
-lazy_static = "*"
-term = "*"
-unicode-segmentation = "*"
-log = "*"
+[lib]
+name = "lea"
+path = "lib.rs"
+
+[dependencies.compiler]
+path = "../compiler"
+
+[dependencies.vm]
+path = "../vm"

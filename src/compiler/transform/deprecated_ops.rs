@@ -1,8 +1,8 @@
 //! Warns when a deprecated Lua operator is used (such as `~=` or `not`).
 
-use compiler::Warning;
-use compiler::visit::*;
-use compiler::ast::*;
+use ::Warning;
+use visit::*;
+use ast::*;
 use op::*;
 
 use std::ops::{Deref, DerefMut};

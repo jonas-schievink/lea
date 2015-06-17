@@ -1,12 +1,14 @@
 //! This module implements the byte code emitter.
 
-use compiler::ast::*;
-use compiler::visit::*;
-use compiler::span::{Span, Spanned};
-use opcode::*;
-use program::FnData;
+use ast::*;
+use visit::*;
+use span::{Span, Spanned};
 use op::{BinOp, UnOp};
-use limits;
+
+use core::limits;
+use core::fndata::FnData;
+use core::opcode::*;
+use core::literal::*;
 
 use term::{color, Terminal, Attr};
 
@@ -675,7 +677,17 @@ impl <'a> Visitor<'a> for Emitter {
     }
 
     fn visit_func(&mut self, f: &Function) {
-        self.funcs.push(FnData::new(f, self.source_name.clone()));
+        self.funcs.push(FnData {
+            stacksize: 0,
+            params: f.params.len(),
+            varargs: f.varargs,
+            opcodes: vec![],
+            consts: vec![],
+            upvals: f.upvalues.clone(),
+            lines: vec![],
+            source_name: self.source_name.clone(),
+            child_protos: vec![],
+        });
 
         self.visit_block(&f.body);
         self.emit(RETURN(0, 1));
@@ -715,8 +727,9 @@ pub fn emit_func(f: &Function, source_name: &str) -> EmitResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use compiler::parse_and_resolve;
-    use opcode::*;
+    use ::parse_and_resolve;
+    
+    use core::opcode::*;
 
     /// A simple test that compiles a main function and compares the emitted opcodes
     macro_rules! test {

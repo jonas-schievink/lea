@@ -1,0 +1,12 @@
+[package]
+
+name = "core"
+version = "0.0.1"
+authors = ["Jonas Schievink <jonas@schievink.net>"]
+
+[lib]
+name = "core"
+path = "lib.rs"
+
+[dependencies]
+rustc-serialize = "*"

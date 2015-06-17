@@ -28,7 +28,7 @@
 #![allow(dead_code)]
 
 use mem::{TracedRef, GcStrategy};
-use program::Function;
+use function::Function;
 use value::Value;
 
 /// Contains information about a called Lea function.

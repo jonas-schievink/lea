@@ -9,7 +9,8 @@
 use super::ast::*;
 use super::visit::*;
 use super::span::{Span, Spanned};
-use program::UpvalDesc;
+
+use core::fndata::UpvalDesc;
 
 use std::collections::HashMap;
 use std::default::Default;
@@ -252,10 +253,12 @@ pub fn resolve_func(f: Function) -> Function {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use compiler::parser::parse_main;
-    use compiler::span::Spanned;
-    use compiler::ast::*;
-    use program::UpvalDesc;
+    use parser::parse_main;
+    use span::Spanned;
+    use ast::*;
+
+    use core::fndata::UpvalDesc;
+    use core::literal::*;
 
     use std::default::Default;
 

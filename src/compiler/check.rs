@@ -116,7 +116,7 @@ pub fn check_func(func: &Function) -> Result<(), Vec<CheckError>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use compiler::parser::parse_main;
+    use parser::parse_main;
 
     #[test]
     fn test() {

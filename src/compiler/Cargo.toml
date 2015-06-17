@@ -1,0 +1,24 @@
+[package]
+
+name = "compiler"
+version = "0.0.1"
+authors = ["Jonas Schievink <jonas@schievink.net>"]
+
+[lib]
+name = "compiler"
+path = "lib.rs"
+
+[[bin]]
+name = "leac"
+path = "bin/leac.rs"
+
+[dependencies]
+peg = "*"
+rustc-serialize = "*"
+lazy_static = "*"
+term = "*"
+unicode-segmentation = "*"
+log = "*"
+
+[dependencies.core]
+path = "../core"

@@ -411,9 +411,11 @@ pub fn walk_var_ref<'a, V: Visitor<'a>>(var: &'a Variable, visitor: &mut V) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use compiler::ast::*;
-    use compiler::parser::block;
-    use compiler::span::Spanned;
+    use ast::*;
+    use parser::block;
+    use span::Spanned;
+
+    use core::literal::*;
 
     use std::default::Default;
 

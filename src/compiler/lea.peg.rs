@@ -4,9 +4,11 @@
 
 use std::mem;
 
-use compiler::span::{Span, Spanned, mkspanned};
-use compiler::ast::*;
+use span::{Span, Spanned, mkspanned};
+use ast::*;
 use op::*;
+
+use core::literal::*;
 
 
 /// Returns the expression with which something is indexed and a boolean indicating if dot-notation

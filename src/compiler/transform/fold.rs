@@ -1,10 +1,12 @@
 //! Performs constant folding on literals
 
-use compiler::Warning;
-use compiler::visit::*;
-use compiler::ast::*;
-use compiler::span::Spanned;
+use ::Warning;
+use visit::*;
+use ast::*;
+use span::Spanned;
 use op::*;
+
+use core::literal::*;
 
 use std::i64::BITS;
 
@@ -300,10 +302,9 @@ pub fn run<'a>(mut main: Function<'a>) -> (Function<'a>, Vec<Warning>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use compiler::*;
-    use compiler::transform::{Transform, LintMode};
-    use compiler::ast::Function;
-
+    use ::{CompileConfig, Warning, parse_and_resolve, apply_transforms};
+    use transform::{Transform, LintMode};
+    use ast::Function;
 
     fn parse_fold<'a>(code: &'a str) -> (Function<'a>, Vec<Warning>) {
         let tr = run as Transform;

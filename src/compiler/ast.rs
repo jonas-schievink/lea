@@ -6,39 +6,17 @@
 pub use self::_Variable::*;
 pub use self::_Stmt::*;
 pub use self::_Expr::*;
-pub use self::Literal::*;
 pub use self::Call::*;
+
+use span::{Span, Spanned};
+use op::*;
+
+use core::literal::*;
+use core::fndata::UpvalDesc;
 
 use std::collections::HashMap;
 use std::default::Default;
-use std::marker::PhantomData;
 
-use super::span::{Span, Spanned};
-use program::UpvalDesc;
-use op::*;
-
-/// Literal constants
-#[derive(Debug, PartialEq, Clone, RustcEncodable, RustcDecodable)]
-pub enum Literal {
-    TInt(i64),
-    TFloat(f64),
-    TStr(String),
-    TBool(bool),
-    TNil,
-}
-
-impl Literal {
-    /// Returns a string representation of the literal's type
-    pub fn get_type_str(&self) -> &'static str {
-        match *self {
-            TInt(_) => "integer",
-            TFloat(_) => "float",
-            TStr(_) => "string",
-            TBool(_) => "boolean",
-            TNil => "nil",
-        }
-    }
-}
 
 /// A block containing any number of statements. All blocks define a scope in which local variables
 /// can be declared.
@@ -49,8 +27,6 @@ pub struct Block<'a> {
 
     /// Maps names of locals declared in this block to their id
     pub localmap: HashMap<&'a str, usize>,
-
-    ph: PhantomData<&'a ()>,
 }
 
 impl <'a> Block<'a> {
@@ -60,7 +36,6 @@ impl <'a> Block<'a> {
             span: span,
             stmts: stmts,
             localmap: Default::default(),
-            ph: PhantomData,
         }
     }
 
@@ -74,7 +49,6 @@ impl <'a> Block<'a> {
             span: span,
             stmts: stmts,
             localmap: localmap,
-            ph: PhantomData,
         }
     }
 

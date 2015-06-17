@@ -4,7 +4,7 @@ pub use self::Value::*;
 
 use table::Table;
 use array::Array;
-use program::Function;
+use function::Function;
 use mem::{TracedRef, Tracer};
 
 use std::hash::{Hash, Hasher};
@@ -13,7 +13,7 @@ use std::ops::{Deref, DerefMut};
 /// Wrapper around `f64` that implements `Hash` and `Eq` (needed when used as table keys).
 ///
 /// Lua supports this, so we will, too. I would still never recommend doing this!
-#[derive(RustcEncodable, PartialEq, Debug)]
+#[derive(PartialEq, Debug)]
 pub struct HashedFloat(pub f64);
 
 /// Manual implementation needed since `f64` doesn't implement Hash, but this is required since

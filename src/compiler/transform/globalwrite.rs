@@ -4,9 +4,9 @@
 //! Explicit environment accesses with `_ENV.name` will not cause a warning, and should be used if
 //! the global access is intended (mostly when setting up new function environments / sandboxes).
 
-use compiler::Warning;
-use compiler::visit::*;
-use compiler::ast::*;
+use ::Warning;
+use visit::*;
+use ast::*;
 
 use std::ops::{Deref, DerefMut};
 

@@ -1,8 +1,8 @@
 //! Contains AST transformers such as Linters and Optimizers that can be run on an AST and report
 //! warnings or mutate it.
 
-use compiler::ast::Function;
-use compiler::Warning;
+use ::Warning;
+use ast::Function;
 
 use std::collections::HashMap;
 

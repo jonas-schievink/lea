@@ -1,4 +1,5 @@
-//! This module contains the compiler, resolver and AST.
+//! This module contains the compiler. The compiler parses source code and generates byte code
+//! suitable for execution by the VM.
 //!
 //! The complation process can be divided into the following phases:
 //!
@@ -78,22 +79,41 @@
 //! The byte code emitter for the compiler still needs to be written. It will take an AST and
 //! convert it to machine code for the virtual machine.
 
+#![feature(plugin, core, collections)]
+#![allow(trivial_casts)]
+
+#![plugin(peg_syntax_ext)]
+
+#[macro_use]
+extern crate lazy_static;
+
+#[macro_use]
+extern crate log;
+
+extern crate rustc_serialize;
+extern crate term;
+extern crate unicode_segmentation;
+extern crate core;
+
+
 mod expr_parser;
 pub mod transform;
 pub mod ast;
 pub mod check;
 pub mod emitter;
+pub mod op;
 pub mod parser;
 pub mod prettyprint;
 pub mod resolve;
 pub mod span;
 pub mod visit;
 
-use program::FnData;
-use self::ast::Function;
-use self::transform::{Transform, LintMode};
-use self::emitter::emit_func;
-use self::span::*;
+use ast::Function;
+use transform::{Transform, LintMode};
+use emitter::emit_func;
+use span::*;
+
+use core::fndata::FnData;
 
 use term::Terminal;
 

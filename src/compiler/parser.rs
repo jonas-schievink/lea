@@ -84,10 +84,11 @@ pub fn expression_raw(input: &str) -> Result<Expr, ParseError> {
 mod tests {
     use super::*;
 
-    use compiler::ast::*;
-    use compiler::span::Spanned;
-
+    use ast::*;
+    use span::Spanned;
     use op::*;
+
+    use core::literal::*;
 
     use std::default::Default;
 

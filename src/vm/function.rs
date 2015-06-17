@@ -1,65 +1,12 @@
-//! This module provides the `Program` struct, which represents a compiled Lea program including
-//! all constants and optionally debug info (such as local names and line numbers).
+//! Defines the `FunctionProto` type, which is a garbage-collected version of core's `FnData`, as
+//! well as the `Function` type, which is an instantiated, runnable function inside the VM.
 
-use opcode::Opcode;
+use core::fndata::{UpvalDesc, FnData};
+use core::opcode::*;
+use core::literal::*;
+
+use mem::*;
 use value::Value;
-use compiler::ast::{self, Literal};
-use mem::{Traceable, TracedRef, Tracer, GcStrategy, GcObj};
-
-use std::vec::Vec;
-
-
-/// Describes how an Upvalue is referenced
-#[derive(PartialEq, Eq, Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
-pub enum UpvalDesc {
-    /// Upvalue is the parent's local with the given id
-    ///
-    /// This is emitted by the resolver and converted to `Stack` by the emitter
-    Local(usize),
-    /// Upvalue is local variable of the parent in the given stack slot
-    Stack(usize),
-    /// Upvalue is the parent's Upvalue with the given ID
-    Upval(usize),
-}
-
-/// Function represenation used by the emitter. Later converted to a `FunctionProto`. This owns all
-/// child functions (as `FnData`) and can be serialized.
-#[derive(Debug, RustcEncodable, RustcDecodable)]
-pub struct FnData {
-    /// Size of the variable stack. This is also used as the next slot allocated for a value.
-    pub stacksize: u8,
-    pub params: usize,
-    pub varargs: bool,
-    pub opcodes: Vec<Opcode>,
-    pub consts: Vec<Literal>,
-    pub upvals: Vec<UpvalDesc>,
-    pub lines: Vec<usize>,
-    pub source_name: String,
-    pub child_protos: Vec<Box<FnData>>,
-}
-
-impl FnData {
-    pub fn new(f: &ast::Function, source_name: String) -> FnData {
-        FnData {
-            stacksize: 0,
-            params: f.params.len(),
-            varargs: f.varargs,
-            opcodes: Vec::with_capacity(32),
-            consts: Vec::with_capacity(8),
-            upvals: Vec::with_capacity(f.upvalues.len()),
-            lines: Vec::new(),  // TODO: emit line info
-            source_name: source_name,
-            child_protos: Vec::new(),
-        }
-    }
-
-    /// Converts this `FnData` instance to a `FunctionProto`. Registers all child functions with
-    /// the given garbage collector.
-    pub fn to_proto<'gc, G: GcStrategy>(self, _gc: &'gc mut G) -> FunctionProto<'gc> {
-        // TODO
-        unimplemented!();
-    }
-}
 
 /// A compiled function. When instantiated by the VM, becomes a `Function`.
 #[derive(Clone, Debug)]
@@ -85,6 +32,13 @@ pub struct FunctionProto<'gc> {
     /// References to the prototypes of all function declared within the body of this function.
     /// When dynamically compiling code, this allows the GC to collect prototypes that are unused.
     pub child_protos: Vec<TracedRef<'gc, FunctionProto<'gc>>>,
+}
+
+impl <'gc> FunctionProto<'gc> {
+    pub fn from_fndata<G: GcStrategy>(_fndata: FnData, _gc: &mut G)
+    -> TracedRef<'gc, FunctionProto> {
+        unimplemented!();
+    }
 }
 
 impl <'gc> GcObj for FunctionProto<'gc> {}
