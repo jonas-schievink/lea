@@ -56,7 +56,7 @@ impl <'a> Visitor<'a> for Checker {
             SBreak => {
                 if self.looplvl == 0 {
                     self.errs.push(CheckError {
-                        msg: "Use of `break` outside of loop",
+                        msg: "use of `break` outside of loop",
                         detail: None,
                         span: s.span,
                     });
@@ -76,7 +76,7 @@ impl <'a> Visitor<'a> for Checker {
             EVarArgs => {
                 if !self.vararg_func {
                     self.errs.push(CheckError {
-                        msg: "Use of ... outside varargs function",
+                        msg: "use of ... outside varargs function",
                         detail: None,
                         span: e.span,
                     });
