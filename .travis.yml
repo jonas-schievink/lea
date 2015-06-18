@@ -8,7 +8,7 @@ addons:
       - libelf-dev
       - libdw-dev
 script: time travis/test.sh
-after_success: travis/docs.sh && travis/coverage.sh
+after_success: travis/coverage.sh && travis/docs.sh
 env:
   global:
     # GH_SECRET for pushing the docs to the gh-pages branch automatically
