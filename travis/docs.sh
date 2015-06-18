@@ -11,6 +11,9 @@ set -e
 [ -n "$GH_SECRET" ]
 [ -n "$TRAVIS_REPO_SLUG" ]
 
+# Build docs for the main crate. It is assumed that this crate depends on all other crates
+# (otherwise these will not have docs built for them)
+cd src/lea
 cargo doc
 echo "<meta http-equiv=refresh content=0;url=`echo $TRAVIS_REPO_SLUG | cut -d '/' -f 2`/index.html>" > target/doc/index.html
 
@@ -22,4 +25,3 @@ git init
 git add .
 git commit -m "Update docs"
 git push -fq https://${GH_SECRET}@github.com/${TRAVIS_REPO_SLUG}.git master:gh-pages
-cd ../..
