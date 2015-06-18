@@ -23,5 +23,5 @@ git init
 git config user.email "jonas@schievink.net"
 git config user.name "Travis CI"
 git add .
-git commit -m "Update docs"
+git commit -qm "Update docs"
 git push -fq https://${GH_SECRET}@github.com/${TRAVIS_REPO_SLUG}.git master:gh-pages

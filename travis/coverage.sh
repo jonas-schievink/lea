@@ -9,7 +9,7 @@ set -e
 
 [ -n "$TRAVIS_JOB_ID" ]
 
-if [ -z "$SKIP_KCOV_INSTALL" ]; then
+if [ ! -e "./usr/local/bin/kcov" ]; then
     # Download and build kcov
     wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz
     tar xzf master.tar.gz
@@ -24,13 +24,13 @@ fi
 # Collect coverage for all crates and upload to coveralls.io
 PROGS=()
 for proj in $(ls src); do
-    cd src/$proj
+    cd src/lea
 
     # Capture all programs run by cargo (except rustdoc tests, they don't work as-is and are a bit
     # pointless to collect coverage for)
     IFS=$'\n'
-    for prog in $(cargo test -v | grep 'Running' | sed 's/     Running `\(.*\)`/\1/' | grep -v '^rustdoc'); do
-        #echo "=>>" $prog
+    for prog in $(cargo test -p "$proj" -v | grep 'Running' | sed 's/     Running `\(.*\)`/\1/' | grep -v '^rustdoc'); do
+        echo "=>>" $prog
         PROGS+=$'\n'$prog
     done
     unset IFS

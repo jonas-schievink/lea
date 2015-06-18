@@ -7,7 +7,7 @@ addons:
       - libcurl4-openssl-dev
       - libelf-dev
       - libdw-dev
-script: travis/test.sh
+script: time travis/test.sh
 after_success: travis/docs.sh && travis/coverage.sh
 env:
   global:
