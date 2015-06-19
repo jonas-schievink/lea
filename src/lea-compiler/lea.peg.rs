@@ -76,13 +76,14 @@ call -> Call<'input>
     }
 
 atom_inner -> Expr<'input>
-    = c:call { mkspanned(ECall(c), start_pos, pos) }
-    / "(" expr:expression ")" { mkspanned(EBraced(Box::new(expr)), start_pos, pos) }
-    / "..." { mkspanned(EVarArgs, start_pos, pos) }
-    / lit:literal { Spanned::new(lit.span, ELit(lit.value)) }
-    / op:unop a:atom { mkspanned(EUnOp(op, Box::new(a)), start_pos, pos) }
-    / c:call { mkspanned(ECall(c), start_pos, pos) }
-    / v:variable { Spanned::new(v.span, EVar(v)) }
+    = lit:literal               { Spanned::new(lit.span, ELit(lit.value)) }
+    / op:unop a:atom            { mkspanned(EUnOp(op, Box::new(a)), start_pos, pos) }
+    / t:tablecons               { mkspanned(ETable(t), start_pos, pos) }
+    / a:arraycons               { mkspanned(EArray(a), start_pos, pos) }
+    / "function" f:funcbody     { mkspanned(EFunc(f), start_pos, pos) }
+    / c:call                    { mkspanned(ECall(c), start_pos, pos) }
+    / c:callee                  { c }
+    / "..."                     { mkspanned(EVarArgs, start_pos, pos) }
 
 // Atomic expression. Either a literal, a unary operator applied to another atom or a full expr
 // inside parentheses.
@@ -110,17 +111,11 @@ arraycons -> Vec<Expr<'input>>
     = "[" vals:expression_list listsep? "]" { vals }
     / "[" __* "]" { Vec::new() }
 
-expr_special -> Expr<'input>
-    = t:tablecons { mkspanned(ETable(t), start_pos, pos) }
-    / a:arraycons { mkspanned(EArray(a), start_pos, pos) }
-    / "function" f:funcbody { mkspanned(EFunc(f), start_pos, pos) }
-
 expr_rest -> (BinOp, Expr<'input>)
     = op:binop r:atom { (op, r) }
 
 expr_inner -> Expr<'input>
-    = expr_special
-    / l:atom rest:expr_rest* { mkspanned(ERawOp(Box::new(l), rest), start_pos, pos) }
+    = l:atom rest:expr_rest* { mkspanned(ERawOp(Box::new(l), rest), start_pos, pos) }
 
 #[pub]
 expression -> Expr<'input>
