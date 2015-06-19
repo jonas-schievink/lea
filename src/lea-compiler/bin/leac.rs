@@ -1,12 +1,9 @@
 //! The Lea compiler command line frontend
 
-#![feature(libc)]
-
 extern crate lea_compiler as compiler;
 extern crate lea_ast as ast;
 
 extern crate term;
-extern crate libc;
 
 use compiler::*;
 
@@ -52,17 +49,9 @@ fn compile(code: &str, filename: &str) -> io::Result<()> {
     let mut term = term::stderr();
     let stderr = io::stderr();
     let mut dummy = DummyTerm(stderr);
-    let mut fmt_target: &mut term::Terminal<Output=Stderr> = if unsafe {
-        libc::isatty(libc::STDERR_FILENO) != 0
-    } {
-        // we can print to the term (or at least try to)
-        match term {
-            Some(ref mut term) => &mut **term,
-            None => &mut dummy,
-        }
-    } else {
-        // use dummy, since we don't want escape sequences
-        &mut dummy
+    let mut fmt_target: &mut term::Terminal<Output=Stderr> = match term {
+        Some(ref mut term) => &mut **term,
+        None => &mut dummy,
     };
 
     match compile_str(code, filename, &CompileConfig::default()) {
