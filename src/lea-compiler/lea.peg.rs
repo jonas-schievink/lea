@@ -22,7 +22,7 @@ index -> (Expr<'input>, bool)
     }
 
 variable -> Variable<'input>
-    = i:ident idxs:index+    {
+    = i:ident idxs:index*    {
         let mut v = Spanned::new(i.span, VNamed(i.value));
         for idx in idxs {
             let (expr, dot) = idx;
@@ -41,7 +41,6 @@ variable -> Variable<'input>
 
         v
     }
-    / i:ident { mkspanned(VNamed(i.value), start_pos, pos) }
 
 /// Returns the expressions to pass as arguments to an invoked function
 callargs -> CallArgs<'input>
@@ -81,23 +80,22 @@ atom_inner -> Expr<'input>
     / t:tablecons               { mkspanned(ETable(t), start_pos, pos) }
     / a:arraycons               { mkspanned(EArray(a), start_pos, pos) }
     / "function" f:funcbody     { mkspanned(EFunc(f), start_pos, pos) }
-    / c:call                    { mkspanned(ECall(c), start_pos, pos) }
-    / c:callee                  { c }
     / "..."                     { mkspanned(EVarArgs, start_pos, pos) }
+    / c:call                    { mkspanned(ECall(c), start_pos, pos) }
+    / callee
 
 // Atomic expression. Either a literal, a unary operator applied to another atom or a full expr
 // inside parentheses.
 atom -> Expr<'input>
     = __* a:atom_inner __* { a }
 
-kvpair_inner -> (Expr<'input>, Expr<'input>)
-    = "[" key:expression "]" __* "=" __* val:expression { (key, val) }
-    / id:ident __* "=" __* val:expression {
-        (Spanned::new(id.span, ELit(TStr(id.value.to_string()))), val)
-    }
-
 kvpair -> (Expr<'input>, Expr<'input>)
-    = __* kv:kvpair_inner __* { kv }
+    = __* kv:(
+        "[" key:expression "]" __* "=" __* val:expression { (key, val) }
+        / id:ident __* "=" __* val:expression {
+            (Spanned::new(id.span, ELit(TStr(id.value.to_string()))), val)
+        }
+    ) __* { kv }
 
 tableentry -> TableEntry<'input>
     = pair:kvpair { TableEntry::Pair(pair.0, pair.1) }
@@ -111,28 +109,21 @@ arraycons -> Vec<Expr<'input>>
     = "[" vals:expression_list listsep? "]" { vals }
     / "[" __* "]" { Vec::new() }
 
-expr_rest -> (BinOp, Expr<'input>)
-    = op:binop r:atom { (op, r) }
-
-expr_inner -> Expr<'input>
-    = l:atom rest:expr_rest* { mkspanned(ERawOp(Box::new(l), rest), start_pos, pos) }
-
 #[pub]
 expression -> Expr<'input>
-    = __* e:expr_inner __* { e }
+    = __* l:atom rest:(op:binop r:atom { (op, r) })* __* {
+        mkspanned(ERawOp(Box::new(l), rest), start_pos, pos)
+    }
 
 // Comma-separated list of expressions (at least one expression is required)
 expression_list -> Vec<Expr<'input>>
     = e:expression ++ listsep { e }
 
-if_else -> Block<'input>
-    = "else" __+ bl:block { bl }
-
 elseif -> Spanned<(Expr<'input>, Block<'input>)>
     = "elseif" e:expression "then" __+ body:block { mkspanned((e, body), start_pos, pos) }
 
 stmt_if -> Stmt<'input>
-    = "if" cond:expression "then" __+ body:block elifs:elseif* el:if_else? "end" {
+    = "if" cond:expression "then" __+ body:block elifs:elseif* el:("else" __+ block)? "end" {
         // Build else block for this if statement
 
         // Start with "pure" else at the end
@@ -171,26 +162,9 @@ eidentlist -> Vec<Spanned<&'input str>>
 varlist -> Vec<Variable<'input>>
     = vars:variable ++ listsep { vars }
 
-for_step -> Expr<'input>
-    = "," expression
-
-stmt_for -> Stmt<'input>
-    = "for" __+ var:ident __* "=" start:expression "," end:expression step:for_step? "do" __+ body:block "end" {
-        mkspanned(SFor {
-            var: var,
-            start: start,
-            step: step,
-            end: end,
-            body: body,
-        }, start_pos, pos)
-    }
-
-varargs_def -> ()
-    = __* listsep __* "..."
-
 // Returns the parameter list and a boolean indicating whether the function takes variable args
 funcparams -> (Vec<Spanned<&'input str>>, bool)
-    = "(" __* params:identlist va:varargs_def? __* ")" {
+    = "(" __* params:identlist va:(__* ',' __* "...")? __* ")" {
         (params, va.is_some())
     }
     / "(" __* "..." __* ")" { (Vec::new(), true) }
@@ -217,7 +191,15 @@ stmt_inner -> Stmt<'input>
             body: body,
         }, start_pos, pos)
     }
-    / stmt_for
+    / "for" __+ var:ident __* "=" start:expression "," end:expression step:("," expression)? "do" __+ body:block "end" {
+        mkspanned(SFor {
+            var: var,
+            start: start,
+            step: step,
+            end: end,
+            body: body,
+        }, start_pos, pos)
+    }
     / "function" __+ var:variable method:methodname? f:funcbody {
         mkspanned(match method {
             None => SFunc(var, f),
@@ -264,11 +246,9 @@ comment -> ()
     = "--" longbracket {()}
     / "--" [^\n]*
 
-real_whitespace -> ()
-    = " " / "\t" / "\n" / "\r"
+real_whitespace = " " / "\t" / "\n" / "\r"
 
-__ -> ()
-    = real_whitespace / comment
+__ = real_whitespace / comment
 
 #[pub]
 ident -> Spanned<&'input str>
@@ -347,7 +327,7 @@ esc_seq -> char
 
 /// \z will skip all whitespace that follows it. Useful for breaking string literals into multiple
 /// lines: "bla\z
-///         bla"
+///         bla" == "blabla"
 blank_esc -> ()
     = "\\z" real_whitespace*
 
@@ -393,5 +373,4 @@ unop -> UnOp
     = "-" {UnOp::Negate} / "!" {UnOp::LNot} / "not" {UnOp::LNotLua} / "~" {UnOp::BNot}
     / "#" {UnOp::Len}
 
-listsep -> ()
-    = __* "," __*
+listsep = __* ',' __*
