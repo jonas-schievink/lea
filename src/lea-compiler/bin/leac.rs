@@ -55,37 +55,8 @@ fn compile(code: &str, filename: &str) -> io::Result<()> {
     };
 
     match compile_str(code, filename, &CompileConfig::default()) {
-        Err(e) => match e {
-            ErrParse(err) => {
-                try!(err.format(code.as_ref(), filename, fmt_target));
-            },
-            ErrCheck(errs) => {
-                let mut i = 1;
-                for err in &errs {
-                    try!(err.format(code.as_ref(), filename, fmt_target));
-                    if i < errs.len() - 1 { try!(write!(fmt_target, "\n")); }
-                    i += 1;
-                }
-            },
-            ErrLint(warns) => {
-                let mut first = true;
-                for w in &warns {
-                    if first { first = false; } else { try!(write!(fmt_target, "\n")); }
-                    try!(w.format(code.as_ref(), filename, fmt_target));
-                }
-            },
-            ErrEmit(errs) => {
-                for err in &errs {
-                    let mut msg = err.msg.to_string();
-                    if let Some(ref d) = err.detail {
-                        msg.push_str(format!(" ({})", d).as_ref());
-                    }
-
-                    try!(fmt_target.fg(term::color::RED));
-                    try!(write!(fmt_target, "{}", msg));
-                    try!(fmt_target.reset());
-                }
-            }
+        Err(e) => {
+            try!(e.format(code, filename, fmt_target));
         },
         Ok(output) => {
             let warns = output.warns;
