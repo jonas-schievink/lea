@@ -648,6 +648,9 @@ impl Emitter {
                     }
                 }
             }
+            SDo(ref block) => {
+                self.visit_block(block);
+            }
             _ => panic!("NYI stmt: {:?}", s),    // TODO remove, this is just for testing
         }
     }
