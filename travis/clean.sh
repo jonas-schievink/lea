@@ -4,4 +4,4 @@
 
 set -e
 
-ls src | xargs -n 1 --max-procs $(nproc) sh -c '(cd "src/$@"; exec cargo clean)' -
+ls src | xargs -n 1 --max-procs $(nproc) cargo clean -p

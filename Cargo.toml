@@ -13,10 +13,9 @@ A Lua-based language written in Rust
 
 [lib]
 name = "lea"
-path = "lib.rs"
+path = "src/lea/lib.rs"
 
-[dependencies.lea-compiler]
-path = "../lea-compiler"
-
-[dependencies.lea-vm]
-path = "../lea-vm"
+[dependencies]
+lea-compiler = { path = "src/lea-compiler" }
+lea-vm = { path = "src/lea-vm" }
+cli-leac = { path = "src/cli-leac" }

@@ -1,0 +1,19 @@
+[package]
+
+name = "cli-leac"
+version = "0.0.1"
+authors = ["Jonas Schievink <jonas@schievink.net>"]
+
+[[bin]]
+name = "leac"
+path = "bin.rs"
+test = false
+
+[dependencies]
+docopt = "*"
+docopt_macros = "*"
+rustc-serialize = "*"
+bincode = "*"
+term = "*"
+lea-compiler = { path = "../lea-compiler" }
+lea-ast = { path = "../lea-ast" }

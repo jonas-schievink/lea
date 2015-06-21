@@ -8,10 +8,6 @@ authors = ["Jonas Schievink <jonas@schievink.net>"]
 name = "lea_compiler"
 path = "lib.rs"
 
-[[bin]]
-name = "leac"
-path = "bin/leac.rs"
-
 [dependencies]
 peg = "*"
 rustc-serialize = "*"

@@ -1,6 +1,6 @@
 //! This crate contains the abstract syntax tree and source code span handling
 
-#![feature(collections)]
+#![feature(map_in_place)]
 
 extern crate term;
 extern crate unicode_segmentation;

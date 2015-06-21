@@ -7,7 +7,10 @@
 
 set -e
 
-[ -n "$TRAVIS_JOB_ID" ]
+if [ -z "$TRAVIS_JOB_ID" ]; then
+    echo "TRAVIS_JOB_ID not set!"
+    exit 1
+fi
 
 if [ ! -e "./usr/local/bin/kcov" ]; then
     # Download and build kcov

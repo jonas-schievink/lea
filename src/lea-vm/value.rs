@@ -22,12 +22,6 @@ impl Hash for HashedFloat {
     fn hash<H>(&self, state: &mut H) where H: Hasher {
         state.write_i64(self.0 as i64);
     }
-
-    fn hash_slice<H>(data: &[Self], state: &mut H) where H: Hasher {
-        for s in data {
-            state.write_i64(s.0 as i64);
-        }
-    }
 }
 
 impl Eq for HashedFloat {}

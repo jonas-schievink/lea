@@ -79,7 +79,7 @@
 //! The byte code emitter for the compiler still needs to be written. It will take an AST and
 //! convert it to machine code for the virtual machine.
 
-#![feature(plugin, core, collections)]
+#![feature(plugin, append, num_bits_bytes)]
 #![allow(trivial_casts)]
 
 #![plugin(peg_syntax_ext)]
@@ -102,8 +102,6 @@ use emitter::emit_func;
 
 use ast::Function;
 
-use lea_core::fndata::FnData;
-
 use std::default::Default;
 
 
@@ -117,6 +115,7 @@ pub mod prettyprint;
 pub mod resolve;
 
 pub use errors::*;
+pub use lea_core::fndata::FnData;
 
 
 /// Defines options that can be used to tweak the compilation process (optimizations, linters, ...)
