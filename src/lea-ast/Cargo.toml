@@ -11,6 +11,4 @@ path = "lib.rs"
 [dependencies]
 term = "*"
 unicode-segmentation = "*"
-
-[dependencies.lea-core]
-path = "../lea-core"
+lea-core = { path = "../lea-core" }

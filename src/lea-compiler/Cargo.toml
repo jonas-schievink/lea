@@ -15,9 +15,7 @@ lazy_static = "*"
 term = "*"
 unicode-segmentation = "*"
 log = "*"
-
-[dependencies.lea-core]
-path = "../lea-core"
+lea-core = { path = "../lea-core" }
 
 [dependencies.lea-ast]
 path = "../lea-ast"
