@@ -832,4 +832,15 @@ mod tests {
             RETURN(0,1),    //[2]
         ]);
     }
+
+    #[test]
+    fn scope() {
+        test!("local i do local j = i i = j end do local j = i end" => [
+            LOADNIL(0,0),   // local i
+            MOV(1,0),       // local j = i
+            MOV(0,1),       // i = j
+            MOV(1,0),       // local j = i
+            RETURN(0,1),
+        ]);
+    }
 }
