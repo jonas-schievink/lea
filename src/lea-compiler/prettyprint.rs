@@ -559,13 +559,6 @@ local i, j = 0
 "#);
     }
 
-    #[test] #[should_panic]
-    fn auto_fail() {
-        test_auto(r#"
-7
-"#);
-    }
-
     #[test]
     fn auto() {
         test_auto(r#"

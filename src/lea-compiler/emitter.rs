@@ -64,7 +64,7 @@ struct Emitter {
     /// Function stack. The last entry is the currently emitted function. When done emitting, the
     /// last `FnData` is popped off and added to the child function list of the parent.
     funcs: Vec<FnData>,
-
+    /// Maps all currently reachable locals to their associated stack slots.
     alloc: HashMap<usize, u8>,
 }
 
@@ -92,8 +92,8 @@ impl Emitter {
         &mut self.funcs[len-1]
     }
 
-    /// Gets the slot the given local is allocated into. Panics if the local is not in the current
-    /// block/scope.
+    /// Gets the slot the given local is allocated into. Panics if the local isn't reachable in
+    /// the current scope.
     fn get_slot(&self, local_id: usize) -> u8 {
         *self.alloc.get(&local_id).unwrap()
     }
@@ -256,7 +256,6 @@ impl Emitter {
                     self.emit(MOV(slot, realslot));
                 }
             }
-
             VUpval(id) => {
                 if id > u8::MAX as usize {
                     self.err_span("upvalue limit reached",
@@ -270,7 +269,6 @@ impl Emitter {
                     self.dealloc_slots(1);
                 }
             }
-
             VIndex(ref v, ref idx) => {
                 let slot = self.alloc_slots(1);
                 let slot = self.emit_var(v, slot);
@@ -284,7 +282,6 @@ impl Emitter {
 
                 self.dealloc_slots(3);
             }
-
             VResGlobal(ref var, ref strn) | VDotIndex(ref var, ref strn) => {
                 let slot = self.alloc_slots(1);
                 let slot = self.emit_var(&*var, slot);
@@ -298,9 +295,9 @@ impl Emitter {
                 self.emit(SETIDX(slot, str_slot, valslot));
 
                 self.dealloc_slots(3);
-            },
+            }
 
-            VNamed(_) => panic!("VNamed encountered by emitter, resolver is broken"),
+            VNamed(_) => panic!("VNamed encountered by emitter, resolver is broken")
         }
     }
 
@@ -317,8 +314,7 @@ impl Emitter {
                     self.emit(GETUPVAL(hint_slot, id as u8));
                 }
                 hint_slot
-            },
-
+            }
             VResGlobal(ref var, ref strn) | VDotIndex(ref var, ref strn) => {
                 let var_slot = self.emit_var(&*var, hint_slot);
                 let const_id = self.add_const(&TStr(strn.clone()));
@@ -329,9 +325,7 @@ impl Emitter {
 
                 self.dealloc_slots(1);
                 hint_slot
-            },
-
-            /// References an indexed variable (a field)
+            }
             VIndex(ref var, ref idx) => {
                 let var_slot = self.alloc_slots(1);
                 let var_slot = self.emit_var(&*var, var_slot);
@@ -342,9 +336,9 @@ impl Emitter {
 
                 self.dealloc_slots(2);
                 hint_slot
-            },
+            }
 
-            VNamed(_) => panic!("VNamed encountered by emitter, resolver is broken"),
+            VNamed(_) => panic!("VNamed encountered by emitter, resolver is broken")
         }
     }
 
@@ -369,6 +363,8 @@ impl Emitter {
                 self.emit(VARARGS(start_slot, max_res));
             }
             _ => {
+                debug_assert_eq!(e.is_multi_result(), false);
+
                 // These all have a single result
                 let mut target = start_slot;
                 if max_res == 0 {
@@ -436,7 +432,7 @@ impl Emitter {
                             self.replace_op(jmp, IFNOT(lslot, rel as i16));
                             if lslot != hint_slot { self.emit(MOV(hint_slot, lslot)); }
                         }
-                    },
+                    }
                     BinOp::LOr | BinOp::LOrLua => {
                         // A || B  <=>  if A then A else B
                         let lslot = self.emit_expr(lhs, hint_slot);
@@ -454,7 +450,7 @@ impl Emitter {
                             self.replace_op(jmp, IF(lslot, rel as i16));
                             if lslot != hint_slot { self.emit(MOV(hint_slot, lslot)); }
                         }
-                    },
+                    }
                     _ => {
                         // normal bin op. eval lhs and rhs first.
                         let lslotalloc = self.alloc_slots(1);
@@ -495,11 +491,11 @@ impl Emitter {
 
                         if lslot == lslotalloc { self.dealloc_slots(1); }
                         if rslot == rslotalloc { self.dealloc_slots(1); }
-                    },
+                    }
                 }
 
                 hint_slot
-            },
+            }
             EUnOp(op, ref expr) => {
                 let slot = self.alloc_slots(1);
                 let realslot = self.emit_expr(expr, slot);
@@ -514,10 +510,11 @@ impl Emitter {
 
                 if slot == realslot { self.dealloc_slots(1); }
                 hint_slot
-            },
+            }
             EBraced(ref e) => {
                 self.emit_expr(&**e, hint_slot)
-            },
+            }
+
             ERawOp(..) => panic!("ERawOp encountered by emitter"),
             _ => panic!("NYI expression {:?}", e),  // TODO remove
         }
@@ -651,6 +648,7 @@ impl Emitter {
             SDo(ref block) => {
                 self.visit_block(block);
             }
+
             _ => panic!("NYI stmt: {:?}", s),    // TODO remove, this is just for testing
         }
     }
@@ -673,8 +671,11 @@ impl <'a> Visitor<'a> for Emitter {
 
         // deallocate stack slots
         for entry in &b.localmap {
-            let (_, id) = entry;
-            self.alloc.remove(&id);
+            let (name, id) = entry;
+            let slot = self.alloc.remove(&id)
+                .expect(&format!("local {} wasn't in alloc map", id));
+
+            debug!("dealloc: {} (id {}) -> slot {}", name, id, slot);
         }
         self.cur_func_mut().stacksize = oldstack;
     }
