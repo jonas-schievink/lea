@@ -28,10 +28,10 @@ pub struct EmitError {
 
 impl EmitError {
     pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<Output=W>) -> io::Result<()> {
-        let mut msg = self.msg.to_string();
-        if let Some(ref detail) = self.detail {
-            msg.push_str(&detail);
-        }
+        let msg = match self.detail {
+            Some(ref detail) => format!("{} ({})", self.msg, detail),
+            None => self.msg.to_string(),
+        };
 
         match self.span {
             None => {
