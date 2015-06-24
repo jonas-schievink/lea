@@ -79,10 +79,8 @@
 //! The byte code emitter for the compiler still needs to be written. It will take an AST and
 //! convert it to machine code for the virtual machine.
 
-#![feature(plugin, append, num_bits_bytes)]
+#![feature(append, num_bits_bytes)]
 #![allow(trivial_casts)]
-
-#![plugin(peg_syntax_ext)]
 
 #[macro_use]
 extern crate lazy_static;
@@ -96,6 +94,7 @@ extern crate unicode_segmentation;
 
 extern crate lea_core;
 extern crate lea_ast as ast;
+extern crate lea_parser as parser;
 
 use transform::{Transform, LintMode};
 use emitter::emit_func;
@@ -105,12 +104,10 @@ use ast::Function;
 use std::default::Default;
 
 
-mod expr_parser;
 mod errors;
 pub mod transform;
 pub mod check;
 pub mod emitter;
-pub mod parser;
 pub mod prettyprint;
 pub mod resolve;
 

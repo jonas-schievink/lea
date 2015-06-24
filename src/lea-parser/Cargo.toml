@@ -1,19 +1,15 @@
 [package]
 
-name = "lea-compiler"
+name = "lea-parser"
 version = "0.0.1"
 authors = ["Jonas Schievink <jonas@schievink.net>"]
 
 [lib]
-name = "lea_compiler"
+name = "lea_parser"
 path = "lib.rs"
 
 [dependencies]
-rustc-serialize = "*"
-lazy_static = "*"
+peg = "*"
 term = "*"
-unicode-segmentation = "*"
-log = "*"
 lea-core = { path = "../lea-core" }
 lea-ast = { path = "../lea-ast" }
-lea-parser = { path = "../lea-parser" }
