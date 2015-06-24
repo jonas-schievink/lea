@@ -192,6 +192,12 @@ impl Roots {
     }
 }
 
+impl Default for Roots {
+    fn default() -> Roots {
+        Roots::new()
+    }
+}
+
 /// Reference to a rooted object. TODO #[no_move]
 pub struct Rooted<'gc, T: GcObj> {
     ptr: *const T,
@@ -279,14 +285,10 @@ pub trait GcStrategy {
 
     /// Called when a garbage-collected object is created. The GC should take ownership of the
     /// object and can dispose of it when collecting. The GC may also use this to trigger a
-    /// collection according to some internal heuristic (just make sure to not free `T`).
+    /// collection according to some internal heuristic.
     ///
-    /// TODO Clarify the different lifetimes. `TracedRef<'gc, T>` causes Rust to see `self` as
-    /// mutably borrowed as long as any `TracedRef` exists that was obtained using `register_obj`,
-    /// which is obviously not what we want. The additional lifetime 'a fixed this, but I'm not
-    /// sure about the semantics here. The lifetime param of `TracedRef`s is supposed to say "this
-    /// TracedRef lives at most as long as the GC from which it was obtained".
-    fn register_obj<'gc, 'a: 'gc, T: GcObj>(&'gc mut self, T) -> TracedRef<'a, T>;
+    /// Callees must ensure that this isn't called when unrooted references to objects exist.
+    fn register_obj<'gc, T: GcObj>(&'gc self, T) -> TracedRef<'gc, T>;
 
     /// Get a reference to the collector's root set. Since `Roots` uses interior mutability, this
     /// can be used to (un)root objects.

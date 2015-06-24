@@ -15,18 +15,10 @@ use vm::VM;
 
 use super::{TracedRef, Roots, GcStrategy, GcObj};
 
+#[derive(Default)]
 pub struct NoopGc {
     /// This collector ignores the root set, but it is required to implement `GcStrategy`.
     roots: Roots,
-}
-
-impl Default for NoopGc {
-    #[inline]
-    fn default() -> NoopGc {
-        NoopGc {
-            roots: Roots::new(),
-        }
-    }
 }
 
 impl GcStrategy for NoopGc {
@@ -40,7 +32,7 @@ impl GcStrategy for NoopGc {
 
     /// Allocates `T` on the heap and leaks it.
     #[inline]
-    fn register_obj<'gc, 'a: 'gc, T: GcObj>(&'gc mut self, t: T) -> TracedRef<'a, T> {
+    fn register_obj<'gc, T: GcObj>(&'gc self, t: T) -> TracedRef<'gc, T> {
         // The transmute is safe, but leaks the object (this is intended).
         let ptr: *const T = unsafe { transmute::<_, *const T>(Box::new(t)) };
 
@@ -64,7 +56,7 @@ mod tests {
 
     #[test]
     fn rooted() {
-        let mut gc = NoopGc::default();
+        let gc = NoopGc::default();
         let traced: TracedRef<String> = gc.register_obj("teststr".to_string());
         let traced2: TracedRef<String> = gc.register_obj("Second Test-String".to_string());
         let rooted: Rooted<String> = unsafe { traced.root(&gc) };
@@ -85,7 +77,7 @@ mod tests {
 
     #[test] #[should_panic(expected = "unrooting order")]
     fn unroot_order() {
-        let mut gc = NoopGc::default();
+        let gc = NoopGc::default();
         let traced = gc.register_obj("teststr".to_string());
         let traced2 = gc.register_obj("teststr2".to_string());
         let rooted = unsafe { traced.root(&gc) };
@@ -100,7 +92,7 @@ mod tests {
 
     #[test]
     fn mut_ref() {
-        let mut gc = NoopGc::default();
+        let gc = NoopGc::default();
         let traced = gc.register_obj("teststr".to_string());
         let r: &String = unsafe { traced.get_ref() };
         let m: &mut String = unsafe { traced.get_mut_ref() };
