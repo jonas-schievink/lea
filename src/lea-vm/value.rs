@@ -9,6 +9,7 @@ use mem::{TracedRef, Tracer};
 
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
+use std::mem::transmute;
 
 /// Wrapper around `f64` that implements `Hash` and `Eq` (needed when used as table keys).
 ///
@@ -19,8 +20,9 @@ pub struct HashedFloat(pub f64);
 /// Manual implementation needed since `f64` doesn't implement Hash, but this is required since
 /// floats can be used as table keys (although I don't recommend it).
 impl Hash for HashedFloat {
-    fn hash<H>(&self, state: &mut H) where H: Hasher {
-        state.write_i64(self.0 as i64);
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // Just use the float's raw bits for the hash. This is safe.
+        state.write_i64(unsafe { transmute(self.0) } );
     }
 }
 
