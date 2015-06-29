@@ -44,7 +44,7 @@ pub struct CallInfo<'gc> {
 
 /// A VM context. Holds a garbage collector that manages the program's memory, the stack used for
 /// local and temporary variables, the callstack, etc.
-pub struct VM<'gc, G: GcStrategy + 'gc> {
+pub struct VM<'gc, G: GcStrategy<'gc>> {
     gc: G,
     main: TracedRef<'gc, Function<'gc>>,
     /// Call stack
@@ -54,7 +54,7 @@ pub struct VM<'gc, G: GcStrategy + 'gc> {
     stack: Vec<Value<'gc>>,
 }
 
-impl <'gc, G: GcStrategy + 'gc> VM<'gc, G> {
+impl <'gc, G: GcStrategy<'gc>> VM<'gc, G> {
     pub fn new(gc: G, main: TracedRef<'gc, Function<'gc>>) -> VM<'gc, G> {
         VM {
             gc: gc,

@@ -21,18 +21,18 @@ pub struct NoopGc {
     roots: Roots,
 }
 
-impl GcStrategy for NoopGc {
+impl <'gc> GcStrategy<'gc> for NoopGc {
     /// Does nothing (hence `NoopGc`)
     #[inline]
-    fn collect_step(&mut self, _: &mut VM<NoopGc>) {}
+    fn collect_step(&mut self, _: &mut VM<Self>) {}
 
     /// Does nothing (hence `NoopGc`)
     #[inline]
-    fn collect_atomic(&mut self, _: &mut VM<NoopGc>) {}
+    fn collect_atomic(&mut self, _: &mut VM<Self>) {}
 
     /// Allocates `T` on the heap and leaks it.
     #[inline]
-    fn register_obj<'gc, T: GcObj>(&'gc self, t: T) -> TracedRef<'gc, T> {
+    fn register_obj<T: GcObj + 'gc>(&self, t: T) -> TracedRef<'gc, T> {
         // The transmute is safe, but leaks the object (this is intended).
         let ptr: *const T = unsafe { transmute::<_, *const T>(Box::new(t)) };
 
@@ -43,7 +43,7 @@ impl GcStrategy for NoopGc {
     }
 
     #[inline]
-    fn get_roots<'gc>(&'gc self) -> &'gc Roots {
+    fn get_roots(&self) -> &Roots {
         &self.roots
     }
 }

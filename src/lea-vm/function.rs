@@ -35,7 +35,7 @@ pub struct FunctionProto<'gc> {
 }
 
 impl <'gc> FunctionProto<'gc> {
-    pub fn from_fndata<G: GcStrategy>(_fndata: FnData, _gc: &mut G)
+    pub fn from_fndata<G: GcStrategy<'gc>>(_fndata: FnData, _gc: &mut G)
     -> TracedRef<'gc, FunctionProto> {
         unimplemented!();
     }

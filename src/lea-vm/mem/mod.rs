@@ -30,6 +30,7 @@ use std::ops::Deref;
 
 
 pub mod noop;
+pub mod stw;
 
 
 // TODO we might want to use #[no_move] like servo does
@@ -137,7 +138,7 @@ impl <'gc, T: GcObj + 'gc> TracedRef<'gc, T> {
     /// Roots the referenced object, allowing safe access as long as the created `Rooted<T>` is
     /// alive. Unsafe because the user has to ensure that the `TracedRef` is valid when this is
     /// called.
-    pub unsafe fn root<G: GcStrategy>(&self, gc: &'gc G) -> Rooted<'gc, T> {
+    pub unsafe fn root<G: GcStrategy<'gc>>(&self, gc: &'gc G) -> Rooted<'gc, T> {
         Rooted::new(self.ptr, gc)
     }
 }
@@ -199,7 +200,7 @@ impl Default for Roots {
 }
 
 /// Reference to a rooted object. TODO #[no_move]
-pub struct Rooted<'gc, T: GcObj> {
+pub struct Rooted<'gc, T: GcObj, G: GcStrategy> {
     ptr: *const T,
     roots: &'gc Roots,
 }
@@ -207,7 +208,7 @@ pub struct Rooted<'gc, T: GcObj> {
 impl_gcref!(Rooted<'gc, T>, ptr);
 
 impl <'gc, T: GcObj> Rooted<'gc, T> {
-    unsafe fn new<G: GcStrategy>(ptr: *const T, gc: &'gc G) -> Rooted<'gc, T> {
+    unsafe fn new<G: GcStrategy<'gc>>(ptr: *const T, gc: &'gc G) -> Rooted<'gc, T> {
         let roots = gc.get_roots();
         roots.root(ptr);
 
@@ -274,25 +275,25 @@ pub trait Tracer {
 }
 
 /// Trait for Garbage Collector implementations.
-pub trait GcStrategy {
+pub trait GcStrategy<'gc> {
     /// Instruct the GC to perform a collection step. This can be called by user code. A VM
     /// instance is passed so the GC can run finalizers.
-    fn collect_step(&mut self, &mut VM<Self>);
+    fn collect_step(&mut self, &mut VM<'gc, Self>);
 
     /// Perform an atomic collection. The GC shall perform all necessary tracing and free all
     /// currently unreachable objects.
-    fn collect_atomic(&mut self, &mut VM<Self>);
+    fn collect_atomic(&mut self, &mut VM<'gc, Self>);
 
     /// Called when a garbage-collected object is created. The GC should take ownership of the
     /// object and can dispose of it when collecting. The GC may also use this to trigger a
     /// collection according to some internal heuristic.
     ///
     /// Callees must ensure that this isn't called when unrooted references to objects exist.
-    fn register_obj<'gc, T: GcObj>(&'gc self, T) -> TracedRef<'gc, T>;
+    fn register_obj<T: GcObj + 'gc>(&self, T) -> TracedRef<'gc, T>;
 
-    /// Get a reference to the collector's root set. Since `Roots` uses interior mutability, this
-    /// can be used to (un)root objects.
-    fn get_roots<'gc>(&'gc self) -> &'gc Roots;
+    fn root<T: GcObj + 'gc>(&self, obj: TracedRef<'gc, T>) -> Rooted<'gc, T>;
+
+    fn unroot<T: GcObj + 'gc>(&self, rooted: Rooted<'gc, T>);
 
     // TODO: Statistics interface
 }
