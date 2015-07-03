@@ -39,17 +39,17 @@ impl <'gc> Stw<'gc> {
 }
 
 impl <'gc> GcStrategy<'gc> for Stw<'gc> {
-    fn collect_step(&mut self, vm: &mut VM<'gc, Self>) {
+    fn collect_step(&self, vm: &mut VM<'gc, Self>) {
         self.collect_atomic(vm);
     }
 
-    fn collect_atomic(&mut self, _: &mut VM<'gc, Self>) {
+    fn collect_atomic(&self, _: &mut VM<'gc, Self>) {
         let worklist: Vec<&'gc Wrapped<'gc>> = Vec::new();
 
         unimplemented!();
     }
 
-    fn register_obj<T: GcObj + 'gc>(&self, t: T) -> TracedRef<'gc, T> {
+    fn register_obj<T: GcObj + 'gc>(&'gc self, t: T) -> TracedRef<'gc, T> {
         let boxed = Box::new(t);
         let ptr = &*boxed as *const T;
         let boxed = boxed as Box<GcObj + 'gc>;
@@ -66,9 +66,17 @@ impl <'gc> GcStrategy<'gc> for Stw<'gc> {
         }
     }
 
-    #[inline]
-    fn get_roots(&self) -> &Roots {
-        &self.roots
+    unsafe fn root<T: GcObj + 'gc>(&'gc self, obj: TracedRef<'gc, T>) -> Rooted<'gc, T, Self> {
+        self.roots.root(obj.ptr);
+
+        Rooted {
+            ptr: obj.ptr,
+            gc: self,
+        }
+    }
+
+    fn unroot<T: GcObj + 'gc>(&self, rooted: *const T) {
+        self.roots.unroot(rooted);
     }
 }
 
@@ -79,7 +87,7 @@ mod tests {
 
     #[test]
     fn create() {
-        let gc = Stw::default();
-        gc.register_obj("test".to_string());
+        /*let gc = Stw::default();
+        gc.register_obj("test".to_string());*/
     }
 }

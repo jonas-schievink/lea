@@ -37,10 +37,10 @@ pub mod stw;
 // TODO properly check for unsafety and annotate unsafe fns
 // TODO finalizers and weak references (with callback)
 
+pub type DefaultGc<'gc> = stw::Stw<'gc>;
 
 /// A garbage-collectable object.
-pub trait GcObj {
-}
+pub trait GcObj {}
 
 impl GcObj for String {}
 
@@ -52,10 +52,30 @@ pub trait Traceable : GcObj {
 
 
 /// Trait implemented by all references to GC objects.
-pub trait GcReference<'gc, T: GcObj> : PartialEq + Eq + Hash + Debug {
+pub trait GcReference<'gc, T: GcObj> {
     /// Get a pointer to the referenced object. The validity of the pointer depends on the specific
     /// reference type.
     fn get_ptr(&self) -> *const T;
+}
+
+impl <'gc, T: GcObj> PartialEq for GcReference<'gc, T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.get_ptr() == other.get_ptr()
+    }
+}
+
+impl <'gc, T: GcObj> Eq for GcReference<'gc, T> {}
+
+impl <'gc, T: GcObj> Hash for GcReference<'gc, T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_usize(self.get_ptr() as usize);
+    }
+}
+
+impl <'gc, T: GcObj> fmt::Debug for GcReference<'gc, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{:p}", self.get_ptr())
+    }
 }
 
 /// impl_gcref!(RefType, ptr_field) generates an `impl GcReference<...>` for the type `RefType`,
@@ -134,13 +154,6 @@ impl <'gc, T: GcObj + 'gc> TracedRef<'gc, T> {
     pub /*very*/ unsafe fn get_mut_ref<'a>(&'a self) -> &'a mut T {
         transmute(self.ptr)
     }
-
-    /// Roots the referenced object, allowing safe access as long as the created `Rooted<T>` is
-    /// alive. Unsafe because the user has to ensure that the `TracedRef` is valid when this is
-    /// called.
-    pub unsafe fn root<G: GcStrategy<'gc>>(&self, gc: &'gc G) -> Rooted<'gc, T> {
-        Rooted::new(self.ptr, gc)
-    }
 }
 
 impl_gcref!(TracedRef<'gc, T>, ptr);
@@ -159,18 +172,14 @@ impl <'gc, T: GcObj> Clone for TracedRef<'gc, T> {
 }
 
 /// Contains the roots of a garbage collector. The rooted objects will not be collected.
+///
+/// This is just a default implementation, improved GCs may provide their own, faster version.
 pub struct Roots {
     // we store pointers to () and only allow `GcObj`s inside
     stack: RefCell<Vec<*const ()>>,
 }
 
 impl Roots {
-    fn new() -> Roots {
-        Roots {
-            stack: RefCell::new(Vec::new()),
-        }
-    }
-
     fn root<T: GcObj>(&self, obj: *const T) {
         self.stack.borrow_mut().push(obj as *const ());
     }
@@ -188,74 +197,56 @@ impl Roots {
     }
 
     /// Returns the number of rooted objects
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         self.stack.borrow().len()
+    }
+
+    /// Calls a closure with each rooted pointer.
+    fn each<F>(&self, mut f: F) where F: FnMut(*const ()) {
+        let stack = self.stack.borrow();
+        for ptr in stack.iter() {
+            f(*ptr);
+        }
     }
 }
 
 impl Default for Roots {
     fn default() -> Roots {
-        Roots::new()
+        Roots {
+            stack: RefCell::new(Vec::new()),
+        }
     }
 }
 
 /// Reference to a rooted object. TODO #[no_move]
-pub struct Rooted<'gc, T: GcObj, G: GcStrategy> {
+pub struct Rooted<'gc, T: GcObj + 'gc, G: GcStrategy<'gc> + 'gc> {
     ptr: *const T,
-    roots: &'gc Roots,
+    gc: &'gc G,
 }
 
-impl_gcref!(Rooted<'gc, T>, ptr);
+//impl_gcref!(Rooted<'gc, T>, ptr);
 
-impl <'gc, T: GcObj> Rooted<'gc, T> {
-    unsafe fn new<G: GcStrategy<'gc>>(ptr: *const T, gc: &'gc G) -> Rooted<'gc, T> {
-        let roots = gc.get_roots();
-        roots.root(ptr);
-
-        Rooted {
-            ptr: ptr,
-            roots: roots,
-        }
-    }
-
-    /// Gets a `RootedRef<T>` that is bound to the lifetime of this `Rooted<T>`. You can safely use
-    /// the value in the `RootedRef`, since it can't outlive the `Rooted<T>`, which means that the
-    /// object will stay rooted as long as your `RootedRef` is valid.
-    pub fn get_ref<'a>(&'a self) -> RootedRef<'a, T> {
-        RootedRef {
-            ptr: self.ptr,
-            phantom: PhantomData,
-        }
+impl <'gc, T: GcObj + 'gc, G: GcStrategy<'gc>> Rooted<'gc, T, G> {
+    /// Gets a reference to the rooted object that is bound to the lifetime of this `Rooted<T>`.
+    pub fn get_ref<'a>(&'a self) -> &'a T {
+        unsafe { transmute(self.ptr) }
     }
 }
 
-impl <'gc, T: GcObj> Drop for Rooted<'gc, T> {
+impl <'gc, T: GcObj + 'gc, G: GcStrategy<'gc>> GcReference<'gc, T> for Rooted<'gc, T, G> {
+    fn get_ptr(&self) -> *const T {
+        self.ptr
+    }
+}
+
+impl <'gc, T: GcObj + 'gc, G: GcStrategy<'gc>> Drop for Rooted<'gc, T, G> {
     /// Unroots the object
     fn drop(&mut self) {
         // Don't unroot while panicking, since that might lead to another panic. If the GC drops
         // all objects when it's destroyed (it should), this won't leak memory.
         if !thread::panicking() {
-            self.roots.unroot(self.ptr);
+            self.gc.unroot(self.ptr);
         }
-    }
-}
-
-/// A reference obtained from a `Rooted<T>`. This may not outlive the `Rooted<T>` from which it was
-/// created, but may be passed around freely, since Rust guarantees that the object will be
-/// unrooted after this `RootedRef<T>` is dropped.
-pub struct RootedRef<'a, T: GcObj + 'a> {
-    ptr: *const T,
-    phantom: PhantomData<&'a T>,
-}
-
-impl <'a, T: GcObj> Deref for RootedRef<'a, T> {
-    type Target = T;
-
-    fn deref<'s>(&'s self) -> &'s T {
-        // The returned reference can not be used after the `RootedRef` from which it was obtained
-        // goes out of scope. The `RootedRef` must not outlive the `Rooted` from which it was
-        // obtained. => This is safe, the created reference is valid over lifetime 's and 'a
-        unsafe { transmute(self.ptr) }
     }
 }
 
@@ -278,22 +269,25 @@ pub trait Tracer {
 pub trait GcStrategy<'gc> {
     /// Instruct the GC to perform a collection step. This can be called by user code. A VM
     /// instance is passed so the GC can run finalizers.
-    fn collect_step(&mut self, &mut VM<'gc, Self>);
+    fn collect_step(&self, &mut VM<'gc, Self>);
 
     /// Perform an atomic collection. The GC shall perform all necessary tracing and free all
     /// currently unreachable objects.
-    fn collect_atomic(&mut self, &mut VM<'gc, Self>);
+    fn collect_atomic(&self, &mut VM<'gc, Self>);
 
     /// Called when a garbage-collected object is created. The GC should take ownership of the
     /// object and can dispose of it when collecting. The GC may also use this to trigger a
     /// collection according to some internal heuristic.
     ///
     /// Callees must ensure that this isn't called when unrooted references to objects exist.
-    fn register_obj<T: GcObj + 'gc>(&self, T) -> TracedRef<'gc, T>;
+    fn register_obj<T: GcObj + 'gc>(&'gc self, T) -> TracedRef<'gc, T>;
 
-    fn root<T: GcObj + 'gc>(&self, obj: TracedRef<'gc, T>) -> Rooted<'gc, T>;
+    /// Roots the given object, creating a rooted reference from a traced reference
+    unsafe fn root<T: GcObj + 'gc>(&'gc self, obj: TracedRef<'gc, T>) -> Rooted<'gc, T, Self>;
 
-    fn unroot<T: GcObj + 'gc>(&self, rooted: Rooted<'gc, T>);
+    /// Unroots the given object, making it eligible for garbage collection. This should only be
+    /// called by `Rooted`s `Drop` implementation.
+    fn unroot<T: GcObj + 'gc>(&self, rooted: *const T);
 
     // TODO: Statistics interface
 }
