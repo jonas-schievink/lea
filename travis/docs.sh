@@ -35,7 +35,7 @@ echo "<meta http-equiv=refresh content=0;url=`echo $TRAVIS_REPO_SLUG | cut -d '/
 cd target/doc
 git init
 git config user.email "jonas@schievink.net"
-git config user.name "Travis CI"
+git config user.name "Jonas Schievink"
 git add .
 git commit -qm "Update docs"
 git push -fq https://${GH_SECRET}@github.com/${TRAVIS_REPO_SLUG}.git master:gh-pages
