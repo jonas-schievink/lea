@@ -79,7 +79,6 @@
 //! The byte code emitter for the compiler still needs to be written. It will take an AST and
 //! convert it to machine code for the virtual machine.
 
-#![feature(append)]
 #![allow(trivial_casts)]
 
 #[macro_use]
@@ -204,17 +203,17 @@ pub fn parse_and_resolve<'a>(code: &'a str) -> CompileResult<Function<'a>> {
 /// If any transform is configured to cause a compilation error, a corresponding error will be
 /// returned.
 pub fn apply_transforms<'a>(mut main: Function<'a>, conf: &CompileConfig) -> (Function<'a>, CompileResult<Vec<Warning>>) {
-    let mut warnings: Vec<Warning> = vec![];
-    let mut errwarns: Vec<Warning> = vec![];  // warnings handled as errors
+    let mut warnings: Vec<Warning> = Vec::new();
+    let mut errwarns: Vec<Warning> = Vec::new();  // warnings handled as errors
     for &(tr, mode) in &conf.trans {
-        let (newmain, mut new_warns) = tr(main);
+        let (newmain, new_warns) = tr(main);
         main = newmain;
 
         if mode == LintMode::Error && new_warns.len() > 0 {
-            errwarns.append(&mut new_warns.clone());
+            errwarns.extend(new_warns);
+        } else {
+            warnings.extend(new_warns);
         }
-
-        warnings.append(&mut new_warns);
     }
 
     (main, if errwarns.is_empty() {
