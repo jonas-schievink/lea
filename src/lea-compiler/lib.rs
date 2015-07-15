@@ -79,7 +79,7 @@
 //! The byte code emitter for the compiler still needs to be written. It will take an AST and
 //! convert it to machine code for the virtual machine.
 
-#![feature(append, num_bits_bytes)]
+#![feature(append)]
 #![allow(trivial_casts)]
 
 #[macro_use]

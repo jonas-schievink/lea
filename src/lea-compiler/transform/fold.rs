@@ -9,7 +9,6 @@ use ast::visit::*;
 
 use lea_core::literal::*;
 
-use std::i64::BITS;
 
 struct Folder {
     warns: Vec<Warning>,
@@ -212,7 +211,7 @@ fn fold_binop(lhs: &Literal, op: BinOp, rhs: &Literal) -> Result<Literal, String
                 if j < 0 {
                     fold_binop(lhs, BinOp::ShiftR, &TInt(-j))
                 } else {
-                    if j <= BITS as i64 {
+                    if j <= 64 {
                         Ok(TInt(i << j))
                     } else {
                         Ok(TInt(0))
@@ -226,7 +225,7 @@ fn fold_binop(lhs: &Literal, op: BinOp, rhs: &Literal) -> Result<Literal, String
                 if j < 0 {
                     fold_binop(lhs, BinOp::ShiftL, &TInt(-j))
                 } else {
-                    if j <= BITS as i64 {
+                    if j <= 64 {
                         Ok(TInt(i >> j))
                     } else {
                         Ok(TInt(0))
