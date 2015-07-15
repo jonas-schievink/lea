@@ -79,8 +79,6 @@
 //! The byte code emitter for the compiler still needs to be written. It will take an AST and
 //! convert it to machine code for the virtual machine.
 
-#![allow(trivial_casts)]
-
 #[macro_use]
 extern crate lazy_static;
 
