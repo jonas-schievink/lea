@@ -1,7 +1,5 @@
-//! Provides the `FnData` struct which is created when emitting byte code.
-//!
-//! `FnData`s may be converted to `FunctionProto`s, which registers them with a GC and allows the
-//! VM to run them.
+//! Provides the `FnData` struct which is created by the compiler when emitting byte code and
+//! passed to the VM for execution.
 
 use opcode::Opcode;
 use literal::Literal;
@@ -22,8 +20,8 @@ pub enum UpvalDesc {
     Upval(usize),
 }
 
-/// Function represenation used by the emitter. Later converted to a `FunctionProto`. This owns all
-/// child functions (as `FnData`) and can be serialized.
+/// Function representation used by the emitter. Later converted to a `FunctionProto`. This owns
+/// all child functions (as `FnData`) and can be serialized.
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct FnData {
     /// Size of the variable stack. This is also used as the next slot allocated for a value.

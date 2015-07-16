@@ -107,7 +107,7 @@ impl <'a> Function<'a> {
     }
 }
 
-/// Something that can be assigned to a value
+/// Something that can be set to a value
 #[derive(Clone, PartialEq, Debug)]
 pub enum _Variable<'a> {
     /// References a named variable; later resolved to local, global or upvalue references
@@ -163,16 +163,31 @@ pub enum _Stmt<'a> {
     /// Function call as statement
     SCall(Call<'a>),
 
-    /// Assign function to named variable (`function XY(...) ... end`)
+    /// Assign function to named variable.
+    ///
+    ///     function XY(...) ... end
+    ///
+    /// is equivalent to
+    ///
+    ///     XY = function(...) ... end
     SFunc(Variable<'a>, Function<'a>),
 
-    /// Method declaration a la `function some.thing:methodname(...) ... end`
+    /// Method declaration.
     ///
-    /// Assigns the function to `some.thing.methodname` and adds an implicit `self` parameter to
-    /// the start of the parameter list.
+    ///     function some.thing:methodname(...) ... end
+    ///
+    /// is equivalent to
+    ///
+    ///     some.thing.methodname = function(self, ...) ... end
     SMethod(Variable<'a>, Spanned<&'a str>, Function<'a>),
 
-    /// Assign function to newly declared local (`local function XY(...) ... end`)
+    /// Assign function to newly declared local.
+    ///
+    ///     local function XY(...) ... end
+    ///
+    /// is equivalent to
+    ///
+    ///     local XY; XY = function(...) ... end
     SLFunc(Spanned<&'a str>, Function<'a>),
 
     /// Executes `body` if `cond` is true and `el` if not
@@ -188,7 +203,8 @@ pub enum _Stmt<'a> {
         body: Block<'a>,
     },
 
-    /// Loops a block until `abort_on` is true
+    /// Loops a block until `abort_on` is true. The body is executed at least once (`abort_on` is
+    /// checked after the body has run).
     SRepeat {
         abort_on: Expr<'a>,
         body: Block<'a>,
@@ -196,7 +212,7 @@ pub enum _Stmt<'a> {
 
     /// Numeric for loop
     SFor {
-        var: Spanned<&'a str>,    // named local
+        var: Spanned<&'a str>,    // named local, newly declared
         start: Expr<'a>,
         step: Option<Expr<'a>>,
         end: Expr<'a>,

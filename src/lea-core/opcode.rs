@@ -4,9 +4,6 @@ pub use self::Opcode::*;
 
 /// An opcode that can be executed by the VM. This enum is always 32 bits large.
 ///
-/// Note that this `enum` is unstable (it might not even be an enum in the next version), to allow
-/// adding special optimized opcodes any time.
-///
 /// Documentation syntax:
 ///
 /// * `R[n]` is the value stored in register (stack slot) `n`
