@@ -165,29 +165,41 @@ pub enum _Stmt<'a> {
 
     /// Assign function to named variable.
     ///
-    ///     function XY(...) ... end
+    /// ```lua
+    /// function XY(...) ... end
+    /// ```
     ///
     /// is equivalent to
     ///
-    ///     XY = function(...) ... end
+    /// ```lua
+    /// XY = function(...) ... end
+    /// ```
     SFunc(Variable<'a>, Function<'a>),
 
     /// Method declaration.
     ///
-    ///     function some.thing:methodname(...) ... end
+    /// ```lua
+    /// function some.thing:methodname(...) ... end
+    /// ```
     ///
     /// is equivalent to
     ///
-    ///     some.thing.methodname = function(self, ...) ... end
+    /// ```lua
+    /// some.thing.methodname = function(self, ...) ... end
+    /// ```
     SMethod(Variable<'a>, Spanned<&'a str>, Function<'a>),
 
     /// Assign function to newly declared local.
     ///
-    ///     local function XY(...) ... end
+    /// ```lua
+    /// local function XY(...) ... end
+    /// ```
     ///
     /// is equivalent to
     ///
-    ///     local XY; XY = function(...) ... end
+    /// ```lua
+    /// local XY; XY = function(...) ... end
+    /// ```
     SLFunc(Spanned<&'a str>, Function<'a>),
 
     /// Executes `body` if `cond` is true and `el` if not
