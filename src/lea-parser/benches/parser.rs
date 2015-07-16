@@ -1,11 +1,10 @@
 #![feature(test)]
 
 extern crate test;
-extern crate lea_compiler;
+extern crate lea_parser;
 
 use test::Bencher;
 
-use lea_compiler::parser;
 
 #[bench]
 fn simple(b: &mut Bencher) {
@@ -16,7 +15,7 @@ i, j = j, i*2
 
     b.bytes = code.len() as u64;
     b.iter(|| {
-        parser::block(code).unwrap();
+        lea_parser::block(code).unwrap();
     });
 }
 
@@ -26,6 +25,6 @@ fn expression(b: &mut Bencher) {
 
     b.bytes = code.len() as u64;
     b.iter(|| {
-        parser::expression(code).unwrap();
+        lea_parser::expression(code).unwrap();
     });
 }
