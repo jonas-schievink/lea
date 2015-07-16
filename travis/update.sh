@@ -5,3 +5,4 @@
 set -e
 
 ls src | xargs -n 1 --max-procs 0 cargo update -p
+

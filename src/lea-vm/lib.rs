@@ -1,6 +1,6 @@
 //! This crate provides the byte code VM used to execute compiled Lea programs.
 
-#![feature(hasher_write)]
+#![feature(hasher_write, raw)]
 
 extern crate lea_core;
 

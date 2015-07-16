@@ -20,23 +20,23 @@
 #![macro_use]
 
 use value::{Value, TNil};
-use mem::{TracedRef, Tracer, Traceable, GcObj};
+use mem::{TracedRef, Tracer, Traceable};
 
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
 /// A table that maps Lea values to Lea values.
 #[derive(Debug)]
-pub struct Table<'gc> {
-    data: HashMap<Value<'gc>, Value<'gc>>,
-    metatable: Option<TracedRef<'gc, Table<'gc>>>,
+pub struct Table {
+    data: HashMap<Value, Value>,
+    metatable: Option<TracedRef<Table>>,
     weak_keys: bool,
     weak_vals: bool,
 }
 
-impl <'gc> Table<'gc> {
+impl Table {
     /// Creates a new table, using the given `HashMap<Value, Value>` as the internal storage.
-    pub fn new(data: HashMap<Value<'gc>, Value<'gc>>) -> Table<'gc> {
+    pub fn new(data: HashMap<Value, Value>) -> Table {
         Table {
             data: data,
             metatable: None,
@@ -64,7 +64,7 @@ impl <'gc> Table<'gc> {
     /// Equivalent to assignment by Lea code. If the value is nil, the mapping is deleted. Returns
     /// the old value stored with the given key or `Err(())` if the key is nil (this is not
     /// supported).
-    pub fn set(&mut self, k: Value<'gc>, v: Value<'gc>) -> Result<Option<Value<'gc>>, ()> {
+    pub fn set(&mut self, k: Value, v: Value) -> Result<Option<Value>, ()> {
         if k == TNil { return Err(()); }
 
         if v == TNil {
@@ -75,8 +75,7 @@ impl <'gc> Table<'gc> {
     }
 }
 
-impl <'gc> GcObj for Table<'gc> {}
-impl <'gc> Traceable for Table<'gc> {
+impl Traceable for Table {
     fn trace<T: Tracer>(&self, t: &mut T) {
         for (ref k, ref v) in &self.data {
             k.trace(t);
@@ -85,15 +84,15 @@ impl <'gc> Traceable for Table<'gc> {
     }
 }
 
-impl <'gc> Deref for Table<'gc> {
-    type Target = HashMap<Value<'gc>, Value<'gc>>;
+impl Deref for Table {
+    type Target = HashMap<Value, Value>;
 
     fn deref(&self) -> &<Self as Deref>::Target {
         &self.data
     }
 }
 
-impl <'gc> DerefMut for Table<'gc> {
+impl DerefMut for Table {
     fn deref_mut(&mut self) -> &mut <Self as Deref>::Target {
         &mut self.data
     }

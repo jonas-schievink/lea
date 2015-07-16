@@ -7,16 +7,15 @@ use std::ops::{Deref, DerefMut};
 
 /// An array that can contain arbitrary Lea values
 #[derive(Debug)]
-pub struct Array<'gc>(Vec<Value<'gc>>);
+pub struct Array(Vec<Value>);
 
-impl <'gc> Array<'gc> {
-    pub fn new(vec: Vec<Value<'gc>>) -> Array<'gc> {
+impl Array {
+    pub fn new(vec: Vec<Value>) -> Array {
         Array(vec)
     }
 }
 
-impl <'gc> GcObj for Array<'gc> {}
-impl <'gc> Traceable for Array<'gc> {
+impl Traceable for Array {
     fn trace<T: Tracer>(&self, t: &mut T) {
         for v in &self.0 {
             v.trace(t);
@@ -24,16 +23,16 @@ impl <'gc> Traceable for Array<'gc> {
     }
 }
 
-impl <'gc> Deref for Array<'gc> {
-    type Target = Vec<Value<'gc>>;
+impl Deref for Array {
+    type Target = Vec<Value>;
 
-    fn deref(&self) -> &Vec<Value<'gc>> {
+    fn deref(&self) -> &Vec<Value> {
         &self.0
     }
 }
 
-impl <'gc> DerefMut for Array<'gc> {
-    fn deref_mut(&mut self) -> &mut Vec<Value<'gc>> {
+impl DerefMut for Array {
+    fn deref_mut(&mut self) -> &mut Vec<Value> {
         &mut self.0
     }
 }

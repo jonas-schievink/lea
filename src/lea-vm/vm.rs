@@ -32,9 +32,9 @@ use function::Function;
 use value::Value;
 
 /// Contains information about a called Lea function.
-pub struct CallInfo<'gc> {
+pub struct CallInfo {
     /// The function active at this call level
-    func: TracedRef<'gc, Function<'gc>>,
+    func: TracedRef<Function>,
     /// `lasttop` == vm.stack.len() at the time this call was made
     lasttop: usize,
     /// Dynamic stack top. This is updated any time an instruction that returns a variable number
@@ -44,18 +44,18 @@ pub struct CallInfo<'gc> {
 
 /// A VM context. Holds a garbage collector that manages the program's memory, the stack used for
 /// local and temporary variables, the callstack, etc.
-pub struct VM<'gc, G: GcStrategy<'gc>> {
+pub struct VM<G: GcStrategy> {
     gc: G,
-    main: TracedRef<'gc, Function<'gc>>,
+    main: TracedRef<Function>,
     /// Call stack
-    calls: Vec<CallInfo<'gc>>,
+    calls: Vec<CallInfo>,
     /// "VM stack", "value stack" or just stack. Stores the activation of functions in the form of
     /// variables (registers) used by the function.
-    stack: Vec<Value<'gc>>,
+    stack: Vec<Value>,
 }
 
-impl <'gc, G: GcStrategy<'gc>> VM<'gc, G> {
-    pub fn new(gc: G, main: TracedRef<'gc, Function<'gc>>) -> VM<'gc, G> {
+impl <G: GcStrategy> VM<G> {
+    pub fn new(gc: G, main: TracedRef<Function>) -> VM<G> {
         VM {
             gc: gc,
             main: main,

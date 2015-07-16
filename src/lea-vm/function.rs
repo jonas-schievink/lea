@@ -10,7 +10,7 @@ use value::Value;
 
 /// A compiled function. When instantiated by the VM, becomes a `Function`.
 #[derive(Clone, Debug)]
-pub struct FunctionProto<'gc> {
+pub struct FunctionProto {
     /// The name of the source from which this function was compiled
     pub source_name: String,
     /// The number of stack slots required by this function (might be dynamically increased)
@@ -31,18 +31,17 @@ pub struct FunctionProto<'gc> {
     pub lines: Vec<usize>,
     /// References to the prototypes of all function declared within the body of this function.
     /// When dynamically compiling code, this allows the GC to collect prototypes that are unused.
-    pub child_protos: Vec<TracedRef<'gc, FunctionProto<'gc>>>,
+    pub child_protos: Vec<TracedRef<FunctionProto>>,
 }
 
-impl <'gc> FunctionProto<'gc> {
-    pub fn from_fndata<G: GcStrategy<'gc>>(_fndata: FnData, _gc: &mut G)
-    -> TracedRef<'gc, FunctionProto> {
+impl FunctionProto {
+    pub fn from_fndata<G: GcStrategy>(_fndata: FnData, _gc: &mut G)
+    -> TracedRef<FunctionProto> {
         unimplemented!();
     }
 }
 
-impl <'gc> GcObj for FunctionProto<'gc> {}
-impl <'gc> Traceable for FunctionProto<'gc> {
+impl Traceable for FunctionProto {
     fn trace<T: Tracer>(&self, t: &mut T) {
         for ch in &self.child_protos {
             t.mark_traceable(*ch);
@@ -52,25 +51,24 @@ impl <'gc> Traceable for FunctionProto<'gc> {
 
 /// An active Upvalue
 #[derive(Debug)]
-pub enum Upval<'gc> {
+pub enum Upval {
     /// Upvalue owned by parent. usize is either the stack slot or the index in the parent's upval
     /// list (stored in Upvalue definition in function prototype).
     Open(usize),
     /// Closed upvalue owned by the function that references it
-    Closed(Value<'gc>),
+    Closed(Value),
 }
 
 /// Instantiated function
 #[derive(Debug)]
-pub struct Function<'gc> {
+pub struct Function {
     /// The prototype from which this function was instantiated
-    pub proto: TracedRef<'gc, FunctionProto<'gc>>,
+    pub proto: TracedRef<FunctionProto>,
     /// Upvalue references, indexed by upvalue ID
-    pub upvalues: Vec<Upval<'gc>>,
+    pub upvalues: Vec<Upval>,
 }
 
-impl <'gc> GcObj for Function<'gc> {}
-impl <'gc> Traceable for Function<'gc> {
+impl Traceable for Function {
     fn trace<T: Tracer>(&self, t: &mut T) {
         t.mark_traceable(self.proto);
 

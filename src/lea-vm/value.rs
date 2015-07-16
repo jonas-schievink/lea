@@ -44,18 +44,18 @@ impl DerefMut for HashedFloat {
 
 
 #[derive(PartialEq, Eq, Debug, Hash)]
-pub enum Value<'gc> {
+pub enum Value {
     TNil,
     TBool(bool),
     TInt(i64),
     TFloat(HashedFloat),
-    TStr(TracedRef<'gc, String>),
-    TFunc(TracedRef<'gc, Function<'gc>>),
-    TArray(TracedRef<'gc, Array<'gc>>),
-    TTable(TracedRef<'gc, Table<'gc>>),
+    TStr(TracedRef<String>),
+    TFunc(TracedRef<Function>),
+    TArray(TracedRef<Array>),
+    TTable(TracedRef<Table>),
 }
 
-impl <'gc> Value<'gc> {
+impl Value {
     /// The equivalent of Lua's `type()` function, returns the type name of a value.
     pub fn get_type_name(&self) -> &'static str {
         match *self {
