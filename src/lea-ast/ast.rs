@@ -235,7 +235,7 @@ pub enum _Stmt<'a> {
     SForIn {
         /// The loop variables, returned by iterator
         vars: Vec<Spanned<&'a str>>,
-        /// Expression list: Iterator function, invariant state, start value, [ignored ...]
+        /// Expression list: Iterator function, state, start value, [ignored ...]
         iter: Vec<Expr<'a>>,
         body: Block<'a>,
     },
