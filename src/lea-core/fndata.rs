@@ -1,10 +1,8 @@
 //! Provides the `FnData` struct which is created by the compiler when emitting byte code and
 //! passed to the VM for execution.
 
-use opcode::Opcode;
+use opcode::Opcodes;
 use literal::Literal;
-
-use std::vec::Vec;
 
 
 /// Describes how an Upvalue is referenced
@@ -28,7 +26,7 @@ pub struct FnData {
     pub stacksize: u8,
     pub params: usize,
     pub varargs: bool,
-    pub opcodes: Vec<Opcode>,
+    pub opcodes: Opcodes,
     pub consts: Vec<Literal>,
     pub upvals: Vec<UpvalDesc>,
     pub lines: Vec<usize>,

@@ -1,5 +1,8 @@
 //! This module defines the `Opcode` type, which contains all opcodes handled by the VM.
 
+use std::fmt;
+use std::ops::{Deref, DerefMut};
+
 pub use self::Opcode::*;
 
 /// An opcode that can be executed by the VM. This enum is always 32 bits large.
@@ -91,8 +94,8 @@ pub enum Opcode {
     /// Stores `R[C]` in `R[A]` at index `R[B]`.
     SETIDX(u8, u8, u8),
 
-    // Operator opcodes. Any of them can call a metafunction if the value in R[B] has an associated
-    // metatable that overrides the operator.
+    // Operator opcodes. Any of them can call a metamethod if the value in R[B] or R[C] has an
+    // associated metatable that overrides the operator.
 
     /// > R[A] := R[B] + R[C]
     ADD(u8, u8, u8),
@@ -144,13 +147,50 @@ pub enum Opcode {
     NEG(u8, u8),
     /// > R[A] := !R[B]
     ///
-    /// Any "truthy" value will be converted to `false`, the values `false` and `nil` will be
-    /// converted to `true`.
+    /// The values `false` and `nil` will be converted to `true`, any other value will be
+    /// converted to `false`. This does not call a metamethod.
     NOT(u8, u8),
     /// > R[A] := ~R[B]
     INV(u8, u8),
     /// > R[A] := #R[B]
     LEN(u8, u8),
+}
+
+/// Newtype for `Vec<Opcode>` that overrides `Debug` to use at most one line per printed opcode
+/// (when the `{:#?}` format specifier is used).
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct Opcodes(pub Vec<Opcode>);
+
+impl fmt::Debug for Opcodes {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        let mut l = f.debug_list();
+        for op in &self.0 {
+            l.entry(&SingleLineDebug(op));
+        }
+        l.finish()
+    }
+}
+
+impl Deref for Opcodes {
+    type Target = Vec<Opcode>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Opcodes {
+    fn deref_mut(&mut self) -> &mut <Self as Deref>::Target {
+        &mut self.0
+    }
+}
+
+struct SingleLineDebug<'a, T: fmt::Debug + 'a>(&'a T);
+
+impl<'a, T: fmt::Debug + 'a> fmt::Debug for SingleLineDebug<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{:?}", &self.0)
+    }
 }
 
 #[cfg(test)]
@@ -163,5 +203,21 @@ mod tests {
     fn size() {
         // we guarantee that opcodes fit in 32 bits, regardless of the host platform
         assert_eq!(mem::size_of::<Opcode>(), 4);
+    }
+
+    #[test]
+    fn format() {
+        assert_eq!(format!("\n{:#?}", Opcodes(vec![
+            MOV(0, 1),
+            IFNOT(5, -1),
+            CONCAT(2, 3, 4),
+            LOADBOOL(7, 0, true),
+        ])), "
+[
+    MOV(0, 1),
+    IFNOT(5, -1),
+    CONCAT(2, 3, 4),
+    LOADBOOL(7, 0, true)
+]");
     }
 }

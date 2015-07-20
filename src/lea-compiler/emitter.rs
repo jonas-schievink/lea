@@ -178,7 +178,7 @@ impl Emitter {
         }
     }
 
-    /// Emits an opcode into the opcodestream and returns its address/index. Does not apply
+    /// Emits an opcode into the opcode stream and returns its address/index. Does not apply
     /// optimizations.
     fn emit_raw(&mut self, op: Opcode) -> usize {
         let opcodes = &mut self.cur_func_mut().opcodes;
@@ -685,7 +685,7 @@ impl <'a> Visitor<'a> for Emitter {
             stacksize: 0,
             params: f.params.len(),
             varargs: f.varargs,
-            opcodes: vec![],
+            opcodes: Opcodes(vec![]),
             consts: vec![],
             upvals: f.upvalues.clone(),
             lines: vec![],
@@ -740,7 +740,7 @@ mod tests {
         ($code:expr => [ $($op:expr,)* ]) => {{
             let opvec = emit_func(&parse_and_resolve($code).unwrap(), "<test>").unwrap().opcodes;
 
-            assert_eq!(opvec, vec![ $($op),* ]);
+            assert_eq!(*opvec, vec![ $($op),* ]);
         }}
     }
 
