@@ -27,7 +27,7 @@ impl DerefMut for GlobalWrite {
     }
 }
 
-impl <'a> Visitor<'a> for GlobalWrite {
+impl<'a> Visitor<'a> for GlobalWrite {
     fn visit_stmt(&mut self, s: &Stmt) {
         match s.value {
             SAssign(ref targets, _) => {

@@ -54,7 +54,7 @@ pub struct VM<G: GcStrategy> {
     stack: Vec<Value>,
 }
 
-impl <G: GcStrategy> VM<G> {
+impl<G: GcStrategy> VM<G> {
     pub fn new(gc: G, main: TracedRef<Function>) -> VM<G> {
         VM {
             gc: gc,

@@ -16,7 +16,7 @@ use std::io::{self, Write};
 /// Wraps a `Write` and implements `Terminal`
 pub struct DummyTerm<W: Write>(pub W);
 
-impl <W: Write> Terminal for DummyTerm<W> {
+impl<W: Write> Terminal for DummyTerm<W> {
     type Output = W;
 
     fn fg(&mut self, _color: Color) -> io::Result<bool> {
@@ -64,7 +64,7 @@ impl <W: Write> Terminal for DummyTerm<W> {
     }
 }
 
-impl <W: Write> Write for DummyTerm<W> {
+impl<W: Write> Write for DummyTerm<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
     }
@@ -226,7 +226,7 @@ pub struct Spanned<T> {
     pub value: T,
 }
 
-impl <T> Spanned<T> {
+impl<T> Spanned<T> {
     pub fn new(span: Span, t: T) -> Spanned<T> {
         Spanned {
             span: span,
@@ -239,7 +239,7 @@ impl <T> Spanned<T> {
     }
 }
 
-impl <T> Deref for Spanned<T> {
+impl<T> Deref for Spanned<T> {
     type Target = T;
 
     fn deref<'a>(&'a self) -> &'a T {
@@ -247,19 +247,19 @@ impl <T> Deref for Spanned<T> {
     }
 }
 
-impl <T> DerefMut for Spanned<T> {
+impl<T> DerefMut for Spanned<T> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
         &mut self.value
     }
 }
 
-impl <T: fmt::Debug> fmt::Debug for Spanned<T> {
+impl<T: fmt::Debug> fmt::Debug for Spanned<T> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         self.value.fmt(fmt)
     }
 }
 
-impl <T: PartialEq> PartialEq for Spanned<T> {
+impl<T: PartialEq> PartialEq for Spanned<T> {
     fn eq(&self, other: &Spanned<T>) -> bool {
         self.value == other.value
     }

@@ -42,7 +42,7 @@ impl DerefMut for DeprOps {
     }
 }
 
-impl <'a> Visitor<'a> for DeprOps {
+impl<'a> Visitor<'a> for DeprOps {
     fn visit_expr(&mut self, e: &Expr) {
         match e.value {
             EBinOp(ref lhs, op, ref rhs) => {

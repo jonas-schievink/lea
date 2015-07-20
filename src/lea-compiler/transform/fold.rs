@@ -237,7 +237,7 @@ fn fold_binop(lhs: &Literal, op: BinOp, rhs: &Literal) -> Result<Literal, String
     }
 }
 
-impl <'a> Transform<'a> for Folder {
+impl<'a> Transform<'a> for Folder {
     fn visit_expr(&mut self, mut e: Expr<'a>) -> Expr<'a> {
         e.value = match e.value {
             EBinOp(mut lhs, op, mut rhs) => {

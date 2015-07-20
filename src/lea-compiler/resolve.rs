@@ -29,7 +29,7 @@ struct FuncData<'a> {
     scopes: Vec<Vec<usize>>,
 }
 
-impl <'a> FuncData<'a> {
+impl<'a> FuncData<'a> {
     fn new(locals: Vec<Spanned<&'a str>>) -> FuncData<'a> {
         FuncData {
             locals: locals,
@@ -73,7 +73,7 @@ struct Resolver<'a> {
     funcs: Vec<FuncData<'a>>,
 }
 
-impl <'a> Resolver<'a> {
+impl<'a> Resolver<'a> {
     /// Finds an upvalue in a parent function
     fn find_upval(&mut self, name: &'a str, userlvl: usize) -> Option<usize> {
         if userlvl == 0 {
@@ -176,7 +176,7 @@ impl <'a> Resolver<'a> {
     }
 }
 
-impl <'a> Transform<'a> for Resolver<'a> {
+impl<'a> Transform<'a> for Resolver<'a> {
     fn visit_stmt(&mut self, mut s: Stmt<'a>) -> Stmt<'a> {
         s.value = match s.value {
             SDecl(names, mut exprs) => {

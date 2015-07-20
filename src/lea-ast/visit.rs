@@ -424,7 +424,7 @@ mod tests {
             exprs: u8,
             vars: u8,
         };
-        impl <'a> Visitor<'a> for NoopVisitor {
+        impl<'a> Visitor<'a> for NoopVisitor {
             fn visit_stmt(&mut self, stmt: &Stmt) {
                 self.stmts += 1;
                 walk_stmt_ref(stmt, self);
@@ -456,7 +456,7 @@ mod tests {
     #[test]
     fn visit_mut() {
         struct MutVisitor;
-        impl <'a> Transform<'a> for MutVisitor {
+        impl<'a> Transform<'a> for MutVisitor {
             fn visit_expr(&mut self, mut expr: Expr<'a>) -> Expr<'a> {
                 expr.value = match expr.value {
                     ELit(TInt(1)) => ELit(TInt(0)),

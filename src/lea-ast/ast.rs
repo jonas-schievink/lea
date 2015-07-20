@@ -29,7 +29,7 @@ pub struct Block<'a> {
     pub localmap: HashMap<&'a str, usize>,
 }
 
-impl <'a> Block<'a> {
+impl<'a> Block<'a> {
     /// Create a new block of statements
     pub fn new(stmts: Vec<Stmt<'a>>, span: Span) -> Block<'a> {
         Block {
@@ -57,7 +57,7 @@ impl <'a> Block<'a> {
     }
 }
 
-impl <'a> PartialEq for Block<'a> {
+impl<'a> PartialEq for Block<'a> {
     /// Compare two `Block`s without comparing their spans
     fn eq(&self, rhs: &Block<'a>) -> bool {
         self.stmts == rhs.stmts && self.localmap == rhs.localmap
@@ -94,7 +94,7 @@ pub struct Function<'a> {
     pub upvalues: Vec<UpvalDesc>,
 }
 
-impl <'a> Function<'a> {
+impl<'a> Function<'a> {
     pub fn new(params: Vec<Spanned<&'a str>>, varargs: bool, body: Block<'a>) -> Function<'a> {
         Function {
             params: params,
@@ -281,7 +281,7 @@ pub enum _Expr<'a> {
     EVarArgs,
 }
 
-impl <'a> _Expr<'a> {
+impl<'a> _Expr<'a> {
     /// Returns true if this expression might evaluate to multiple results.
     pub fn is_multi_result(&self) -> bool {
         match *self {

@@ -17,7 +17,7 @@ pub struct PrettyPrinter<'a, W: Write + 'a> {
     lineend: &'a str,
 }
 
-impl <'a, W: Write> PrettyPrinter<'a, W> {
+impl<'a, W: Write> PrettyPrinter<'a, W> {
     pub fn new(writer: &'a mut W) -> PrettyPrinter<'a, W> {
         PrettyPrinter {
             writer: writer,
@@ -194,7 +194,7 @@ impl <'a, W: Write> PrettyPrinter<'a, W> {
     }
 }
 
-impl <'a, 'v, W: Write> Visitor<'v> for PrettyPrinter<'a, W> {
+impl<'a, 'v, W: Write> Visitor<'v> for PrettyPrinter<'a, W> {
     #[allow(unused_must_use)]
     fn visit_stmt(&mut self, stmt: &Stmt) {
         self.print_indent();

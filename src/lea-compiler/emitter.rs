@@ -636,14 +636,14 @@ impl Emitter {
                 self.dealloc_slots(tmpcount);
 
                 // eval. excess expressions (if they could cause side effects)
+                let slot = self.alloc_slots(1);
                 for i in tmpcount+1..vals.len() {
                     let expr = &vals[i];
                     if expr.has_side_effects() {
-                        let slot = self.alloc_slots(1);
                         self.emit_expr(expr, slot);
-                        self.dealloc_slots(1);
                     }
                 }
+                self.dealloc_slots(1);
             }
             SDo(ref block) => {
                 self.visit_block(block);
@@ -654,7 +654,7 @@ impl Emitter {
     }
 }
 
-impl <'a> Visitor<'a> for Emitter {
+impl<'a> Visitor<'a> for Emitter {
     fn visit_stmt(&mut self, _: &Stmt) {
         panic!("Emitter::visit_stmt entered (this should never happen)");
     }
@@ -673,7 +673,7 @@ impl <'a> Visitor<'a> for Emitter {
         for entry in &b.localmap {
             let (name, id) = entry;
             let slot = self.alloc.remove(&id)
-                .expect(&format!("local {} wasn't in alloc map", id));
+                .expect(&format!("local {} ({}) wasn't in alloc map", name, id));
 
             debug!("dealloc: {} (id {}) -> slot {}", name, id, slot);
         }

@@ -32,7 +32,7 @@ struct Checker {
     looplvl: u32,
 }
 
-impl <'a> Visitor<'a> for Checker {
+impl<'a> Visitor<'a> for Checker {
     fn visit_stmt(&mut self, s: &Stmt) {
         match s.value {
             SBreak => {

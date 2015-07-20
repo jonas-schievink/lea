@@ -118,7 +118,7 @@ pub struct CompileConfig<'a> {
     trans: Vec<(&'a Transform, LintMode)>,
 }
 
-impl <'a> CompileConfig<'a> {
+impl<'a> CompileConfig<'a> {
     /// Creates an empty `CompileConfig` that applies no optimizations or lints
     pub fn empty() -> CompileConfig<'a> {
         CompileConfig {
@@ -147,7 +147,7 @@ impl <'a> CompileConfig<'a> {
     }
 }
 
-impl <'a> Default for CompileConfig<'a> {
+impl<'a> Default for CompileConfig<'a> {
     /// Creates a default `CompileConfig` that applies the default set of optimizers and linters
     fn default() -> CompileConfig<'a> {
         CompileConfig {
