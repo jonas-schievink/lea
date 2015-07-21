@@ -10,6 +10,7 @@ path = "lib.rs"
 
 [dependencies]
 term = "*"
+unicode-segmentation = "*"
 peg = { git = "https://github.com/kevinmehall/rust-peg.git" }
 lea-core = { path = "../lea-core" }
 lea-ast = { path = "../lea-ast" }
