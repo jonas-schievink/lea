@@ -52,6 +52,9 @@ pub enum Opcode {
     /// stored. If C is 0, stores all return values in `R[A]`, `R[A+1]`, ... (if necessary,
     /// expanding the stack to fit all return values in).
     ///
+    /// If the callee returns less than C-1 results, the rest is set to `nil`, except when C is 0,
+    /// in which case 0 results may be returned (the top of the stack is set to A in that case).
+    ///
     /// This might invoke a metamethod if `R[A]` has a metatable with a `__call` field.
     CALL(u8, u8, u8),
     /// > return R[A], R[A+1], ..., R[A+B-2]

@@ -1,6 +1,8 @@
 //! Literal types/values found in Lea source code (does not include compound data types such as
 //! tables and arrays).
 
+// TODO This should be renamed to "Constant" (and the variant prefix should be dropped)
+
 pub use self::Literal::*;
 
 /// Literal constants

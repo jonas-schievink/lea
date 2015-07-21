@@ -76,7 +76,8 @@ pub enum Call<'a> {
     /// Regular call: f(e1, e2, ..)
     SimpleCall(Box<Expr<'a>>, CallArgs<'a>),
 
-    /// some.thing:name(...) - passes `some.thing` as the first argument
+    /// some.thing:name(...) - passes `some.thing` as the first argument, without evaluating it
+    /// twice
     MethodCall(Box<Expr<'a>>, Spanned<&'a str>, CallArgs<'a>),
 }
 

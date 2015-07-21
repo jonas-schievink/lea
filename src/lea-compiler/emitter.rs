@@ -342,48 +342,196 @@ impl Emitter {
         }
     }
 
-    /// Emits an expression that can return multiple values. Up to `max_res` values will be stored
-    /// in the stack slots starting at `start_slot`.
+    /// Emits a `CallArgs` structure. This will evaluate all arguments from left to right. The last
+    /// argument may result in any number of results.
     ///
-    /// If `max_res` is 0, any number of results is stored. The stack will be automatically
-    /// expanded by the VM.
+    /// The arguments will be stored in the next free stack slots (left to right).
     ///
-    /// The caller has to allocate `max_res` slots starting at and including `start_slot` (if
-    /// `max_res` is 0, `start_slot` can point to the next unallocated stack slot, since the VM
-    /// dynamically allocates the stack slots needed).
-    ///
-    /// This method makes sure that all unused slots are filled with nil, either at runtime
-    /// (handled by the VM), or by emitting LOADNIL instructions to fill all `max_res` slots.
-    fn emit_expr_multi(&mut self, e: &Expr, start_slot: u8, max_res: u8) {
-        match e.value {
-            ECall(_) => {
+    /// The passed closure will be called when all arguments are evaluated, with the total number
+    /// of arguments (slots) plus 1. If the last argument (count) is 0, the last argument can
+    /// evaluate to any number of values at runtime, which will be placed after the last fixed
+    /// argument.
+    fn emit_call_args<F>(&mut self, a: &CallArgs, f: F)
+    where F: FnOnce(&mut Emitter, /* count-1 */ u8) {
+        match *a {
+            CallArgs::Normal(ref argv) => {
+                if argv.len() == 0 {
+                    f(self, 1);
+                    return
+                }
+
+                if argv.len() >= 255 {
+                    self.err_span(
+                        "too many call arguments",
+                        Some(format!("got {} arguments, limit is {}", argv.len(), 255)),
+                        argv[argv.len() - 1].span
+                    );
+                }
+
+                // may result in dynamic number of args, if the last arg is a call or varargs
+                // emit all args except the last one into freshly allocated registers (these must
+                // be allocated in ascending order)
+                for i in 0..argv.len()-1 {
+                    let arg = &argv[i];
+                    let slot = self.alloc_slots(1);
+                    self.emit_expr_into(arg, slot);
+                }
+
+                // emit last expression
+                let last_arg = &argv[argv.len() - 1];
+                if last_arg.is_multi_result() {
+                    unimplemented!();   // TODO
+                } else {
+                    let slot = self.alloc_slots(1);
+                    self.emit_expr_into(last_arg, slot);
+                }
+
+                f(self, if last_arg.is_multi_result() { 0 } else { argv.len() as u8 + 1 });
+
+                // in the process, we've allocated `argv.len()-1` slots if the last arg is variable
+                // and `argv.len()` slots if not.
+                if last_arg.is_multi_result() {
+                    self.dealloc_slots(argv.len()-1);
+                } else {
+                    self.dealloc_slots(argv.len());
+                }
+            }
+            CallArgs::String(ref strn) => {
+                // single string arg
+                let const_id = self.add_const(&TStr(strn.to_owned()));
+                let str_slot = self.alloc_slots(1);
+
+                self.emit(LOADK(str_slot, const_id));
+
+                f(self, 2);
+
+                self.dealloc_slots(1);  // str_slot
+            }
+            CallArgs::Table(ref _cons) => {
+                // single table arg
                 unimplemented!();   // TODO
             }
+        }
+    }
+
+    /// Emits a call.
+    ///
+    /// First, the callee is evaluated and put in a register. Then, all arguments are evaluated
+    /// from left to right and put into the registers after the callee. The last argument might be
+    /// an expression returning multiple values, in which case the generated `CALL` instruction
+    /// will pass all values until the top of the stack to the callee.
+    ///
+    /// After the `CALL` instruction is executed, up to `max_res-1` results will be preserved in
+    /// the registers that originally contained the callee and call arguments. If `max_res` is 0,
+    /// all results will be preserved (the VM updates the top of the stack accordingly).
+    ///
+    /// The passed closure is called with the first register that contains a returned value and
+    /// should be used to process the call results, since the stack slots are deallocated
+    /// after calling it (except when `max_res` is 0).
+    ///
+    /// There are exactly `max_res-1` valid results following the start slot, except when `max_res`
+    /// is 0, in which case there are between 0 (so the start slot isn't valid either), and an
+    /// implementation-defined limit.
+    fn emit_call<F>(&mut self, c: &Call, max_res: u8, f: F) where F: FnOnce(&mut Emitter, u8) {
+        match *c {
+            SimpleCall(ref callee, ref args) => {
+                // Regular call: f(e1, e2, ..)
+                // Stack: FUNCTION | ARGS...
+
+                let func_slot = self.alloc_slots(1);
+                self.emit_expr_into(callee, func_slot);
+
+                self.emit_call_args(args, |emitter, count| {
+                    // `CALL`s semantics match exactly
+                    emitter.emit(CALL(func_slot, count, max_res));
+
+                    // ret values stored starting at A (callee slot)
+                    f(emitter, func_slot);
+                });
+
+                self.dealloc_slots(1);  // func_slot
+            }
+            MethodCall(ref obj, ref name, ref args) => {
+                // some.thing:name(...) - passes `some.thing` as the first argument, without
+                // evaluating it twice (unlike `some.thing.name(some.thing, ...)`).
+
+                // Stack: METHOD | OBJECT | ARGS...
+
+                let method_slot = self.alloc_slots(1);
+                let obj_slot = self.alloc_slots(1);
+                self.emit_expr_into(obj, obj_slot);
+
+                let const_id = self.add_const(&TStr(name.to_string()));
+                let str_slot = self.alloc_slots(1);
+
+                self.emit(LOADK(str_slot, const_id));
+                self.emit(GETIDX(method_slot, obj_slot, str_slot));
+
+                self.dealloc_slots(1);  // str_slot
+
+                self.emit_call_args(args, |emitter, count| {
+                    // we actually pass one more argument than `emit_call_args` tells us: the
+                    // object.
+                    if count == 0 {
+                        // dynamic arg count
+                        emitter.emit(CALL(method_slot, 0, max_res));
+                    } else {
+                        // fixed count of `count - 1` arguments, `CALL` passes `B-1` arguments as
+                        // well, so we still need to add 1 to pass the object.
+                        emitter.emit(CALL(method_slot, count + 1, max_res));
+                    }
+
+                    f(emitter, method_slot);
+                });
+
+                self.dealloc_slots(2);  // method_slot, obj_slot
+            }
+        }
+    }
+
+    /// Emits an expression that can return multiple values. Up to `max_res` values are retained.
+    /// If `max_res` is 0, all results are retained.
+    ///
+    /// The given closure will be called with the first slot that contains a value created by this
+    /// expression. If `max_res` is 0, this slot might not be valid. Otherwise, exactly `max_res`
+    /// slots have a valid result in them.
+    fn emit_expr_multi<F>(&mut self, e: &Expr, max_res: u8, f: F)
+    where F: FnOnce(&mut Emitter, /* start */ u8) {
+        match e.value {
+            ECall(ref call) => {
+                self.emit_call(call, max_res, f);
+            }
             EVarArgs => {
+                let start_slot = if max_res == 0 {
+                    // top of stack
+                    self.cur_func().stacksize
+                } else {
+                    // alloc fixed reg count
+                    self.alloc_slots(max_res as usize)
+                };
+
                 self.emit(VARARGS(start_slot, max_res));
+
+                f(self, start_slot);
+
+                if max_res != 0 {
+                    self.dealloc_slots(max_res as usize);
+                }
             }
             _ => {
                 debug_assert_eq!(e.is_multi_result(), false);
 
                 // These all have a single result
-                let mut target = start_slot;
-                if max_res == 0 {
-                    // no actual slot allocated!
-                    target = self.alloc_slots(1);
-                }
-
-                let slot = self.emit_expr(e, target);
-                if slot != start_slot {
-                    self.emit(MOV(target, slot));
-                }
-
-                if max_res == 0 {
-                    self.dealloc_slots(1);
-                }
+                let target = self.alloc_slots(cmp::max(1, max_res) as usize);
+                self.emit_expr_into(e, target);
 
                 if max_res > 1 {
-                    self.emit(LOADNIL(start_slot+1, max_res-2));
+                    self.emit(LOADNIL(target+1, max_res-2));
                 }
+
+                f(self, target);
+
+                self.dealloc_slots(cmp::max(1, max_res) as usize);
             }
         }
     }
@@ -419,8 +567,7 @@ impl Emitter {
                         // A && B  <=>  if A then B else A
                         let lslot = self.emit_expr(lhs, hint_slot);
                         let jmp = self.emit_raw(IFNOT(lslot, 0));
-                        let rslot = self.emit_expr(rhs, hint_slot);
-                        if rslot != hint_slot { self.emit(MOV(hint_slot, rslot)); }
+                        self.emit_expr_into(rhs, hint_slot);
 
                         // jump here if A is false
                         let rel = self.get_next_addr() - jmp - 1;
@@ -437,8 +584,7 @@ impl Emitter {
                         // A || B  <=>  if A then A else B
                         let lslot = self.emit_expr(lhs, hint_slot);
                         let jmp = self.emit_raw(IF(lslot, 0));
-                        let rslot = self.emit_expr(rhs, hint_slot);
-                        if rslot != hint_slot { self.emit(MOV(hint_slot, rslot)); }
+                        self.emit_expr_into(rhs, hint_slot);
 
                         // jump here if A is true
                         let rel = self.get_next_addr() - jmp - 1;
@@ -520,6 +666,14 @@ impl Emitter {
         }
     }
 
+    /// Emits an expression into the given slot.
+    fn emit_expr_into(&mut self, e: &Expr, slot: u8) {
+        let real_slot = self.emit_expr(e, slot);
+        if real_slot != slot {
+            self.emit(MOV(slot, real_slot));
+        }
+    }
+
     fn emit_stmt(&mut self, s: &Stmt, block: &Block) {
         match s.value {
             SDecl(ref names, ref exprs) => {
@@ -585,10 +739,7 @@ impl Emitter {
                     }
 
                     let slot = slot as u8;
-                    let realslot = self.emit_expr(&vals[i], slot);
-                    if realslot != slot {
-                        self.emit(MOV(slot, realslot));
-                    }
+                    self.emit_expr_into(&vals[i], slot);
                 }
 
                 // Emit next value on rhs. Might return any number of values.
@@ -606,12 +757,11 @@ impl Emitter {
 
                         // Number of results is known at compile-time (`vars_left`). Allocate temp
                         // slots, `emit_expr_multi`, then assign temp slots to targets.
-                        let temp_start = self.alloc_slots(vars_left);
-                        self.emit_expr_multi(val, temp_start, vars_left as u8);
-
-                        for i in 0..vars_left {
-                            self.emit_assign(&vars[tmpcount+i], |_, _| temp_start + i as u8);
-                        }
+                        self.emit_expr_multi(val, vars_left as u8, |emitter, temp_start| {
+                            for i in 0..vars_left {
+                                emitter.emit_assign(&vars[tmpcount+i], |_, _| temp_start + i as u8);
+                            }
+                        });
                     } else {
                         // single result, simple assignment. `hint` is allocated by emit_assign.
                         // excessive results will be ignored (`emit_expr` ignores them).
@@ -647,6 +797,9 @@ impl Emitter {
             }
             SDo(ref block) => {
                 self.visit_block(block);
+            }
+            SCall(ref call) => {
+                self.emit_call(call, 1, |_, _| ());    // store 0 results
             }
 
             _ => panic!("NYI stmt: {:?}", s),    // TODO remove, this is just for testing
@@ -840,6 +993,37 @@ mod tests {
             MOV(1,0),       // local j = i
             MOV(0,1),       // i = j
             MOV(1,0),       // local j = i
+            RETURN(0,1),
+        ]);
+    }
+
+    #[test]
+    fn call() {
+        test!("local f   f()  f()  f(nil)  f(nil, nil)   f(f)" => [
+            LOADNIL(0,0),   // local f
+            MOV(1,0),       // callee: f
+            CALL(1,1,1),
+            MOV(1,0),       // callee: f
+            CALL(1,1,1),
+            MOV(1,0),       // callee: f
+            LOADNIL(2,0),   // args: nil
+            CALL(1,2,1),
+            MOV(1,0),       // callee: f
+            LOADNIL(2,1),   // args: nil, nil
+            CALL(1,3,1),
+            MOV(1,0),       // callee: f
+            MOV(2,0),       // args: f
+            CALL(1,2,1),
+            RETURN(0,1),
+        ]);
+        test!("local f  f('a')  f 'a'" => [
+            LOADNIL(0,0),   // local f
+            MOV(1,0),       // callee: f
+            LOADK(2,0),     // args: 'a'
+            CALL(1,2,1),
+            MOV(1,0),       // callee: f
+            LOADK(2,0),     // args: 'a'
+            CALL(1,2,1),
             RETURN(0,1),
         ]);
     }

@@ -51,7 +51,7 @@
 //! ## Linting / Optimizing
 //!
 //! In this step, all configured Linters and Optimizers are run on the resolved AST. Internally, we
-//! make to distinction between a Linter and an Optimizer: Both take a `Function` node, do
+//! make no distinction between a Linter and an Optimizer: Both take a `Function` node, do
 //! something to it, and return a transformed `Function` along with a list of warnings to be
 //! issued.
 //!
@@ -64,12 +64,12 @@
 //!   applied to literals, applies them at compile-time, and replaces the node with the result.
 //!   This is a basic optimization performed by most compilers (Lua does this too).
 //!
-//! * `globalwrite.rs` implements a Linter that will issue a warning for all assignments to
-//!   globals. Global variables are generally meant to hold the standard library functions, and not
-//!   much more. User code should always prefer locals, and modules are meant to return the module
-//!   when loaded, which should be assigned to a local by the code that `require`d the module. If
-//!   you still need to access a global (for example, when setting up a sandbox), you can do so
-//!   explicitly by indexing `_ENV`.
+//! * `globalwrite.rs` implements a Lint that will warn for all assignments to globals. Global
+//!   variables are generally meant to hold the standard library functions, and not much more. User
+//!   code should always prefer locals, and modules are meant to return the module when loaded,
+//!   which should be assigned to a local by the code that `require`d the module. If you still need
+//!   to access a global (for example, when setting up a sandbox), you can do so explicitly by
+//!   indexing `_ENV`.
 //!
 //! * `deprecated_ops.rs` is a Linter that emits a warning whenever a Lua operator is used that has
 //!   an equivalent replacement in Lea.
@@ -97,8 +97,6 @@ use transform::{Transform, LintMode};
 use emitter::emit_func;
 
 use ast::Function;
-
-use std::default::Default;
 
 
 mod errors;
