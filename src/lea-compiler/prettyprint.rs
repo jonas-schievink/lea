@@ -2,8 +2,8 @@
 
 use super::parser;
 
-use ast::*;
-use ast::visit::*;
+use lea_ast::*;
+use lea_ast::visit::*;
 
 use lea_core::literal::*;
 
@@ -505,8 +505,8 @@ impl<'a, 'v, W: Write> Visitor<'v> for PrettyPrinter<'a, W> {
 mod tests {
     use super::*;
     use parser::block;
-    use ast::Block;
-    use ast::visit::walk_block_ref;
+    use lea_ast::Block;
+    use lea_ast::visit::walk_block_ref;
 
     fn print_block(block: &Block) -> String {
         let mut v = Vec::new();

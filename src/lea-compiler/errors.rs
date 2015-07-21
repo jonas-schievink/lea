@@ -4,7 +4,7 @@ use super::emitter::EmitError;
 use super::parser::ParseError;
 use super::check::CheckError;
 
-use ast::span::Span;
+use lea_ast::span::Span;
 
 use term::{color, Terminal};
 

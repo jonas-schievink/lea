@@ -2,9 +2,9 @@
 
 use ::Warning;
 
-use ast::*;
-use ast::op::*;
-use ast::visit::*;
+use lea_ast::*;
+use lea_ast::op::*;
+use lea_ast::visit::*;
 
 use std::ops::{Deref, DerefMut};
 use std::collections::HashMap;

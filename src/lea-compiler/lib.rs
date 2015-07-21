@@ -79,6 +79,8 @@
 //! The byte code emitter for the compiler still needs to be written. It will take an AST and
 //! convert it to machine code for the virtual machine.
 
+#![feature(map_in_place)]
+
 #[macro_use]
 extern crate lazy_static;
 
@@ -90,18 +92,19 @@ extern crate term;
 extern crate unicode_segmentation;
 
 extern crate lea_core;
-extern crate lea_ast as ast;
+extern crate lea_ast;
 extern crate lea_parser as parser;
 
 use transform::{Transform, LintMode};
 use emitter::emit_func;
 
-use ast::Function;
+use lea_ast::Function;
 
 
 mod errors;
+mod ast;
+mod check;
 pub mod transform;
-pub mod check;
 pub mod emitter;
 pub mod prettyprint;
 pub mod resolve;

@@ -2,10 +2,10 @@
 
 use ::Warning;
 
-use ast::*;
-use ast::span::Spanned;
-use ast::op::*;
-use ast::visit::*;
+use lea_ast::*;
+use lea_ast::span::Spanned;
+use lea_ast::op::*;
+use lea_ast::visit::*;
 
 use lea_core::literal::*;
 
@@ -304,7 +304,7 @@ mod tests {
     use super::*;
     use ::{CompileConfig, Warning, parse_and_resolve, apply_transforms};
     use transform::{Transform, LintMode};
-    use ast::Function;
+    use lea_ast::Function;
 
     fn parse_fold<'a>(code: &'a str) -> (Function<'a>, Vec<Warning>) {
         let tr = run as Transform;

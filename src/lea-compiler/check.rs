@@ -1,8 +1,8 @@
 //! Checks if an AST is valid
 
-use ast::*;
-use ast::span::*;
-use ast::visit::*;
+use lea_ast::*;
+use lea_ast::span::*;
+use lea_ast::visit::*;
 
 use term::Terminal;
 

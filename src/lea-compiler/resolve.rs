@@ -6,9 +6,9 @@
 
 // TODO better code style would be neat
 
-use ast::ast::*;
-use ast::span::{Span, Spanned};
-use ast::visit::*;
+use lea_ast::ast::*;
+use lea_ast::span::{Span, Spanned};
+use lea_ast::visit::*;
 
 use lea_core::fndata::UpvalDesc;
 
@@ -255,8 +255,8 @@ mod tests {
     use super::*;
     use parser::parse_main;
 
-    use ast::span::Spanned;
-    use ast::*;
+    use lea_ast::span::Spanned;
+    use lea_ast::*;
 
     use lea_core::fndata::UpvalDesc;
     use lea_core::literal::*;
