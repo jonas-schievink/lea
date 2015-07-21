@@ -39,7 +39,7 @@ Options:
     -v, --version               Show the version of the Lea package.
     -p, --pretty                Pretty print the source code instead of compiling it.
     -o <out>, --out <out>       Write output to <out> (`-` to write to stdout).
-    -e <enc>, --encoding <enc>  The encoding to use for writing the compiled code. [default: bin]
+    -e <enc>, --encoding <enc>  The encoding to use for writing the compiled code.
 
 By default, leac will write the compiled code to stdout. If stdout is a terminal, leac will print \
 it using the `debug` encoding. Otherwise, leac will encode the compilation result in a binary \
@@ -106,8 +106,6 @@ fn main() {
             println!("{}", e);
         }
         Ok(args) => {
-            println!("{:?}", &args);
-
             match args {
                 Args { flag_version: true, .. } => {
                     println!("Lea {}", option_env!("CARGO_PKG_VERSION").unwrap_or("<unknown version>"));
@@ -115,7 +113,7 @@ fn main() {
                 Args { arg_file, flag_out, flag_pretty, .. } => {
                     // Read input
                     let mut code = String::new();
-                    let mut source_name;
+                    let source_name;
                     if arg_file == "-" {
                         stdin().read_to_string(&mut code).unwrap();
                         source_name = "<stdin>".to_owned();

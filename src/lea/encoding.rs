@@ -48,6 +48,6 @@ encoders! {
         }
     },
     debug(fndata, wr) => {
-        write!(wr, "{:?}\"", fndata)
+        write!(wr, "{:#?}\"", fndata)
     },
 }

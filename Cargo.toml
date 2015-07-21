@@ -15,7 +15,17 @@ A Lua-based language written in Rust
 name = "lea"
 path = "src/lea/lib.rs"
 
+[[bin]]
+name = "leac"
+path = "src/lea/leac.rs"
+test = false
+
 [dependencies]
+lea-ast = { path = "src/lea-ast" }
 lea-compiler = { path = "src/lea-compiler" }
 lea-vm = { path = "src/lea-vm" }
-cli-leac = { path = "src/cli-leac" }
+docopt = "*"
+docopt_macros = "*"
+rustc-serialize = "*"
+bincode = "*"
+term = "*"

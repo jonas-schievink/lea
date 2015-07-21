@@ -6,5 +6,6 @@ set -e
 
 for proj in $(ls src); do
     echo "[TESTING] $proj"
+    cargo build -p "$proj"
     cargo test -p "$proj"
 done
