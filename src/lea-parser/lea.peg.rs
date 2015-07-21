@@ -4,39 +4,33 @@
 
 use std::mem;
 
-use ast::span::{Span, Spanned, mkspanned};
-use ast::op::*;
-use ast::*;
+use expr_parser::build_tree;
+use span::{Span, Spanned, mkspanned};
+use op::*;
+use parsetree::*;
 
 use lea_core::literal::*;
 
 
-/// Returns the expression with which something is indexed and a boolean indicating if dot-notation
-/// was used.
-index -> (Expr<'input>, bool)
+index -> VarIndex<'input>
     = __* "." __* id:ident {
-        (mkspanned(ELit(TStr(id.value.to_string())), start_pos, pos), true)
+        VarIndex::DotIndex(id)
     }
     / __* "[" e:expression "]" {
-        (mkspanned(e.value, start_pos, pos), false)
+        VarIndex::ExprIndex(Box::new(e))
     }
 
 variable -> Variable<'input>
-    = i:ident idxs:index*    {
+    = i:ident idxs:index* {
         let mut v = Spanned::new(i.span, VNamed(i.value));
         for idx in idxs {
-            let (expr, dot) = idx;
-
             let start = v.span.start;
-            let end = expr.span.start + expr.span.len;
+            let end = match idx {
+                VarIndex::ExprIndex(ref e) => e.span.start + e.span.len,
+                VarIndex::DotIndex(ref id) => id.span.start + id.span.len,
+            };
 
-            if dot {
-                if let ELit(TStr(s)) = expr.value {
-                    v = mkspanned(VDotIndex(Box::new(v), s), start, end);
-                    continue;
-                }
-            }
-            v = mkspanned(VIndex(Box::new(v), Box::new(expr)), start, end);
+            v = mkspanned(VIndex(Box::new(v), idx), start, end);
         }
 
         v
@@ -111,8 +105,8 @@ arraycons -> Vec<Expr<'input>>
 
 #[pub]
 expression -> Expr<'input>
-    = __* l:atom rest:(op:binop r:atom { (op, r) })* __* {
-        mkspanned(ERawOp(Box::new(l), rest), start_pos, pos)
+    = __* left:atom rest:(op:binop r:atom { (op, r) })* __* {
+        build_tree(left, rest)
     }
 
 // Comma-separated list of expressions (at least one expression is required)
@@ -128,20 +122,23 @@ stmt_if -> Stmt<'input>
 
         // Start with "pure" else at the end
         let mut myelse = match el {
-            None => Block::new(vec![], Span::new(pos, pos)),
+            None => Block { stmts: vec![], span: Span::new(pos, pos) },
             Some(block) => block,
         };
 
         for elif in elifs {
             let (cond, body) = elif.value;
 
-            myelse = Block::new(vec![
-                Spanned::new(elif.span, SIf {
-                    cond: cond,
-                    body: body,
-                    el: myelse, // Old else block here
-                }),
-            ], elif.span);
+            myelse = Block {
+                span: elif.span,
+                stmts: vec![
+                    Spanned::new(elif.span, SIf {
+                        cond: cond,
+                        body: body,
+                        el: myelse, // Old else block here
+                    }),
+                ],
+            };
         }
 
         mkspanned(SIf {
@@ -228,7 +225,12 @@ statement -> Stmt<'input>
 
 #[pub]
 block -> Block<'input>
-    = s:statement* { Block::<'input>::new(s, Span::new(start_pos, pos)) }
+    = s:statement* {
+        Block {
+            stmts: s,
+            span: Span::new(start_pos, pos),
+        }
+    }
 
 
 /// Lexical elements

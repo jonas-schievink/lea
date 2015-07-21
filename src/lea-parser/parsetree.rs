@@ -15,7 +15,7 @@ use lea_core::literal::*;
 
 /// A block containing any number of statements. All blocks define a scope in which local variables
 /// can be declared.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Block<'a> {
     pub span: Span,
     pub stmts: Vec<Stmt<'a>>,
@@ -63,17 +63,20 @@ impl<'a> Function<'a> {
     }
 }
 
+/// Describes how a variable is indexed
+#[derive(Clone, PartialEq, Debug)]
+pub enum VarIndex<'a> {
+    DotIndex(Spanned<&'a str>),
+    ExprIndex(Box<Expr<'a>>),
+}
+
 /// Something that can be set to a value
 #[derive(Clone, PartialEq, Debug)]
 pub enum _Variable<'a> {
     /// References a named variable; later resolved to local, global or upvalue references
     VNamed(&'a str),
 
-    /// A variable indexed with an expression (`var[expr]`)
-    VIndex(Box<Variable<'a>>, Box<Expr<'a>>),
-
-    /// A variable indexed with dot notation
-    VDotIndex(Box<Variable<'a>>, Spanned<&'a str>),
+    VIndex(Box<Variable<'a>>, VarIndex<'a>),
 }
 
 /// Statement nodes

@@ -1,10 +1,7 @@
 //! Wrapper around rust-peg generated parser methods.
 
-use super::expr_parser::ExprParser;
-
-use ast::*;
-use ast::visit::Transform;
-use ast::span::*;
+use parsetree::*;
+use span::*;
 
 use term::Terminal;
 
@@ -44,26 +41,17 @@ impl From<parse::ParseError> for ParseError {
 
 /// Parses an expression
 pub fn expression(input: &str) -> Result<Expr, ParseError> {
-    let mut e = try!(parse::expression(input));
-    e = ExprParser.visit_expr(e);
-
-    Ok(e)
+    Ok(try!(parse::expression(input)))
 }
 
 /// Parses a statement
 pub fn statement(input: &str) -> Result<Stmt, ParseError> {
-    let mut s = try!(parse::statement(input));
-    s = ExprParser.visit_stmt(s);
-
-    Ok(s)
+    Ok(try!(parse::statement(input)))
 }
 
 /// Parses a block of statements
 pub fn block(input: &str) -> Result<Block, ParseError> {
-    let mut b = try!(parse::block(input));
-    b = visit::walk_block(b, &mut ExprParser);
-
-    Ok(b)
+    Ok(try!(parse::block(input)))
 }
 
 /// Parses a block of statements and builds a function wrapper that can be run as the main function
@@ -74,21 +62,13 @@ pub fn parse_main(input: &str) -> Result<Function, ParseError> {
     Ok(Function::new(vec![], true, blk))
 }
 
-/// Parses a raw expression. This only runs the PEG parser, not the dedicated expression parser.
-///
-/// The returned expression will be of the variant `ERawOp`.
-#[inline(always)]
-pub fn expression_raw(input: &str) -> Result<Expr, ParseError> {
-    Ok(try!(parse::expression(input)))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use ast::*;
-    use ast::span::Spanned;
-    use ast::op::*;
+    use parsetree::*;
+    use span::Spanned;
+    use op::*;
 
     use lea_core::literal::*;
 
@@ -279,12 +259,12 @@ mod tests {
             EVar(Spanned::default(VNamed("t"))));
         assert!(expression("t.i") != expression("t[\"i\"]"));
 
-        assert_eq!(expression("t.i.j").unwrap().value, EVar(Spanned::default(VDotIndex(
-            Box::new(Spanned::default(VDotIndex(
+        assert_eq!(expression("t.i.j").unwrap().value, EVar(Spanned::default(VIndex(
+            Box::new(Spanned::default(VIndex(
                 Box::new(Spanned::default(VNamed("t"))),
-                "i".to_string(),
+                VarIndex::DotIndex(Spanned::default("i")),
             ))),
-            "j".to_string(),
+            VarIndex::DotIndex(Spanned::default("j"))
         ))));
     }
 
@@ -331,21 +311,20 @@ mod tests {
         assert_eq!(expression("function()end").unwrap().value,
             EFunc(Function {
                 params: vec![],
-                locals: vec![],
-                upvalues: vec![],
                 varargs: false,
-                body: Block::new(vec![], Default::default()),
+                body: Default::default(),
             })
         );
         assert_eq!(expression("function(i, j, ...) break end").unwrap().value,
             EFunc(Function {
                 params: vec![Spanned::default("i"), Spanned::default("j")],
-                locals: vec![],
-                upvalues: vec![],
                 varargs: true,
-                body: Block::new(vec![
-                    Spanned::default(SBreak),
-                ], Default::default()),
+                body: Block {
+                    stmts: vec![
+                        Spanned::default(SBreak),
+                    ],
+                    span: Default::default()
+                },
         }));
 
         assert!(expression("function(...)end").is_ok());
@@ -382,10 +361,8 @@ mod tests {
         assert_eq!(expression("(function()end)()").unwrap().value, ECall(SimpleCall(
             Box::new(Spanned::default(EBraced(Box::new(Spanned::default(EFunc(Function {
                 params: vec![],
-                locals: vec![],
-                upvalues: vec![],
                 varargs: false,
-                body: Block::new(vec![], Default::default()),
+                body: Default::default(),
             })))))),
             CallArgs::Normal(vec![]),
         )));
@@ -397,17 +374,18 @@ mod tests {
     #[test]
     fn stmt() {
         assert_eq!(statement("break").unwrap().value, SBreak);
-        assert_eq!(statement("do end").unwrap().value, SDo(Block::new(
-            vec![], Default::default()
-        )));
+        assert_eq!(statement("do end").unwrap().value, SDo(Default::default()));
         assert_eq!(statement("do break end").unwrap().value, SDo(
-            Block::new(vec![Spanned::default(SBreak)], Default::default())
+            Block { stmts: vec![Spanned::default(SBreak)], span: Default::default() }
         ));
         assert_eq!(statement("do do end break end").unwrap().value, SDo(
-            Block::new(vec![
-                Spanned::default(SDo(Block::new(vec![], Default::default()))),
-                Spanned::default(SBreak),
-            ], Default::default())
+            Block {
+                stmts: vec![
+                    Spanned::default(SDo(Default::default())),
+                    Spanned::default(SBreak),
+                ],
+                span: Default::default()
+            }
         ));
 
         assert_eq!(statement("i, j = k, l").unwrap().value, SAssign(vec![
@@ -428,33 +406,33 @@ mod tests {
             Spanned::default("t"),
             Function {
                 params: vec![],
-                locals: vec![],
-                upvalues: vec![],
                 varargs: false,
-                body: Block::new(vec![], Default::default()),
+                body: Default::default(),
             }
         ));
 
         assert_eq!(statement("function g.f(i,j) end").unwrap().value, SFunc(
-            Spanned::default(VDotIndex(Box::new(Spanned::default(VNamed("g"))), "f".to_string())),
+            Spanned::default(VIndex(
+                Box::new(Spanned::default(VNamed("g"))),
+                VarIndex::DotIndex(Spanned::default("f")),
+            )),
             Function {
                 params: vec![Spanned::default("i"), Spanned::default("j")],
-                locals: vec![],
-                upvalues: vec![],
                 varargs: false,
-                body: Block::new(vec![], Default::default()),
+                body: Default::default(),
             }
         ));
 
         assert_eq!(statement("function g.f:j(i,j) end").unwrap().value, SMethod(
-            Spanned::default(VDotIndex(Box::new(Spanned::default(VNamed("g"))), "f".to_string())),
+            Spanned::default(VIndex(
+                Box::new(Spanned::default(VNamed("g"))),
+                VarIndex::DotIndex(Spanned::default("f")),
+            )),
             Spanned::default("j"),
             Function {
                 params: vec![Spanned::default("i"), Spanned::default("j")],
-                locals: vec![],
-                upvalues: vec![],
                 varargs: false,
-                body: Block::new(vec![], Default::default()),
+                body: Default::default(),
             }
         ));
 
@@ -476,7 +454,7 @@ mod tests {
         assert_eq!(statement("for i in j do end").unwrap().value, SForIn {
             vars: vec![Spanned::default("i")],
             iter: vec![Spanned::default(EVar(Spanned::default(VNamed("j"))))],
-            body: Block::new(vec![], Default::default()),
+            body: Default::default(),
         });
         assert_eq!(statement(" for  i,j, k , l in 1, 2,3 , 4 do break end").unwrap().value, SForIn {
             vars: vec![Spanned::default("i"), Spanned::default("j"), Spanned::default("k"), Spanned::default("l")],
@@ -486,9 +464,12 @@ mod tests {
                 Spanned::default(ELit(TInt(3))),
                 Spanned::default(ELit(TInt(4))),
             ],
-            body: Block::new(vec![
-                Spanned::default(SBreak),
-            ], Default::default()),
+            body: Block {
+                stmts: vec![
+                    Spanned::default(SBreak),
+                ],
+                span: Default::default()
+            },
         });
 
         assert_eq!(statement("for i = 1, #t do do end break end").unwrap().value, SFor {
@@ -499,38 +480,50 @@ mod tests {
                 Box::new(Spanned::default(EVar(Spanned::default(VNamed("t")))))
             )),
             step: None,
-            body: Block::new(vec![
-                Spanned::default(SDo(Block::new(vec![], Default::default()))),
-                Spanned::default(SBreak),
-            ], Default::default()),
+            body: Block {
+                stmts: vec![
+                    Spanned::default(SDo(Default::default())),
+                    Spanned::default(SBreak),
+                ],
+                span: Default::default()
+            },
         });
         assert_eq!(statement("for i = 1,2,3 do do end break end").unwrap().value, SFor {
             var: Spanned::default("i"),
             start: Spanned::default(ELit(TInt(1))),
             end: Spanned::default(ELit(TInt(2))),
             step: Some(Spanned::default(ELit(TInt(3)))),
-            body: Block::new(vec![
-                Spanned::default(SDo(Block::new(vec![], Default::default()))),
-                Spanned::default(SBreak),
-            ], Default::default()),
+            body: Block {
+                stmts: vec![
+                    Spanned::default(SDo(Default::default())),
+                    Spanned::default(SBreak),
+                ],
+                span: Default::default()
+            },
         });
 
         assert_eq!(statement("repeat break until 1").unwrap().value, SRepeat {
             abort_on: Spanned::default(ELit(TInt(1))),
-            body: Block::new(vec![Spanned::default(SBreak)], Default::default()),
+            body: Block {
+                stmts: vec![Spanned::default(SBreak)],
+                span: Default::default(),
+            }
         });
 
         assert_eq!(statement("while 1 do break end").unwrap().value, SWhile {
             cond: Spanned::default(ELit(TInt(1))),
-            body: Block::new(vec![Spanned::default(SBreak)], Default::default()),
+            body: Block {
+                stmts: vec![Spanned::default(SBreak)],
+                span: Default::default(),
+            }
         });
         assert_eq!(statement("while 1 do end"), statement(" while   1  do  end  "));
         assert_eq!(statement("while 1 do break end"), statement(" while \n1\n do break\t\n end "));
 
         assert_eq!(statement("if 5 then end").unwrap().value, SIf {
             cond: Spanned::default(ELit(TInt(5))),
-            body: Block::new(vec![], Default::default()),
-            el: Block::new(vec![], Default::default()),
+            body: Default::default(),
+            el: Default::default(),
         });
         assert_eq!(statement("if 5 then end"), statement("if 5 then else end"));
         assert_eq!(statement("if 5 then end"), statement("if 5 then\nelse\nend"));
@@ -541,14 +534,24 @@ mod tests {
         assert_eq!(statement("if 1 then break elseif 2 then break break else break end").unwrap().value,
         SIf {
             cond: Spanned::default(ELit(TInt(1))),
-            body: Block::new(vec![Spanned::default(SBreak)], Default::default()),
-            el: Block::new(vec![Spanned::default(SIf {
-                cond: Spanned::default(ELit(TInt(2))),
-                body: Block::new(vec![
-                    Spanned::default(SBreak), Spanned::default(SBreak),
-                ], Default::default()),
-                el: Block::new(vec![Spanned::default(SBreak)], Default::default()),
-            })], Default::default()),
+            body: Block {
+                stmts: vec![Spanned::default(SBreak)],
+                span: Default::default(),
+            },
+            el: Block {
+                stmts: vec![Spanned::default(SIf {
+                    cond: Spanned::default(ELit(TInt(2))),
+                    body: Block {
+                        stmts: vec![Spanned::default(SBreak), Spanned::default(SBreak)],
+                        span: Default::default(),
+                    },
+                    el: Block {
+                        stmts: vec![Spanned::default(SBreak)],
+                        span: Default::default(),
+                    },
+                })],
+                span: Default::default(),
+            },
         });
 
         assert_eq!(statement("return").unwrap().value, SReturn(vec![]));
@@ -576,25 +579,27 @@ mod tests {
     t = 1
     local r, s = 4, 2, 1
     function f(g, ...) do end end
-    "#).unwrap(), Block::new(vec![
-            Spanned::default(SAssign(
-                vec![Spanned::default(VNamed("t"))],
-                vec![Spanned::default(ELit(TInt(1)))]
-            )),
-            Spanned::default(SDecl(vec![Spanned::default("r"), Spanned::default("s")], vec![
-                Spanned::default(ELit(TInt(4))),
-                Spanned::default(ELit(TInt(2))),
-                Spanned::default(ELit(TInt(1)))
-            ])),
-            Spanned::default(SFunc(Spanned::default(VNamed("f")), Function {
-                params: vec![Spanned::default("g")],
-                locals: vec![],
-                upvalues: vec![],
-                varargs: true,
-                body: Block::new(vec![
-                    Spanned::default(SDo(Block::new(vec![], Default::default())))
-                ], Default::default()),
-            })),
-        ], Default::default()));
+    "#).unwrap(), Block {
+            stmts: vec![
+                Spanned::default(SAssign(
+                    vec![Spanned::default(VNamed("t"))],
+                    vec![Spanned::default(ELit(TInt(1)))]
+                )),
+                Spanned::default(SDecl(vec![Spanned::default("r"), Spanned::default("s")], vec![
+                    Spanned::default(ELit(TInt(4))),
+                    Spanned::default(ELit(TInt(2))),
+                    Spanned::default(ELit(TInt(1)))
+                ])),
+                Spanned::default(SFunc(Spanned::default(VNamed("f")), Function {
+                    params: vec![Spanned::default("g")],
+                    varargs: true,
+                    body: Block {
+                        stmts: vec![Spanned::default(SDo(Default::default()))],
+                        span: Default::default(),
+                    },
+                })),
+            ],
+            span: Default::default()
+        });
     }
 }
