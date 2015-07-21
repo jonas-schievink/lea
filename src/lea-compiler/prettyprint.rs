@@ -1,5 +1,7 @@
 //! AST pretty printer
 
+// TODO move this to the parser crate. the ast cannot be pretty-printed.
+
 use super::parser;
 
 use ast::*;
@@ -505,8 +507,8 @@ impl<'a, 'v, W: Write> Visitor<'v> for PrettyPrinter<'a, W> {
 mod tests {
     use super::*;
     use parser::block;
-    use lea_ast::Block;
-    use lea_ast::visit::walk_block_ref;
+    use ast::Block;
+    use ast::visit::walk_block_ref;
 
     fn print_block(block: &Block) -> String {
         let mut v = Vec::new();
@@ -520,7 +522,7 @@ mod tests {
     }
 
     fn print(code: &str) -> String {
-        print_block(&block(code).unwrap())
+        print_block(&block(code).unwrap().into())
     }
 
     fn test(code: &str, expect: &str) {
@@ -530,11 +532,11 @@ mod tests {
     /// Parses and prints the given source code. Then parses the print result and asserts that the
     /// two syntax trees are equal.
     fn test_auto(code: &str) {
-        let expblock = block(code).unwrap();
+        let expblock = block(code).unwrap().into();
         let printed = print_block(&expblock);
         println!("{}", printed);
 
-        let newblock = block(printed.as_ref()).unwrap();
+        let newblock = block(printed.as_ref()).unwrap().into();
 
         assert_eq!(expblock, newblock);
     }

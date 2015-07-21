@@ -105,18 +105,18 @@ mod tests {
 
     #[test]
     fn test() {
-        assert!(check_func(&parse_main("break").unwrap()).is_err());
-        assert!(check_func(&parse_main("for i=0,1 do break end").unwrap()).is_ok());
-        assert!(check_func(&parse_main("i = ...").unwrap()).is_ok());
+        assert!(check_func(&parse_main("break").unwrap().into()).is_err());
+        assert!(check_func(&parse_main("for i=0,1 do break end").unwrap().into()).is_ok());
+        assert!(check_func(&parse_main("i = ...").unwrap().into()).is_ok());
         assert!(check_func(&parse_main(r#"
 for i=0,1 do
     function i() break end
 end
-"#).unwrap()).is_err());
+"#).unwrap().into()).is_err());
         assert!(check_func(&parse_main(r#"
 function f(a)
     a = ...
 end
-"#).unwrap()).is_err());
+"#).unwrap().into()).is_err());
     }
 }

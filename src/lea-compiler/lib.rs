@@ -172,12 +172,10 @@ pub struct CompileOutput<'a> {
 /// If this succeeds, this means that the program described by the source code is valid and can be
 /// compiled.
 pub fn parse_and_check<'a>(code: &'a str) -> CompileResult<Function<'a>> {
-    use std::convert::From;
-
     match parser::parse_main(code) {
         Err(e) => Err(ErrParse(e)),
         Ok(main) => {
-            let main = From::from(main);
+            let main = main.into();
             let res = check::check_func(&main);
             match res {
                 Err(errs) => Err(ErrCheck(errs)),

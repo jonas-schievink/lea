@@ -255,8 +255,8 @@ mod tests {
     use super::*;
     use parser::parse_main;
 
-    use lea_ast::span::Spanned;
-    use lea_ast::*;
+    use parser::span::Spanned;
+    use ast::*;
 
     use lea_core::fndata::UpvalDesc;
     use lea_core::literal::*;
@@ -286,7 +286,7 @@ do
     i[j] = a
 end
 j = i
-"#).unwrap();
+"#).unwrap().into();
         f = resolve_func(f);
 
         assert_eq!(f.body, Block::with_locals(vec![
@@ -329,7 +329,7 @@ local function f()
 
     local function g() f = a end    -- chained upvalue + normal upvalue
 end
-"#).unwrap();
+"#).unwrap().into();
         f = resolve_func(f);
 
         assert_eq!(f, Function {
@@ -374,7 +374,7 @@ end
 
     #[test]
     fn env_simple() {
-        let mut f = parse_main("_ENV = 0").unwrap();
+        let mut f = parse_main("_ENV = 0").unwrap().into();
         f = resolve_func(f);
 
         assert_eq!(f.body, Block::new(vec![
@@ -394,7 +394,7 @@ local _ENV
 local function f() local _ENV i = nil end
 local function g() _ENV = nil end
 local function h() local function h1() r = nil end end
-"#).unwrap();
+"#).unwrap().into();
         f = resolve_func(f);
 
         assert_eq!(f, Function {

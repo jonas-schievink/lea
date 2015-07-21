@@ -304,7 +304,7 @@ mod tests {
     use super::*;
     use ::{CompileConfig, Warning, parse_and_resolve, apply_transforms};
     use transform::{Transform, LintMode};
-    use lea_ast::Function;
+    use ast::Function;
 
     fn parse_fold<'a>(code: &'a str) -> (Function<'a>, Vec<Warning>) {
         let tr = run as Transform;
