@@ -6,8 +6,8 @@
 
 use ::Warning;
 
-use lea_ast::visit::*;
-use lea_ast::*;
+use ast::visit::*;
+use ast::*;
 
 use std::ops::{Deref, DerefMut};
 

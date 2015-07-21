@@ -5,7 +5,7 @@ extern crate lea_core;
 extern crate term;
 extern crate unicode_segmentation;
 
-pub mod expr_parser;
+mod expr_parser;
 
 pub mod op;
 pub mod span;

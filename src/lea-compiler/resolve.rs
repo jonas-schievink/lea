@@ -6,9 +6,9 @@
 
 // TODO better code style would be neat
 
-use lea_ast::ast::*;
-use lea_ast::span::{Span, Spanned};
-use lea_ast::visit::*;
+use ast::*;
+use ast::visit::*;
+use parser::span::{Span, Spanned};
 
 use lea_core::fndata::UpvalDesc;
 

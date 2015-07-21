@@ -15,5 +15,4 @@ term = "*"
 unicode-segmentation = "*"
 log = "*"
 lea-core = { path = "../lea-core" }
-lea-ast = { path = "../lea-ast" }
 lea-parser = { path = "../lea-parser" }

@@ -2,10 +2,10 @@
 
 use ::Warning;
 
-use lea_ast::*;
-use lea_ast::span::Spanned;
-use lea_ast::op::*;
-use lea_ast::visit::*;
+use ast::*;
+use ast::visit::*;
+use parser::span::Spanned;
+use parser::op::*;
 
 use lea_core::literal::*;
 

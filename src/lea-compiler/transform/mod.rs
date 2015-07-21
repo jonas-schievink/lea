@@ -16,7 +16,7 @@
 //   not worth it)
 
 use ::Warning;
-use lea_ast::Function;
+use ast::Function;
 
 use std::collections::HashMap;
 

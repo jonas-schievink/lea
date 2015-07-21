@@ -1,9 +1,9 @@
 //! This module implements the byte code emitter.
 
-use lea_ast::*;
-use lea_ast::op::{BinOp, UnOp};
-use lea_ast::span::{Span, Spanned};
-use lea_ast::visit::*;
+use ast::*;
+use ast::visit::*;
+use parser::op::{BinOp, UnOp};
+use parser::span::{Span, Spanned};
 
 use lea_core::limits;
 use lea_core::fndata::FnData;

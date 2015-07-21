@@ -92,13 +92,12 @@ extern crate term;
 extern crate unicode_segmentation;
 
 extern crate lea_core;
-extern crate lea_ast;
 extern crate lea_parser as parser;
 
 use transform::{Transform, LintMode};
 use emitter::emit_func;
 
-use lea_ast::Function;
+use ast::Function;
 
 
 mod errors;
@@ -173,9 +172,12 @@ pub struct CompileOutput<'a> {
 /// If this succeeds, this means that the program described by the source code is valid and can be
 /// compiled.
 pub fn parse_and_check<'a>(code: &'a str) -> CompileResult<Function<'a>> {
+    use std::convert::From;
+
     match parser::parse_main(code) {
         Err(e) => Err(ErrParse(e)),
         Ok(main) => {
+            let main = From::from(main);
             let res = check::check_func(&main);
             match res {
                 Err(errs) => Err(ErrCheck(errs)),

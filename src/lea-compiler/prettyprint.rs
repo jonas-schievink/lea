@@ -2,8 +2,8 @@
 
 use super::parser;
 
-use lea_ast::*;
-use lea_ast::visit::*;
+use ast::*;
+use ast::visit::*;
 
 use lea_core::literal::*;
 
