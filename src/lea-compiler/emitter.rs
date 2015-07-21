@@ -463,12 +463,9 @@ impl Emitter {
                 self.emit_expr_into(obj, obj_slot);
 
                 let const_id = self.add_const(&TStr(name.to_string()));
-                let str_slot = self.alloc_slots(1);
 
-                self.emit(LOADK(str_slot, const_id));
-                self.emit(GETIDX(method_slot, obj_slot, str_slot));
-
-                self.dealloc_slots(1);  // str_slot
+                self.emit(LOADK(method_slot, const_id));
+                self.emit(GETIDX(method_slot, obj_slot, method_slot));
 
                 self.emit_call_args(args, |emitter, count| {
                     // we actually pass one more argument than `emit_call_args` tells us: the
@@ -1063,6 +1060,26 @@ mod tests {
             MOV(3,0),       // 1 callee: f
             CALL(3,1,0),    // arg: f()
             CALL(1,0,1),    // 0 call: f(nil, f())
+            RETURN(0,1),
+        ]);
+    }
+
+    #[test]
+    fn methodcall() {
+        test!("local o  o:m(o:n())" => [
+            LOADNIL(0,0),   // local o
+            // o:m(...)
+            // Stack: 1=o.m 2=o
+            MOV(2,0),       // o
+            LOADK(1,0),     // "m"
+            GETIDX(1,2,1),  // o.m
+            // o:n()
+            // Stack: 3=o.n 4=o
+            MOV(4,0),       // o
+            LOADK(3,1),     // "n"
+            GETIDX(3,4,3),  // o.n
+            CALL(3,2,0),
+            CALL(1,0,1),
             RETURN(0,1),
         ]);
     }
