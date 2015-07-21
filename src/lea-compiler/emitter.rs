@@ -666,6 +666,20 @@ impl Emitter {
             EBraced(ref e) => {
                 self.emit_expr(&**e, hint_slot)
             }
+            EFunc(ref func) => {
+                self.visit_func(func);
+                let id = self.funcs.len() - 1;
+                if id > u16::MAX as usize {
+                    self.err_span(
+                        "function limit reached",
+                        Some(format!("limit is {}", u16::MAX)),
+                        e.span
+                    );
+                }
+
+                self.emit(FUNC(hint_slot, id as u16));
+                hint_slot
+            }
 
             ERawOp(..) => panic!("ERawOp encountered by emitter"),
             _ => panic!("NYI expression {:?}", e),  // TODO remove
@@ -807,6 +821,38 @@ impl Emitter {
             SCall(ref call) => {
                 self.emit_call(call, 1, |_, _| ());    // store 0 results
             }
+            SFunc(ref target, ref func) => {
+                self.visit_func(func);
+                let id = self.funcs.len() - 1;
+                if id > u16::MAX as usize {
+                    self.err_span(
+                        "function limit reached",
+                        Some(format!("limit is {}", u16::MAX)),
+                        s.span
+                    );
+                    return
+                }
+
+                self.emit_assign(target, |emitter, hint| {
+                    emitter.emit(FUNC(hint, id as u16));
+                    hint
+                });
+            }
+            /*SLFunc(ref name, ref func) => {
+                self.visit_func(func);
+                let id = self.funcs.len() - 1;
+                if id > u16::MAX as usize {
+                    self.err_span(
+                        "function limit reached",
+                        Some(format!("limit is {}", u16::MAX)),
+                        s.span
+                    );
+                    return
+                }
+
+                let slot = self.get_slot(*block.get_local(name).unwrap());
+                self.emit(FUNC(slot, id as u16));
+            }*/
 
             _ => panic!("NYI stmt: {:?}", s),    // TODO remove, this is just for testing
         }
@@ -1080,6 +1126,15 @@ mod tests {
             GETIDX(3,4,3),  // o.n
             CALL(3,2,0),
             CALL(1,0,1),
+            RETURN(0,1),
+        ]);
+    }
+
+    #[test]
+    fn function() {
+        test!("local f  f = function() end" => [
+            LOADNIL(0,0),
+            FUNC(0,0),
             RETURN(0,1),
         ]);
     }
