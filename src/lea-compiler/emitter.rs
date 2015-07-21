@@ -380,7 +380,8 @@ impl Emitter {
                 // emit last expression
                 let last_arg = &argv[argv.len() - 1];
                 if last_arg.is_multi_result() {
-                    unimplemented!();   // TODO
+                    fn id(_: &mut Emitter, _: u8) {}
+                    self.emit_expr_multi(last_arg, 0, id);
                 } else {
                     let slot = self.alloc_slots(1);
                     self.emit_expr_into(last_arg, slot);
@@ -543,6 +544,14 @@ impl Emitter {
     /// result.
     fn emit_expr(&mut self, e: &Expr, hint_slot: u8) -> u8 {
         match e.value {
+            ECall(ref call) => {
+                self.emit_call(call, 2, |emitter, slot| {
+                    // need to move, since `slot` is deallocated
+                    emitter.emit(MOV(hint_slot, slot));
+                });
+
+                hint_slot
+            }
             ELit(ref lit) => {
                 match *lit {
                     TNil => {
@@ -1024,6 +1033,36 @@ mod tests {
             MOV(1,0),       // callee: f
             LOADK(2,0),     // args: 'a'
             CALL(1,2,1),
+            RETURN(0,1),
+        ]);
+        test!("local f  f(...)  f(f())" => [
+            LOADNIL(0,0),   // local f
+            MOV(1,0),       // callee: f
+            VARARGS(2,0),   // args: ...
+            CALL(1,0,1),
+            MOV(1,0),       // 0 callee: f
+            MOV(2,0),       // 1 callee: f
+            CALL(2,1,0),    // arg: f() (multi expr)
+            CALL(1,0,1),    // 0 call: f(f())
+            RETURN(0,1),
+        ]);
+        test!("local f  f(f(), nil)" => [
+            LOADNIL(0,0),   // local f
+            MOV(1,0),       // 0 callee: f
+            MOV(3,0),       // 1 callee: f      XXX we use unnecessary temp reg 3 here
+            CALL(3,1,2),    // arg: f()
+            MOV(2,3),
+            LOADNIL(3,0),   // arg: nil
+            CALL(1,3,1),    // 0 call: f(f(), nil)
+            RETURN(0,1),
+        ]);
+        test!("local f  f(nil, f())" => [
+            LOADNIL(0,0),   // local f
+            MOV(1,0),       // 0 callee: f
+            LOADNIL(2,0),   // arg: nil
+            MOV(3,0),       // 1 callee: f
+            CALL(3,1,0),    // arg: f()
+            CALL(1,0,1),    // 0 call: f(nil, f())
             RETURN(0,1),
         ]);
     }
