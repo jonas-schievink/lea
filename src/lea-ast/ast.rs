@@ -1,8 +1,5 @@
 //! The Abstract Syntax Tree (AST) used by the Lea compiler
 
-// TODO: Represent comments in the AST
-// TODO decide on syntax sugar handling (either seperate parse tree and AST, metadata on desugared operations or a `desugar` pass)
-
 pub use self::_Variable::*;
 pub use self::_Stmt::*;
 pub use self::_Expr::*;
@@ -15,7 +12,6 @@ use lea_core::literal::*;
 use lea_core::fndata::UpvalDesc;
 
 use std::collections::HashMap;
-use std::default::Default;
 
 
 /// A block containing any number of statements. All blocks define a scope in which local variables

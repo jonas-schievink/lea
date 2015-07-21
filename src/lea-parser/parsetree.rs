@@ -11,9 +11,6 @@ use span::{Span, Spanned};
 use op::*;
 
 use lea_core::literal::*;
-use lea_core::fndata::UpvalDesc;
-
-use std::collections::HashMap;
 
 
 /// A block containing any number of statements. All blocks define a scope in which local variables
@@ -22,43 +19,12 @@ use std::collections::HashMap;
 pub struct Block<'a> {
     pub span: Span,
     pub stmts: Vec<Stmt<'a>>,
-
-    /// Maps names of locals declared in this block to their id
-    pub localmap: HashMap<&'a str, usize>,
-}
-
-impl<'a> Block<'a> {
-    /// Create a new block of statements
-    pub fn new(stmts: Vec<Stmt<'a>>, span: Span) -> Block<'a> {
-        Block {
-            span: span,
-            stmts: stmts,
-            localmap: Default::default(),
-        }
-    }
-
-    /// Creates a new block and assigns a map of locals declared inside this block.
-    ///
-    /// Note that this does not check if the local map is valid. This would require access to the
-    /// enclosing Function.
-    pub fn with_locals(stmts: Vec<Stmt<'a>>, span: Span, localmap: HashMap<&'a str, usize>)
-    -> Block<'a> {
-        Block {
-            span: span,
-            stmts: stmts,
-            localmap: localmap,
-        }
-    }
-
-    pub fn get_local(&self, name: &str) -> Option<&usize> {
-        self.localmap.get(name)
-    }
 }
 
 impl<'a> PartialEq for Block<'a> {
     /// Compare two `Block`s without comparing their spans
     fn eq(&self, rhs: &Block<'a>) -> bool {
-        self.stmts == rhs.stmts && self.localmap == rhs.localmap
+        self.stmts == rhs.stmts
     }
 }
 
@@ -85,12 +51,6 @@ pub struct Function<'a> {
     pub params: Vec<Spanned<&'a str>>,
     pub varargs: bool,
     pub body: Block<'a>,
-
-    /// Vector of all locals declared in blocks inside this function (multiple with same name
-    /// possible). The index into this vector serves as an identification for the local
-    pub locals: Vec<Spanned<&'a str>>,
-    /// Upvalues referenced by this function. Collected while resolving.
-    pub upvalues: Vec<UpvalDesc>,
 }
 
 impl<'a> Function<'a> {
@@ -99,9 +59,6 @@ impl<'a> Function<'a> {
             params: params,
             varargs: varargs,
             body: body,
-
-            locals: vec![],
-            upvalues: vec![],
         }
     }
 }
@@ -112,24 +69,11 @@ pub enum _Variable<'a> {
     /// References a named variable; later resolved to local, global or upvalue references
     VNamed(&'a str),
 
-    /// References the local variable with the given ID.
-    ///
-    /// Note that the resolver has to ensure that the usize is valid, since not all locals can be
-    /// reached from all blocks.
-    VLocal(usize),
-
-    /// References the upvalue with the given id (index into the `upvalues` field of the Function)
-    VUpval(usize),
-
-    /// References a resolved global. The left variable is the environment, which is indexed with
-    /// the string on the right.
-    VResGlobal(Box<Variable<'a>>, String),
-
-    /// References an indexed variable (a field)
+    /// A variable indexed with an expression (`var[expr]`)
     VIndex(Box<Variable<'a>>, Box<Expr<'a>>),
 
-    /// References a variable indexed with dot notation
-    VDotIndex(Box<Variable<'a>>, String),
+    /// A variable indexed with dot notation
+    VDotIndex(Box<Variable<'a>>, Spanned<&'a str>),
 }
 
 /// Statement nodes
@@ -278,33 +222,6 @@ pub enum _Expr<'a> {
     EArray(Vec<Expr<'a>>),
     /// "..."; expands to var args. only valid if used inside varargs functions
     EVarArgs,
-}
-
-impl<'a> _Expr<'a> {
-    /// Returns true if this expression might evaluate to multiple results.
-    pub fn is_multi_result(&self) -> bool {
-        match *self {
-            ECall(_) | EVarArgs => true,
-            _ => false,
-        }
-    }
-
-    /// Returns a boolean that indicates if this expression can have side effects (such as
-    /// function invocation, including metamethods, errors, etc.). This is true for most
-    /// expressions, but allows the emitter to ignore unused expressions that can't have side
-    /// effects.
-    pub fn has_side_effects(&self) -> bool {
-        match *self {
-            ELit(_) | EVarArgs => false,
-            EBinOp(ref lhs, _, ref rhs) => lhs.has_side_effects() || rhs.has_side_effects(),
-            EUnOp(_, ref e) | EBraced(ref e) => e.has_side_effects(),
-            EVar(ref var) => match **var {
-                VLocal(_) | VUpval(_) => false,
-                _ => true,  // might cause a table index, which can error
-            },
-            _ => true,
-        }
-    }
 }
 
 pub type Expr<'a> = Spanned<_Expr<'a>>;
