@@ -56,7 +56,7 @@ impl<'a> From<parsetree::_Expr<'a>> for _Expr<'a> {
             parsetree::EBinOp(lhs, op, rhs) =>
                 EBinOp(Box::new(spanned_into(*lhs)), op, Box::new(spanned_into(*rhs))),
             parsetree::EUnOp(op, expr) => EUnOp(op, Box::new(spanned_into(*expr))),
-            parsetree::EBraced(expr) => EBraced(Box::new(spanned_into(*expr))),
+            parsetree::EBraced(expr) => expr.value.into(),
 
             parsetree::EVar(var) => EVar(spanned_into(var)),
 

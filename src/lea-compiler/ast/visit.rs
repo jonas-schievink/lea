@@ -205,10 +205,6 @@ pub fn walk_expr<'a, V: Transform<'a>>(mut expr: Expr<'a>, visitor: &mut V) -> E
             rhs = Box::new(visitor.visit_expr(*rhs));
             EBinOp(lhs, op, rhs)
         },
-        EBraced(mut e) => {
-            e = Box::new(visitor.visit_expr(*e));
-            EBraced(e)
-        }
         EUnOp(op, mut operand) => {
             operand = Box::new(visitor.visit_expr(*operand));
             EUnOp(op, operand)
@@ -252,9 +248,6 @@ pub fn walk_expr_ref<'a, V: Visitor<'a>>(expr: &'a Expr, visitor: &mut V) {
         },
         EUnOp(_, ref operand) => {
             visitor.visit_expr(&**operand);
-        },
-        EBraced(ref e) => {
-            visitor.visit_expr(&**e);
         },
         EVar(ref var) => {
             visitor.visit_var(var);

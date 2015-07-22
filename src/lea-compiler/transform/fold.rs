@@ -278,11 +278,6 @@ impl<'a> Transform<'a> for Folder {
                     EUnOp(op, arg)
                 }
             },
-            EBraced(mut inner) => {
-                // unwrap the inner expression to make folding work
-                inner = Box::new(self.visit_expr(*inner));
-                inner.value
-            },
             _ => { return walk_expr(e, self) },
         };
 

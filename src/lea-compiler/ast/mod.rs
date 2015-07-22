@@ -182,7 +182,6 @@ pub enum _Expr<'a> {
     ELit(Literal),
     EBinOp(Box<Expr<'a>>, BinOp, Box<Expr<'a>>),
     EUnOp(UnOp, Box<Expr<'a>>),
-    EBraced(Box<Expr<'a>>),
 
     /// Variable used as expression
     EVar(Variable<'a>),
@@ -217,7 +216,7 @@ impl<'a> _Expr<'a> {
         match *self {
             ELit(_) | EVarArgs => false,
             EBinOp(ref lhs, _, ref rhs) => lhs.has_side_effects() || rhs.has_side_effects(),
-            EUnOp(_, ref e) | EBraced(ref e) => e.has_side_effects(),
+            EUnOp(_, ref e) => e.has_side_effects(),
             EVar(ref var) => match **var {
                 VLocal(_) | VUpval(_) => false,
                 _ => true,  // might cause a table index, which can error

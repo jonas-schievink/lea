@@ -619,9 +619,6 @@ impl Emitter {
                 if slot == realslot { self.dealloc_slots(1); }
                 hint_slot
             }
-            EBraced(ref e) => {
-                self.emit_expr(&**e, hint_slot)
-            }
             EFunc(ref func) => {
                 let id = self.emit_func(func);
                 self.emit(FUNC(hint_slot, id as u16));
