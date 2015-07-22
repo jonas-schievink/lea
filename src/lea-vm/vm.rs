@@ -27,21 +27,25 @@
 
 // TODO tracing, when GC is possible
 
-#![allow(dead_code)]
+use lea_core::opcode::*;
 
 use mem::{TracedRef, GcStrategy};
 use function::Function;
 use value::Value;
+use table::Table;
+use error::VmResult;
 
 /// Contains information about a called Lea function.
 pub struct CallInfo {
     /// The function active at this call level
     func: TracedRef<Function>,
-    /// `lasttop` == vm.stack.len() at the time this call was made
-    lasttop: usize,
+    /// The index in the value stack that contains register 0 of this called function.
+    bottom: usize,
     /// Dynamic stack top. This is updated any time an instruction that returns a variable number
     /// of results is executed and stores the stack slot of the last value returned by it.
     dtop: usize,
+    /// The instruction pointer (index)
+    ip: usize,
 }
 
 /// A VM context. Holds a garbage collector that manages the program's memory, the stack used for
@@ -66,7 +70,93 @@ impl<G: GcStrategy> VM<G> {
         }
     }
 
+    /// Utility function that sets the first upvalue of `main` to `env` (which must be a table
+    /// here) by calling `set_closed_upvalue` on the main function.
+    pub fn with_env(mut gc: G, main: TracedRef<Function>, env: TracedRef<Table>) -> VM<G> {
+        // TODO mark this function unsafe?
+        unsafe { gc.get_mut(main).set_closed_upvalue(0, Value::TTable(env)); }
+        VM::new(gc, main)
+    }
+
     pub fn gc(&self) -> &G {
         &self.gc
+    }
+
+    pub fn gc_mut(&mut self) -> &mut G {
+        &mut self.gc
+    }
+
+    /// Starts execution of the program. This may not be called multiple times on the same VM.
+    ///
+    /// Returns when the main function returns (or a runtime error occurs).
+    pub fn start(&mut self) -> VmResult {
+        // create initial CallInfo and run
+        assert!(self.calls.is_empty());
+        assert!(self.stack.is_empty());
+
+        let main = self.main;
+        self.push_call_to(main);
+        self.run()
+    }
+}
+
+// Private methods
+
+impl<G: GcStrategy> VM<G> {
+    /// Creates a `CallInfo` object that describes an activation of the given function and pushes
+    /// it onto the callstack.
+    ///
+    /// This will also extend the value stack by the number of slots specified in the function
+    /// prototype.
+    fn push_call_to(&mut self, func: TracedRef<Function>) {
+        let bottom = if self.calls.is_empty() { 0 } else { self.cur_call().dtop };
+        self.calls.push(CallInfo {
+            func: func,
+            bottom: bottom,
+            dtop: bottom,
+            ip: 0,
+        });
+    }
+
+    fn cur_call(&self) -> &CallInfo {
+        &self.calls[self.calls.len() - 1]
+    }
+
+    /// Fetches the current opcode
+    fn fetch(&self) -> Opcode {
+        let call = self.cur_call();
+        let func = unsafe { self.gc().get_ref(call.func) };
+        let proto = unsafe { self.gc().get_ref(func.proto) };
+
+        proto.opcodes[call.ip]
+    }
+
+    /// Gets the value inside a register as specified in an opcode.
+    fn reg_get(&self, reg: u8) -> Value {
+        let bottom = self.cur_call().bottom;
+
+        self.stack[bottom + reg as usize]
+    }
+
+    fn reg_set(&mut self, reg: u8, val: Value) {
+        let bottom = self.cur_call().bottom;
+
+        self.stack[bottom + reg as usize] = val;
+    }
+
+    /// VM main loop. This will start dispatching opcodes of the currently active function (at the
+    /// top of the call stack).
+    fn run(&mut self) -> VmResult {
+        loop {
+            let op = self.fetch();
+
+            match op {
+                MOV(to, from) => {
+                    let val = self.reg_get(from);
+                    self.reg_set(to, val);
+                }
+                _ => unimplemented!()
+            }
+        }
     }
 }

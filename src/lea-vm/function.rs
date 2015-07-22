@@ -68,6 +68,20 @@ pub struct Function {
     pub upvalues: Vec<Upval>,
 }
 
+impl Function {
+    /// Sets an upvalue to the given value. The upvalue must be closed, otherwise, this function
+    /// panics (the VM has to close upvalues, we cannot do that).
+    pub fn set_closed_upvalue(&mut self, id: usize, val: Value) {
+        let upval: &mut Upval = &mut self.upvalues[id];
+
+        if let Upval::Closed(ref mut oldval) = *upval {
+            *oldval = val;
+        } else {
+            panic!("set_closed_upvalue called on open upvalue #{}", id);
+        }
+    }
+}
+
 impl Traceable for Function {
     fn trace<T: Tracer>(&self, t: &mut T) {
         t.mark_traceable(self.proto);

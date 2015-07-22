@@ -14,7 +14,7 @@ use std::mem::transmute;
 /// Wrapper around `f64` that implements `Hash` and `Eq` (needed when used as table keys).
 ///
 /// Lua supports this, so we will, too. I would still never recommend doing this!
-#[derive(PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct HashedFloat(pub f64);
 
 /// Manual implementation needed since `f64` doesn't implement Hash, but this is required since
@@ -43,7 +43,7 @@ impl DerefMut for HashedFloat {
 }
 
 
-#[derive(PartialEq, Eq, Debug, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Value {
     TNil,
     TBool(bool),

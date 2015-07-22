@@ -9,4 +9,5 @@ pub mod array;
 pub mod table;
 pub mod function;
 pub mod vm;
+pub mod error;
 pub mod mem;
