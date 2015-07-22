@@ -28,8 +28,8 @@ impl DerefMut for GlobalWrite {
 }
 
 impl<'a> Visitor<'a> for GlobalWrite {
-    fn visit_stmt(&mut self, s: &Stmt) {
-        match s.value {
+    fn visit_stmt(&mut self, _: &Stmt) {
+        /*match s.value {
             SAssign(ref targets, _) => {
                 for v in targets {
                     match v.value {
@@ -45,7 +45,9 @@ impl<'a> Visitor<'a> for GlobalWrite {
                 }
             },
             _ => walk_stmt_ref(s, self),
-        }
+        }*/
+
+        // TODO: revive this inside the resolver (allow returning warnings)
     }
 }
 

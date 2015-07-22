@@ -282,20 +282,6 @@ impl Emitter {
 
                 self.dealloc_slots(3);
             }
-            VResGlobal(ref var, ref strn) => {
-                let slot = self.alloc_slots(1);
-                let slot = self.emit_var(&*var, slot);
-                let const_id = self.add_const(&TStr(strn.clone()));
-                let str_slot = self.alloc_slots(1);
-
-                let valslot = self.alloc_slots(1);
-                let valslot = f(self, valslot);
-
-                self.emit(LOADK(str_slot, const_id));
-                self.emit(SETIDX(slot, str_slot, valslot));
-
-                self.dealloc_slots(3);
-            }
 
             VNamed(_) => panic!("VNamed encountered by emitter, resolver is broken")
         }
@@ -313,17 +299,6 @@ impl Emitter {
                 } else {
                     self.emit(GETUPVAL(hint_slot, id as u8));
                 }
-                hint_slot
-            }
-            VResGlobal(ref var, ref strn) => {
-                let var_slot = self.emit_var(&*var, hint_slot);
-                let const_id = self.add_const(&TStr(strn.clone()));
-                let str_slot = self.alloc_slots(1);
-
-                self.emit(LOADK(str_slot, const_id));
-                self.emit(GETIDX(hint_slot, var_slot, str_slot));
-
-                self.dealloc_slots(1);
                 hint_slot
             }
             VIndex(ref var, ref idx) => {

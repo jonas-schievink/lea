@@ -11,9 +11,9 @@ use ast::visit::*;
 use parser::span::{Span, Spanned};
 
 use lea_core::fndata::UpvalDesc;
+use lea_core::literal;
 
 use std::collections::HashMap;
-use std::default::Default;
 
 
 /// Data used by the resolver, associated to a function
@@ -170,7 +170,7 @@ impl<'a> Resolver<'a> {
                 let envvar = Box::new(Spanned::new(span,
                     self.resolve_var("_ENV", span)));
 
-                VResGlobal(envvar, name.to_string())
+                VIndex(envvar, Box::new(Spanned::new(span, ELit(literal::TStr(name.to_string())))))
             }
         }
     }
@@ -242,7 +242,7 @@ impl<'a> Transform<'a> for Resolver<'a> {
 /// Resolves all locals used in the given main function and all functions defined within. This will
 /// also resolve the environment of all functions.
 ///
-/// All occurrences of `VNamed` will be converted to `VLocal`, `VUpval`, or `VResGlobal` after this
+/// All occurrences of `VNamed` will be converted to `VLocal`, `VUpval`, or `VIndex` after this
 /// function returns.
 pub fn resolve_func(f: Function) -> Function {
     Resolver {
@@ -291,7 +291,7 @@ j = i
 
         assert_eq!(f.body, Block::with_locals(vec![
             Spanned::default(SAssign(
-                vec![Spanned::default(VResGlobal(Box::new(Spanned::default(VUpval(0))), "i".to_string()))],
+                vec![Spanned::default(VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(TStr("i".to_string()))))))],
                 vec![Spanned::default(ELit(TInt(0)))],
             )),
             Spanned::default(SDecl(vec![Spanned::default("a")], vec![])),
@@ -310,10 +310,10 @@ j = i
             ], Default::default(), localmap!{ i: 1, j: 2 }))),
             Spanned::default(SAssign(
                 vec![Spanned::default(
-                    VResGlobal(Box::new(Spanned::default(VUpval(0))), "j".to_string())
+                    VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(TStr("j".to_string())))))
                 )],
                 vec![Spanned::default(EVar(Spanned::default(
-                    VResGlobal(Box::new(Spanned::default(VUpval(0))), "i".to_string())
+                    VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(TStr("i".to_string())))))
                 )))],
             )),
         ], Default::default(), localmap!{ a: 0 }));
@@ -417,8 +417,8 @@ local function h() local function h1() r = nil end end
                     body: Block::with_locals(vec![
                         Spanned::default(SDecl(vec![Spanned::default("_ENV")], vec![])),
                         Spanned::default(SAssign(vec![
-                            Spanned::default(VResGlobal(
-                                Box::new(Spanned::default(VLocal(0))), "i".to_string()
+                            Spanned::default(VIndex(
+                                Box::new(Spanned::default(VLocal(0))), Box::new(Spanned::default(ELit(TStr("i".to_string()))))
                             )),
                         ], vec![Spanned::default(ELit(TNil))])),
                     ], Default::default(), localmap!{ _ENV: 0 }),
@@ -449,8 +449,8 @@ local function h() local function h1() r = nil end end
                             upvalues: vec![UpvalDesc::Upval(0)],
                             body: Block::new(vec![
                                 Spanned::default(SAssign(vec![
-                                    Spanned::default(VResGlobal(
-                                        Box::new(Spanned::default(VUpval(0))), "r".to_string()
+                                    Spanned::default(VIndex(
+                                        Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(TStr("r".to_string()))))
                                     ))
                                 ], vec![
                                     Spanned::default(ELit(TNil)),
