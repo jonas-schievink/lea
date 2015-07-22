@@ -169,6 +169,8 @@ pub enum Opcode {
     INV(u8, u8),
     /// > R[A] := #R[B]
     LEN(u8, u8),
+    /// Causes a VM panic
+    INVALID,
 }
 
 /// Newtype for `Vec<Opcode>` that overrides `Debug` to use at most one line per printed opcode

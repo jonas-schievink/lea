@@ -99,7 +99,7 @@ pub fn walk_stmt<'a, V: Transform<'a>>(mut stmt: Stmt<'a>, visitor: &mut V) -> S
         SIf {mut cond, mut body, mut el} => {
             cond = visitor.visit_expr(cond);
             body = visitor.visit_block(body);
-            el = visitor.visit_block(el);
+            el = el.map(|el| visitor.visit_block(el));
             SIf {cond: cond, body: body, el: el}
         },
         SWhile {mut cond, mut body} => {
@@ -171,7 +171,7 @@ pub fn walk_stmt_ref<'a, V: Visitor<'a>>(stmt: &'a Stmt, visitor: &mut V) {
         SIf {ref cond, ref body, ref el} => {
             visitor.visit_expr(cond);
             visitor.visit_block(body);
-            visitor.visit_block(el);
+            el.as_ref().map(|el| visitor.visit_block(el));
         },
         SWhile {ref cond, ref body} => {
             visitor.visit_expr(cond);

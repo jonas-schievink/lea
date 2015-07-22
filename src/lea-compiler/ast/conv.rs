@@ -176,7 +176,7 @@ impl<'a> Conv<'a> for parsetree::_Stmt<'a> {
             }
 
             parsetree::SMethod(var, name, func) => {
-                // var:name(args...) <=> var.name = function(self, args...)
+                // var:name(args...)   =>   var.name = function(self, args...)
                 let mut func: Function<'a> = func.into();
                 func.params.insert(0, Spanned::new(name.span, "self"));
 
@@ -195,14 +195,13 @@ impl<'a> Conv<'a> for parsetree::_Stmt<'a> {
                     vec![Spanned::new(local.span, VNamed(local.value))],
                     vec![Spanned::new(func.body.span, EFunc(func.into()))]
                 ));
-                //push(_Stmt::SLFunc(local, func.into()));
             }
 
             parsetree::SIf { cond, body, el } => {
                 push(_Stmt::SIf {
                     cond: spanned_into(cond),
                     body: body.into(),
-                    el: el.into(),
+                    el: if el.stmts.is_empty() { None } else { Some(el.into()) },
                 });
             }
 

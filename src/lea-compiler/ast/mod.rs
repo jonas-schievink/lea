@@ -141,7 +141,7 @@ pub enum _Stmt<'a> {
     SIf {
         cond: Expr<'a>,
         body: Block<'a>,
-        el: Block<'a>,
+        el: Option<Block<'a>>,
     },
 
     /// Loops a block while `cond` is true

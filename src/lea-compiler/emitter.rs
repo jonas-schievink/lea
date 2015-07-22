@@ -57,15 +57,19 @@ pub type EmitResult = Result<FnData, Vec<EmitError>>;
 
 struct Emitter {
     source_name: String,
+
     /// List of errors that have occurred while emitting. They are ignored until the main function
     /// is traversed. If this list isn't empty when the emitter is done, it will not complete the
     /// process and return an error to the caller instead.
     errs: Vec<EmitError>,
+
     /// Function stack. The last entry is the currently emitted function. When done emitting, the
     /// last `FnData` is popped off and added to the child function list of the parent.
     funcs: Vec<FnData>,
+
     /// Maps all currently reachable locals to their associated stack slots.
     alloc: HashMap<usize, u8>,
+
     /// Set to `true` when emitting a `FUNC` opcode with a function that references a local
     /// declared in the current block as an upvalue. Causes the emission of a `CLOSE` opcode when
     /// leaving the current block.
