@@ -39,11 +39,11 @@ pub enum Opcode {
     /// > R[A] := {}
     ///
     /// Creates a new table and assigns it to `R[A]`.
-    TABLE(u8),  // TODO Include initial capacity
+    TABLE(u8),  // TODO Include initial capacity / Create from template
     /// > R[A] := []
     ///
     /// Creates a new array and assigns it to `R[A]`.
-    ARRAY(u8),  // TODO Include initial capacity
+    ARRAY(u8),  // TODO Include initial capacity / Create from template
     /// > R[A] := closure of PROTO[Xu]
     ///
     /// Instantiates function prototype number `Xu` and stores a reference to the created closure
@@ -83,10 +83,13 @@ pub enum Opcode {
     /// Stores B arguments passed as variable arguments (in `...`) in `R[A]` through `R[A+B-1]`.
     /// If B is 0, stores all varargs in `R[A]`, `R[A+1]`, ... (expanding the stack if necessary).
     VARARGS(u8, u8),
-    /// > PC += Ls
+    /// > PC += Xs
     ///
-    /// Unconditional jump. Offsets `PC` by `Ls`, which may be negative.
-    JMP(u8, u16),
+    /// Unconditional jump. Offsets `PC` by `Xs`, which may be negative.
+    ///
+    /// All jumps share the same property: If `Xs` is 0, PC will not be changed. If `Xs` is -1, an
+    /// endless loop is created.
+    JMP(i16),
     /// > if R[A]: PC += Xs
     ///
     /// Conditional jump. If the value in `R[A]` is "truthy" (not `false` or `nil`), offsets `PC`

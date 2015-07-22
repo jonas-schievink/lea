@@ -537,7 +537,7 @@ impl Emitter {
                     BinOp::LAnd | BinOp::LAndLua => {
                         // A && B  <=>  if A then B else A
                         let lslot = self.emit_expr(lhs, hint_slot);
-                        let jmp = self.emit_raw(IFNOT(lslot, 0));
+                        let jmp = self.emit_raw(INVALID);
                         self.emit_expr_into(rhs, hint_slot);
 
                         // jump here if A is false
@@ -554,7 +554,7 @@ impl Emitter {
                     BinOp::LOr | BinOp::LOrLua => {
                         // A || B  <=>  if A then A else B
                         let lslot = self.emit_expr(lhs, hint_slot);
-                        let jmp = self.emit_raw(IF(lslot, 0));
+                        let jmp = self.emit_raw(INVALID);
                         self.emit_expr_into(rhs, hint_slot);
 
                         // jump here if A is true
@@ -798,6 +798,29 @@ impl Emitter {
             }
             SCall(ref call) => {
                 self.emit_call(call, 1, |_, _| ());    // store 0 results
+            }
+            SIf { ref cond, ref body, ref el } => {
+                let cond_slot = self.alloc_slots(1);
+                let cond_slot = self.emit_expr(cond, cond_slot);
+
+                // If not cond, jump to else. Emit dummy opcode, will be replaced by IFNOT
+                let jump_op = self.emit_raw(INVALID);
+
+                self.visit_block(body);
+
+                let rel = self.get_next_addr() - jump_op - 1;
+                if rel > i16::MAX as usize {
+                    self.err_span("relative jump exceeds limit",
+                        Some(format!("jump dist is {}, limit is {}", rel, i16::MAX)),
+                        s.span);
+                }
+                self.replace_op(jump_op, IFNOT(cond_slot, rel as i16));
+
+                if let Some(ref el) = *el {
+                    self.visit_block(el);
+                }
+
+                self.dealloc_slots(1);  // cond_slot
             }
 
             _ => panic!("NYI stmt: {:?}", s),    // TODO remove, this is just for testing
@@ -1198,6 +1221,22 @@ mod tests {
             LOADNIL(0,0),   // local f
             FUNC(0,0),
             // No close, since no upvalues of type `Local`
+            RETURN(0,1),
+        ]);
+    }
+
+    #[test]
+    fn if_then_else() {
+        test!("if nil then else end" => [
+            LOADNIL(0,0),
+            IFNOT(0,0),
+            RETURN(0,1),
+        ]);
+        test!("if false then local i else local j end" => [
+            LOADBOOL(0,0,false),
+            IFNOT(0,1),
+            LOADNIL(1,0),   // local i
+            LOADNIL(1,0),   // local j
             RETURN(0,1),
         ]);
     }
