@@ -210,7 +210,7 @@ pub enum _Expr<'a> {
     ///
     /// These expression are turned into EBinOp's right after the PEG-generated parser is run, so
     /// following code only has to deal with tree-like expressions.
-    ERawOp(Box<Expr<'a>>, Vec<(BinOp, Expr<'a>)>),
+    ERawOp(Box<Expr<'a>>, Vec<(BinOp, Expr<'a>)>),  // XXX remove
     /// Variable used as expression
     EVar(Variable<'a>),
     /// Calls a function, might return multiple results
