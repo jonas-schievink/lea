@@ -102,7 +102,7 @@ use ast::Function;
 
 mod errors;
 mod check;
-pub mod ast;
+mod ast;
 pub mod transform;
 pub mod emitter;
 pub mod resolve;

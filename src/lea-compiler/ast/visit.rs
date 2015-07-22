@@ -354,10 +354,6 @@ pub fn walk_var<'a, V: Transform<'a>>(mut var: Variable<'a>, visitor: &mut V) ->
             idx = Box::new(visitor.visit_expr(*idx));
             VIndex(var, idx)
         },
-        VDotIndex(mut var, strn) => {
-            var = Box::new(visitor.visit_var(*var));
-            VDotIndex(var, strn)
-        },
         VResGlobal(mut env, name) => {
             env = Box::new(visitor.visit_var(*env));
             VResGlobal(env, name)
@@ -375,9 +371,6 @@ pub fn walk_var_ref<'a, V: Visitor<'a>>(var: &'a Variable, visitor: &mut V) {
         VIndex(ref var, ref idx) => {
             visitor.visit_var(&**var);
             visitor.visit_expr(&**idx);
-        },
-        VDotIndex(ref var, _) => {
-            visitor.visit_var(&**var);
         },
         VResGlobal(ref env, _) => {
             visitor.visit_var(&**env);

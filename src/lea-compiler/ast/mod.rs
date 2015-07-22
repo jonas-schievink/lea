@@ -123,9 +123,6 @@ pub enum _Variable<'a> {
 
     /// References an indexed variable (a field)
     VIndex(Box<Variable<'a>>, Box<Expr<'a>>),
-
-    /// References a variable indexed with dot notation
-    VDotIndex(Box<Variable<'a>>, String),
 }
 
 /// Statement nodes

@@ -282,7 +282,7 @@ impl Emitter {
 
                 self.dealloc_slots(3);
             }
-            VResGlobal(ref var, ref strn) | VDotIndex(ref var, ref strn) => {
+            VResGlobal(ref var, ref strn) => {
                 let slot = self.alloc_slots(1);
                 let slot = self.emit_var(&*var, slot);
                 let const_id = self.add_const(&TStr(strn.clone()));
@@ -315,7 +315,7 @@ impl Emitter {
                 }
                 hint_slot
             }
-            VResGlobal(ref var, ref strn) | VDotIndex(ref var, ref strn) => {
+            VResGlobal(ref var, ref strn) => {
                 let var_slot = self.emit_var(&*var, hint_slot);
                 let const_id = self.add_const(&TStr(strn.clone()));
                 let str_slot = self.alloc_slots(1);
