@@ -35,6 +35,8 @@ use value::Value;
 use table::Table;
 use error::VmResult;
 
+use std::iter;
+
 /// Contains information about a called Lea function.
 pub struct CallInfo {
     /// The function active at this call level
@@ -43,6 +45,8 @@ pub struct CallInfo {
     bottom: usize,
     /// Dynamic stack top. This is updated any time an instruction that returns a variable number
     /// of results is executed and stores the stack slot of the last value returned by it.
+    ///
+    /// Like `bottom`, this is an absolute index into the value stack.
     dtop: usize,
     /// The instruction pointer (index)
     ip: usize,
@@ -110,6 +114,16 @@ impl<G: GcStrategy> VM<G> {
     /// prototype.
     fn push_call_to(&mut self, func: TracedRef<Function>) {
         let bottom = if self.calls.is_empty() { 0 } else { self.cur_call().dtop };
+        let gc = &mut self.gc;
+        let proto = unsafe {
+            let proto = gc.get_mut(func).proto;
+            gc.get_mut(proto)
+        };
+
+        // Ensure we have `proto.stacksize` slots free after current `dtop` (FIXME)
+        // XXX is this optimized right?
+        self.stack.extend(iter::repeat(Value::TNil).take(bottom + proto.stacksize as usize));
+
         self.calls.push(CallInfo {
             func: func,
             bottom: bottom,
