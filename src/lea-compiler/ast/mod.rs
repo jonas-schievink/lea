@@ -176,16 +176,6 @@ pub enum _Stmt<'a> {
     },
 }
 
-#[derive(Clone, PartialEq, Debug)]
-pub enum TableEntry<'a> {
-    /// A key-value-pair
-    Pair(Expr<'a>, Expr<'a>),
-    /// An element of the table's array part
-    Elem(Expr<'a>),
-}
-
-pub type TableCons<'a> = Vec<TableEntry<'a>>;
-
 /// Expression nodes
 #[derive(Clone, PartialEq, Debug)]
 pub enum _Expr<'a> {
@@ -203,7 +193,7 @@ pub enum _Expr<'a> {
     EFunc(Function<'a>),
 
     /// Table constructor
-    ETable(TableCons<'a>),
+    ETable(Vec<(Expr<'a>, Expr<'a>)>),
     /// Array constructor, takes a list of initial values
     EArray(Vec<Expr<'a>>),
     /// "..."; expands to var args. only valid if used inside varargs functions

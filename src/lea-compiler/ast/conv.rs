@@ -49,19 +49,6 @@ impl<'a> From<parsetree::_Variable<'a>> for _Variable<'a> {
     }
 }
 
-impl<'a> From<parsetree::TableEntry<'a>> for TableEntry<'a> {
-    fn from(entry: parsetree::TableEntry<'a>) -> Self {
-        match entry {
-            parsetree::TableEntry::Pair(key, value) => {
-                TableEntry::Pair(spanned_into(key), spanned_into(value))
-            }
-            parsetree::TableEntry::Elem(value) => {
-                TableEntry::Elem(spanned_into(value))
-            }
-        }
-    }
-}
-
 impl<'a> From<parsetree::_Expr<'a>> for _Expr<'a> {
     fn from(expr: parsetree::_Expr<'a>) -> Self {
         match expr {
@@ -82,10 +69,11 @@ impl<'a> From<parsetree::_Expr<'a>> for _Expr<'a> {
                 }
             }),
 
-            parsetree::EFunc(func) => EFunc(func.into()),
+            parsetree::ETable(cons) => {
+                ETable(conv_table(cons))
+            }
 
-            parsetree::ETable(cons) =>
-                ETable(cons.into_iter().map(|entry| entry.into()).collect()),
+            parsetree::EFunc(func) => EFunc(func.into()),
             parsetree::EArray(elems) => EArray(vec_into(elems)),
             parsetree::EVarArgs => EVarArgs,
         }
@@ -97,6 +85,25 @@ trait Conv<'a> {
     type Target;
 
     fn conv<F>(self, push: F) where F: FnMut(Self::Target);
+}
+
+fn conv_table<'a>(cons: parsetree::TableCons<'a>) -> Vec<(Expr<'a>, Expr<'a>)> {
+    let mut entries: Vec<(Expr<'a>, Expr<'a>)> = Vec::new();
+    let mut i = 0;  // XXX 1?
+    for entry in cons {
+        entries.push(match entry {
+            parsetree::TableEntry::Pair(key, value) => {
+                (spanned_into(key), spanned_into(value))
+            }
+            parsetree::TableEntry::Elem(value) => {
+                let idx = i;
+                i += 1;
+                (Spanned::new(value.span, ELit(literal::TInt(idx))), spanned_into(value))
+            }
+        });
+    }
+
+    entries
 }
 
 fn conv_vec<'a, T: Conv<'a>>(v: Vec<Spanned<T>>) -> Vec<Spanned<T::Target>> {
@@ -249,9 +256,7 @@ impl<'a> Conv<'a> for parsetree::CallArgs<'a> {
                 push(Spanned::default(ELit(literal::TStr(s))))
             }
             parsetree::CallArgs::Table(cons) => {
-                push(Spanned::default(ETable(
-                    cons.into_iter().map(|entry| entry.into()).collect()
-                )))
+                push(Spanned::default(ETable(conv_table(cons))))
             }
         }
     }

@@ -67,27 +67,6 @@ pub fn walk_func<'a, V: Transform<'a>>(mut f: Function<'a>, visitor: &mut V) -> 
     f
 }
 
-fn walk_table<'a, V: Transform<'a>>(cons: TableCons<'a>, visitor: &mut V) -> TableCons<'a> {
-    cons.map_in_place(|entry| match entry {
-        TableEntry::Pair(k, v) => TableEntry::Pair(visitor.visit_expr(k), visitor.visit_expr(v)),
-        TableEntry::Elem(elem) => TableEntry::Elem(visitor.visit_expr(elem)),
-    })
-}
-
-fn walk_table_ref<'a, V: Visitor<'a>>(cons: &'a TableCons, visitor: &mut V) {
-    for entry in cons {
-        match *entry {
-            TableEntry::Pair(ref k, ref v) => {
-                visitor.visit_expr(k);
-                visitor.visit_expr(v);
-            }
-            TableEntry::Elem(ref elem) => {
-                visitor.visit_expr(elem);
-            }
-        }
-    }
-}
-
 pub fn walk_stmt<'a, V: Transform<'a>>(mut stmt: Stmt<'a>, visitor: &mut V) -> Stmt<'a> {
     stmt.value = match stmt.value {
         SDecl(names, mut vals) => {
@@ -251,7 +230,7 @@ pub fn walk_expr<'a, V: Transform<'a>>(mut expr: Expr<'a>, visitor: &mut V) -> E
             EFunc(visitor.visit_func(func))
         },
         ETable(cons) => {
-            ETable(walk_table(cons, visitor))
+            ETable(cons.map_in_place(|(key, value)| (visitor.visit_expr(key), visitor.visit_expr(value))))
         },
         EArray(exprs) => {
             EArray(exprs.map_in_place(|e| visitor.visit_expr(e)))
@@ -296,7 +275,10 @@ pub fn walk_expr_ref<'a, V: Visitor<'a>>(expr: &'a Expr, visitor: &mut V) {
             visitor.visit_func(func);
         },
         ETable(ref cons) => {
-            walk_table_ref(cons, visitor);
+            for &(ref k, ref v) in cons {
+                visitor.visit_expr(k);
+                visitor.visit_expr(v);
+            }
         },
         EArray(ref exprs) => {
             for e in exprs {
