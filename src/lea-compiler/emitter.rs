@@ -822,6 +822,35 @@ impl Emitter {
                     self.visit_block(el);
                 }
             }
+            SWhile { ref cond, ref body } => {
+                let cond_opcode = self.get_next_addr() as isize; // start of cond eval
+                let cond_slot = self.alloc_slots(1);
+                let cond_slot = self.emit_expr(cond, cond_slot);
+
+                // If not cond, jump behind body
+                let jump_op = self.emit_raw(INVALID);
+
+                self.dealloc_slots(1);  // cond_slot no longer needed
+
+                self.visit_block(body);
+
+                // Emit backwards jump
+                let rel = cond_opcode - self.get_next_addr() as isize - 1;
+                if rel > i16::MAX as isize || rel < i16::MIN as isize {
+                    self.err_span("relative jump exceeds limit",
+                        Some(format!("jump dist is {}, limit is {}", rel, i16::MAX)),
+                        s.span);
+                }
+                self.emit(JMP(rel as i16));
+
+                let rel = self.get_next_addr() - jump_op - 1;
+                if rel > i16::MAX as usize {
+                    self.err_span("relative jump exceeds limit",
+                        Some(format!("jump dist is {}, limit is {}", rel, i16::MAX)),
+                        s.span);
+                }
+                self.replace_op(jump_op, IFNOT(cond_slot, rel as i16));
+            }
 
             _ => panic!("NYI stmt: {:?}", s),    // TODO remove, this is just for testing
         }
@@ -1227,6 +1256,7 @@ mod tests {
 
     #[test]
     fn if_then_else() {
+        // TODO optimize unconditional if
         test!("if nil then else end" => [
             LOADNIL(0,0),
             IFNOT(0,0),
@@ -1237,6 +1267,25 @@ mod tests {
             IFNOT(0,1),
             LOADNIL(0,0),   // local i
             LOADNIL(0,0),   // local j
+            RETURN(0,1),
+        ]);
+    }
+
+    #[test]
+    fn while_do() {
+        // TODO optimize unconditional loops
+        test!("while true do end" => [
+            LOADBOOL(0,0,true),
+            IFNOT(0,1),
+            JMP(-3),
+            RETURN(0,1),
+        ]);
+        test!("local i  while i do i = i + 1 end" => [
+            LOADNIL(0,0),   // local i
+            IFNOT(0,3),
+            LOADK(1,0),     // 1
+            ADD(0,0,1),     // i = i + 1
+            JMP(-4),
             RETURN(0,1),
         ]);
     }
