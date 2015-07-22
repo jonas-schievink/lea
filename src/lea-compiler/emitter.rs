@@ -623,16 +623,7 @@ impl Emitter {
                 self.emit_expr(&**e, hint_slot)
             }
             EFunc(ref func) => {
-                self.visit_func(func);
-                let id = self.funcs.len() - 1;
-                if id > u16::MAX as usize {
-                    self.err_span(
-                        "function limit reached",
-                        Some(format!("limit is {}", u16::MAX)),
-                        e.span
-                    );
-                }
-
+                let id = self.emit_func(func);
                 self.emit(FUNC(hint_slot, id as u16));
                 hint_slot
             }
@@ -780,6 +771,59 @@ impl Emitter {
             _ => panic!("NYI stmt: {:?}", s),    // TODO remove, this is just for testing
         }
     }
+
+    /// Emits a function and returns its ID
+    fn emit_func(&mut self, f: &Function) -> u16 {
+        self.funcs.push(FnData {
+            stacksize: 0,
+            params: f.params.len(),
+            varargs: f.varargs,
+            opcodes: Opcodes(vec![]),
+            consts: vec![],
+            upvals: f.upvalues.clone(),
+            lines: vec![],
+            source_name: self.source_name.clone(),
+            child_protos: vec![],
+        });
+
+        self.visit_block(&f.body);
+        self.emit(RETURN(0, 1));
+
+        let func = self.funcs.pop().unwrap();
+        if func.stacksize as u64 > limits::STACK_LIMIT {
+            self.err_span("stack size exceeds maximum value",
+                Some(format!("got size {}, max is {}", func.stacksize, limits::STACK_LIMIT)),
+                f.body.span);
+            return 0
+        }
+
+        // TODO shrink vectors to save space
+
+        if self.funcs.is_empty() {
+            // just emitted the main function, put it back, we are done
+            self.funcs.push(func);
+            return 0
+        } else {
+            let id;
+            {
+                let parent_idx = self.funcs.len()-1;
+                let parent = &mut self.funcs[parent_idx];
+                id = parent.child_protos.len();
+                parent.child_protos.push(Box::new(func));
+            }
+
+            if id > u16::MAX as usize {
+                self.err_span(
+                    "function limit reached",
+                    Some(format!("limit is {}", u16::MAX)),
+                    f.body.span
+                );
+                return 0
+            }
+
+            id as u16
+        }
+    }
 }
 
 impl<'a> Visitor<'a> for Emitter {
@@ -809,39 +853,7 @@ impl<'a> Visitor<'a> for Emitter {
     }
 
     fn visit_func(&mut self, f: &Function) {
-        self.funcs.push(FnData {
-            stacksize: 0,
-            params: f.params.len(),
-            varargs: f.varargs,
-            opcodes: Opcodes(vec![]),
-            consts: vec![],
-            upvals: f.upvalues.clone(),
-            lines: vec![],
-            source_name: self.source_name.clone(),
-            child_protos: vec![],
-        });
-
-        self.visit_block(&f.body);
-        self.emit(RETURN(0, 1));
-
-        let func = self.funcs.pop().unwrap();
-        if func.stacksize as u64 > limits::STACK_LIMIT {
-            self.err_span("stack size exceeds maximum value",
-                Some(format!("got size {}, max is {}", func.stacksize, limits::STACK_LIMIT)),
-                f.body.span);
-            return;
-        }
-
-        // TODO shrink vectors to save space
-
-        if self.funcs.is_empty() {
-            // just emitted the main function, put it back, we are done
-            self.funcs.push(func);
-        } else {
-            let parent_idx = self.funcs.len()-1;
-            let parent = &mut self.funcs[parent_idx];
-            parent.child_protos.push(Box::new(func));
-        }
+        self.emit_func(f);
     }
 }
 
@@ -1015,7 +1027,7 @@ mod tests {
         test!("local f  f(f(), nil)" => [
             LOADNIL(0,0),   // local f
             MOV(1,0),       // 0 callee: f
-            MOV(3,0),       // 1 callee: f      XXX we use unnecessary temp reg 3 here
+            MOV(3,0),       // 1 callee: f      TODO we use unnecessary temp reg 3 here
             CALL(3,1,2),    // arg: f()
             MOV(2,3),
             LOADNIL(3,0),   // arg: nil
@@ -1055,9 +1067,11 @@ mod tests {
 
     #[test]
     fn function() {
-        test!("local f  f = function() end" => [
-            LOADNIL(0,0),
+        test!("local f  f = function() end    local function g() end" => [
+            LOADNIL(0,0),   // local f
             FUNC(0,0),
+            LOADNIL(1,0),   // local g
+            FUNC(1,1),
             RETURN(0,1),
         ]);
     }
