@@ -205,12 +205,6 @@ pub enum _Expr<'a> {
     EUnOp(UnOp, Box<Expr<'a>>),
     EBraced(Box<Expr<'a>>),
 
-    /// Raw binary expression returned from generated parser. Operator precedences are not yet
-    /// applied, since the generated parser doesn't know about them.
-    ///
-    /// These expression are turned into EBinOp's right after the PEG-generated parser is run, so
-    /// following code only has to deal with tree-like expressions.
-    ERawOp(Box<Expr<'a>>, Vec<(BinOp, Expr<'a>)>),  // XXX remove
     /// Variable used as expression
     EVar(Variable<'a>),
     /// Calls a function, might return multiple results

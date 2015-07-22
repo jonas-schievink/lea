@@ -355,14 +355,6 @@ impl<'a, W: Write> PrettyPrinter<'a, W> {
     #[allow(unused_must_use)]
     pub fn print_expr(&mut self, expr: &Expr) {
         match expr.value {
-            ERawOp(ref lhs, ref rest) => {
-                self.print_expr(lhs);
-
-                for &(ref op, ref r) in rest {
-                    write!(self.writer, " {} ", op);
-                    self.print_expr(r);
-                }
-            },
             EBinOp(ref lhs, op, ref rhs) => {
                 let prec = op.get_precedence();
                 let mut left_paren = false;     // add parentheses around lhs

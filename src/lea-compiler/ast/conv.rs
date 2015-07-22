@@ -88,8 +88,6 @@ impl<'a> From<parsetree::_Expr<'a>> for _Expr<'a> {
                 ETable(cons.into_iter().map(|entry| entry.into()).collect()),
             parsetree::EArray(elems) => EArray(vec_into(elems)),
             parsetree::EVarArgs => EVarArgs,
-
-            parsetree::ERawOp(..) => unreachable!(),
         }
     }
 }
