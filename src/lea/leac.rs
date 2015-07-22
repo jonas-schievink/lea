@@ -1,6 +1,5 @@
 //! The `leac` compiler command line utility.
 
-#![cfg(not(test))]
 #![feature(plugin)]
 #![plugin(docopt_macros)]
 
@@ -16,10 +15,9 @@ mod encoding;
 use encoding::Encoding;
 
 use parser::span::DummyTerm;
-use compiler::ast::visit::Visitor;
+use parser::prettyprint::PrettyPrinter;
 
 use compiler::{CompileConfig, FnData};
-use compiler::prettyprint::PrettyPrinter;
 
 use std::io::{self, stdin, stderr, stdout, Read, Write};
 use std::fs::File;
@@ -79,10 +77,10 @@ fn compile(code: &str, filename: &str) -> io::Result<Option<FnData>> {
 
 /// Parses the given source code and pretty-prints it
 fn prettyprint<W: Write>(code: &str, source_name: &str, mut target: W) -> io::Result<()> {
-    match compiler::parse_and_check(code) {
+    match parser::block(code) {
         Ok(main) => {
             let mut pp = PrettyPrinter::new(&mut target);
-            pp.visit_func(&main);
+            pp.print_block(&main);
         }
         Err(e) => {
             try!(e.format(code, source_name, &mut *stderr_term()));

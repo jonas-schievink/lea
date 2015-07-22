@@ -11,5 +11,6 @@ pub mod op;
 pub mod span;
 pub mod parsetree;
 pub mod parser;
+pub mod prettyprint;
 
 pub use parser::*;

@@ -105,7 +105,6 @@ mod check;
 pub mod ast;
 pub mod transform;
 pub mod emitter;
-pub mod prettyprint;
 pub mod resolve;
 
 pub use errors::*;
