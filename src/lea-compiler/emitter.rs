@@ -6,7 +6,7 @@ use parser::op::{BinOp, UnOp};
 use parser::span::{Span, Spanned};
 
 use lea_core::limits;
-use lea_core::fndata::FnData;
+use lea_core::fndata::{UpvalDesc, FnData};
 use lea_core::opcode::*;
 use lea_core::literal::*;
 
@@ -66,6 +66,10 @@ struct Emitter {
     funcs: Vec<FnData>,
     /// Maps all currently reachable locals to their associated stack slots.
     alloc: HashMap<usize, u8>,
+    /// Set to `true` when emitting a `FUNC` opcode with a function that references a local
+    /// declared in the current block as an upvalue. Causes the emission of a `CLOSE` opcode when
+    /// leaving the current block.
+    needs_close: bool,
 }
 
 impl Emitter {
@@ -75,6 +79,7 @@ impl Emitter {
             errs: Vec::new(),
             funcs: Vec::new(),
             alloc: HashMap::with_capacity(8),
+            needs_close: false,
         }
     }
 
@@ -629,7 +634,7 @@ impl Emitter {
                 self.emit(VARARGS(hint_slot, 1));
                 hint_slot
             }
-            ETable(ref cons) => {
+            ETable(ref _cons) => {
                 // TODO Use table prototypes
                 unimplemented!();
             }
@@ -803,7 +808,7 @@ impl Emitter {
             varargs: f.varargs,
             opcodes: Opcodes(vec![]),
             consts: vec![],
-            upvals: f.upvalues.clone(),
+            upvals: f.upvalues.clone(),     // TODO Convert
             lines: vec![],
             source_name: self.source_name.clone(),
             child_protos: vec![],
@@ -812,13 +817,34 @@ impl Emitter {
         self.visit_block(&f.body);
         self.emit(RETURN(0, 1));
 
-        let func = self.funcs.pop().unwrap();
+        let mut func = self.funcs.pop().unwrap();
         if func.stacksize as u64 > limits::STACK_LIMIT {
             self.err_span("stack size exceeds maximum value",
                 Some(format!("got size {}, max is {}", func.stacksize, limits::STACK_LIMIT)),
                 f.body.span);
             return 0
         }
+
+        // Need to emit a CLOSE in the containing block?
+        if f.upvalues.iter().find(|upval| match **upval {
+            // TODO only true if the local ID is in the outermost block
+            UpvalDesc::Local(_) => true,
+            _ => false,
+        }).is_some() {
+            self.needs_close = true;
+        }
+
+        // Convert upvalue descriptions
+        func.upvals = f.upvalues.iter().cloned().map(|upval| match upval {
+            UpvalDesc::Local(id) => {
+                // translate to stack slot
+                UpvalDesc::Stack(*self.alloc.get(&id).expect(
+                    &format!("local #{} not in alloc map when converting stack slots", id)
+                ))
+            }
+            UpvalDesc::Stack(_) => unreachable!(),
+            UpvalDesc::Upval(id) => UpvalDesc::Upval(id),
+        }).collect();
 
         // TODO shrink vectors to save space
 
@@ -860,8 +886,15 @@ impl<'a> Visitor<'a> for Emitter {
 
     fn visit_block(&mut self, b: &Block) {
         let oldstack = self.cur_func().stacksize;
+        let old_needs_close = self.needs_close;
+        self.needs_close = false;
+
         for stmt in &b.stmts {
             self.emit_stmt(stmt, b);
+        }
+
+        if self.needs_close {
+            self.emit(CLOSE(oldstack));
         }
 
         // deallocate stack slots
@@ -872,7 +905,9 @@ impl<'a> Visitor<'a> for Emitter {
 
             debug!("dealloc: {} (id {}) -> slot {}", name, id, slot);
         }
+
         self.cur_func_mut().stacksize = oldstack;
+        self.needs_close = old_needs_close;
     }
 
     fn visit_func(&mut self, f: &Function) {
@@ -905,6 +940,22 @@ mod tests {
 
             assert_eq!(*opvec, vec![ $($op),* ]);
         }}
+    }
+
+    #[test] #[should_panic]
+    fn metatest1() {
+        // Test that the `test!` macro works
+        test!("blergh§6§25&78%&)" => [
+            MOV(0,0),
+        ]);
+    }
+
+    #[test] #[should_panic]
+    fn metatest2() {
+        // Test that the `test!` macro works
+        test!("function fn() end print()" => [
+            MOV(12,34),
+        ]);
     }
 
     #[test]
@@ -1113,6 +1164,36 @@ mod tests {
             LOADBOOL(3,0,false),
             LOADK(2,2),     // 2
             SETIDX(1,2,3),
+            RETURN(0,1),
+        ]);
+    }
+
+    #[test]
+    fn upvalues() {
+        test!("i = nil" => [
+            // _ENV.i = nil
+            GETUPVAL(0,0),
+            LOADK(1,0),     // "i"
+            LOADNIL(2,0),
+            SETIDX(0,1,2),
+            RETURN(0,1),
+        ]);
+        test!("local function f() f = nil end" => [
+            LOADNIL(0,0),   // local f
+            FUNC(0,0),
+            CLOSE(0),
+            RETURN(0,1),
+        ]);
+        test!("local f, g function f() g = nil end" => [
+            LOADNIL(0,1),   // local f, g
+            FUNC(0,0),
+            CLOSE(0),       // TODO Closes f and g, but only g is needed
+            RETURN(0,1),
+        ]);
+        test!("local function f() end" => [
+            LOADNIL(0,0),   // local f
+            FUNC(0,0),
+            // No close, since no upvalues of type `Local`
             RETURN(0,1),
         ]);
     }

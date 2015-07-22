@@ -13,7 +13,7 @@ pub enum UpvalDesc {
     /// This is emitted by the resolver and converted to `Stack` by the emitter
     Local(usize),
     /// Upvalue is local variable of the parent in the given stack slot
-    Stack(usize),
+    Stack(u8),
     /// Upvalue is the parent's Upvalue with the given ID
     Upval(usize),
 }

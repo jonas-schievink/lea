@@ -74,6 +74,10 @@ pub enum Opcode {
     /// If the program's main function executes this opcode, the VM will pass the first return
     /// value (if any) to the code that started the VM.
     RETURN(u8, u8),
+    /// > close_upval(R[A], R[A+1], ...)
+    ///
+    /// Closes all open upvalues in registers `A` and higher.
+    CLOSE(u8),
     /// > R[A], R[A+1], ..., R[A+B-1] := varargs
     ///
     /// Stores B arguments passed as variable arguments (in `...`) in `R[A]` through `R[A+B-1]`.
