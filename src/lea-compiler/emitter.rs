@@ -806,6 +806,8 @@ impl Emitter {
                 // If not cond, jump to else. Emit dummy opcode, will be replaced by IFNOT
                 let jump_op = self.emit_raw(INVALID);
 
+                self.dealloc_slots(1);  // cond_slot no longer needed
+
                 self.visit_block(body);
 
                 let rel = self.get_next_addr() - jump_op - 1;
@@ -819,8 +821,6 @@ impl Emitter {
                 if let Some(ref el) = *el {
                     self.visit_block(el);
                 }
-
-                self.dealloc_slots(1);  // cond_slot
             }
 
             _ => panic!("NYI stmt: {:?}", s),    // TODO remove, this is just for testing
@@ -1235,8 +1235,8 @@ mod tests {
         test!("if false then local i else local j end" => [
             LOADBOOL(0,0,false),
             IFNOT(0,1),
-            LOADNIL(1,0),   // local i
-            LOADNIL(1,0),   // local j
+            LOADNIL(0,0),   // local i
+            LOADNIL(0,0),   // local j
             RETURN(0,1),
         ]);
     }
