@@ -49,22 +49,6 @@ impl<'a> From<parsetree::_Variable<'a>> for _Variable<'a> {
     }
 }
 
-impl<'a> From<parsetree::CallArgs<'a>> for CallArgs<'a> {
-    fn from(args: parsetree::CallArgs<'a>) -> Self {
-        match args {
-            parsetree::CallArgs::Normal(exprs) => {
-                CallArgs::Normal(vec_into(exprs))
-            }
-            parsetree::CallArgs::String(s) => {
-                CallArgs::String(s)
-            }
-            parsetree::CallArgs::Table(cons) => {
-                CallArgs::Table(cons.into_iter().map(|entry| entry.into()).collect())
-            }
-        }
-    }
-}
-
 impl<'a> From<parsetree::TableEntry<'a>> for TableEntry<'a> {
     fn from(entry: parsetree::TableEntry<'a>) -> Self {
         match entry {
@@ -91,10 +75,10 @@ impl<'a> From<parsetree::_Expr<'a>> for _Expr<'a> {
 
             parsetree::ECall(call) => ECall(match call {
                 parsetree::SimpleCall(callee, args) => {
-                    SimpleCall(Box::new(spanned_into(*callee)), args.into())
+                    SimpleCall(Box::new(spanned_into(*callee)), conv_args(args))
                 }
                 parsetree::MethodCall(obj, name, args) => {
-                    MethodCall(Box::new(spanned_into(*obj)), name, args.into())
+                    MethodCall(Box::new(spanned_into(*obj)), name, conv_args(args))
                 }
             }),
 
@@ -125,6 +109,13 @@ fn conv_vec<'a, T: Conv<'a>>(v: Vec<Spanned<T>>) -> Vec<Spanned<T::Target>> {
     }
 
     res
+}
+
+fn conv_args<'a>(args: parsetree::CallArgs<'a>) -> Vec<Expr<'a>> {
+    let mut v = Vec::new();
+    args.conv(|e| v.push(e));
+
+    v
 }
 
 fn vec_into<'a, U, T: Into<U>>(v: Vec<Spanned<T>>) -> Vec<Spanned<U>> {
@@ -164,10 +155,10 @@ impl<'a> Conv<'a> for parsetree::_Stmt<'a> {
             parsetree::SCall(call) => {
                 push(_Stmt::SCall(match call {
                     parsetree::SimpleCall(callee, args) => {
-                        SimpleCall(Box::new(spanned_into(*callee)), args.into())
+                        SimpleCall(Box::new(spanned_into(*callee)), conv_args(args))
                     }
                     parsetree::MethodCall(obj, name, args) => {
-                        MethodCall(Box::new(spanned_into(*obj)), name, args.into())
+                        MethodCall(Box::new(spanned_into(*obj)), name, conv_args(args))
                     }
                 }));
             }
@@ -227,11 +218,25 @@ impl<'a> Conv<'a> for parsetree::_Stmt<'a> {
     }
 }
 
-// TODO
-/*impl<'a> Conv<'a> for parsetree::CallArgs<'a> {
-    type Target = _Expr<'a>;
+impl<'a> Conv<'a> for parsetree::CallArgs<'a> {
+    type Target = Expr<'a>;
 
-    fn conv<F>(self, _push: F) where F: FnMut(Self::Target) {
-
+    fn conv<F>(self, mut push: F) where F: FnMut(Self::Target) {
+        match self {
+            parsetree::CallArgs::Normal(exprs) => {
+                for expr in exprs {
+                    push(spanned_into(expr))
+                }
+            }
+            parsetree::CallArgs::String(s) => {
+                // TODO use real span
+                push(Spanned::default(ELit(literal::TStr(s))))
+            }
+            parsetree::CallArgs::Table(cons) => {
+                push(Spanned::default(ETable(
+                    cons.into_iter().map(|entry| entry.into()).collect()
+                )))
+            }
+        }
     }
-}*/
+}

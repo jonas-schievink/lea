@@ -67,35 +67,6 @@ pub fn walk_func<'a, V: Transform<'a>>(mut f: Function<'a>, visitor: &mut V) -> 
     f
 }
 
-fn walk_args<'a, V: Transform<'a>>(args: CallArgs<'a>, visitor: &mut V) -> CallArgs<'a> {
-    match args {
-        CallArgs::Normal(mut argv) => {
-            argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
-            CallArgs::Normal(argv)
-        },
-        CallArgs::String(s) => {
-            CallArgs::String(s)
-        },
-        CallArgs::Table(cons) => {
-            CallArgs::Table(walk_table(cons, visitor))
-        }
-    }
-}
-
-fn walk_args_ref<'a, V: Visitor<'a>>(args: &'a CallArgs, visitor: &mut V) {
-    match *args {
-        CallArgs::Normal(ref argv) => {
-            for arg in argv {
-                visitor.visit_expr(arg);
-            }
-        },
-        CallArgs::String(_) => {},
-        CallArgs::Table(ref cons) => {
-            walk_table_ref(cons, visitor)
-        }
-    }
-}
-
 fn walk_table<'a, V: Transform<'a>>(cons: TableCons<'a>, visitor: &mut V) -> TableCons<'a> {
     cons.map_in_place(|entry| match entry {
         TableEntry::Pair(k, v) => TableEntry::Pair(visitor.visit_expr(k), visitor.visit_expr(v)),
@@ -138,12 +109,12 @@ pub fn walk_stmt<'a, V: Transform<'a>>(mut stmt: Stmt<'a>, visitor: &mut V) -> S
         },
         SCall(SimpleCall(mut callee, mut argv)) => {
             callee = Box::new(visitor.visit_expr(*callee));
-            argv = walk_args(argv, visitor);
+            argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
             SCall(SimpleCall(callee, argv))
         },
         SCall(MethodCall(mut callee, name, mut argv)) => {
             callee = Box::new(visitor.visit_expr(*callee));
-            argv = walk_args(argv, visitor);
+            argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
             SCall(MethodCall(callee, name, argv))
         },
         SFunc(mut var, mut func) => {
@@ -222,11 +193,15 @@ pub fn walk_stmt_ref<'a, V: Visitor<'a>>(stmt: &'a Stmt, visitor: &mut V) {
         },
         SCall(SimpleCall(ref callee, ref argv)) => {
             visitor.visit_expr(&**callee);
-            walk_args_ref(argv, visitor);
+            for arg in argv {
+                visitor.visit_expr(arg);
+            }
         },
         SCall(MethodCall(ref callee, _, ref argv)) => {
             visitor.visit_expr(&**callee);
-            walk_args_ref(argv, visitor);
+            for arg in argv {
+                visitor.visit_expr(arg);
+            }
         },
         SFunc(ref var, ref func) => {
             visitor.visit_var(var);
@@ -294,12 +269,12 @@ pub fn walk_expr<'a, V: Transform<'a>>(mut expr: Expr<'a>, visitor: &mut V) -> E
         },
         ECall(SimpleCall(mut callee, mut argv)) => {
             callee = Box::new(visitor.visit_expr(*callee));
-            argv = walk_args(argv, visitor);
+            argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
             ECall(SimpleCall(callee, argv))
         },
         ECall(MethodCall(mut callee, name, mut argv)) => {
             callee = Box::new(visitor.visit_expr(*callee));
-            argv = walk_args(argv, visitor);
+            argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
             ECall(MethodCall(callee, name, argv))
         },
         EFunc(func) => {
@@ -344,11 +319,15 @@ pub fn walk_expr_ref<'a, V: Visitor<'a>>(expr: &'a Expr, visitor: &mut V) {
         },
         ECall(SimpleCall(ref callee, ref argv)) => {
             visitor.visit_expr(&**callee);
-            walk_args_ref(argv, visitor);
+            for arg in argv {
+                visitor.visit_expr(arg);
+            }
         },
         ECall(MethodCall(ref callee, _, ref argv)) => {
             visitor.visit_expr(&**callee);
-            walk_args_ref(argv, visitor);
+            for arg in argv {
+                visitor.visit_expr(arg);
+            }
         },
         EFunc(ref func) => {
             visitor.visit_func(func);

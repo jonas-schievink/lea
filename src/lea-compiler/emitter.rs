@@ -351,67 +351,48 @@ impl Emitter {
     /// of arguments (slots) plus 1. If the last argument (count) is 0, the last argument can
     /// evaluate to any number of values at runtime, which will be placed after the last fixed
     /// argument.
-    fn emit_call_args<F>(&mut self, a: &CallArgs, f: F)
+    fn emit_call_args<'a, F>(&mut self, argv: &Vec<Expr<'a>>, f: F)
     where F: FnOnce(&mut Emitter, /* count-1 */ u8) {
-        match *a {
-            CallArgs::Normal(ref argv) => {
-                if argv.len() == 0 {
-                    f(self, 1);
-                    return
-                }
+        if argv.len() == 0 {
+            f(self, 1);
+            return
+        }
 
-                if argv.len() >= 255 {
-                    self.err_span(
-                        "too many call arguments",
-                        Some(format!("got {} arguments, limit is {}", argv.len(), 255)),
-                        argv[argv.len() - 1].span
-                    );
-                }
+        if argv.len() >= 255 {
+            self.err_span(
+                "too many call arguments",
+                Some(format!("got {} arguments, limit is {}", argv.len(), 255)),
+                argv[argv.len() - 1].span
+            );
+        }
 
-                // may result in dynamic number of args, if the last arg is a call or varargs
-                // emit all args except the last one into freshly allocated registers (these must
-                // be allocated in ascending order)
-                for i in 0..argv.len()-1 {
-                    let arg = &argv[i];
-                    let slot = self.alloc_slots(1);
-                    self.emit_expr_into(arg, slot);
-                }
+        // may result in dynamic number of args, if the last arg is a call or varargs
+        // emit all args except the last one into freshly allocated registers (these must
+        // be allocated in ascending order)
+        for i in 0..argv.len()-1 {
+            let arg = &argv[i];
+            let slot = self.alloc_slots(1);
+            self.emit_expr_into(arg, slot);
+        }
 
-                // emit last expression
-                let last_arg = &argv[argv.len() - 1];
-                if last_arg.is_multi_result() {
-                    fn id(_: &mut Emitter, _: u8) {}
-                    self.emit_expr_multi(last_arg, 0, id);
-                } else {
-                    let slot = self.alloc_slots(1);
-                    self.emit_expr_into(last_arg, slot);
-                }
+        // emit last expression
+        let last_arg = &argv[argv.len() - 1];
+        if last_arg.is_multi_result() {
+            fn id(_: &mut Emitter, _: u8) {}
+            self.emit_expr_multi(last_arg, 0, id);
+        } else {
+            let slot = self.alloc_slots(1);
+            self.emit_expr_into(last_arg, slot);
+        }
 
-                f(self, if last_arg.is_multi_result() { 0 } else { argv.len() as u8 + 1 });
+        f(self, if last_arg.is_multi_result() { 0 } else { argv.len() as u8 + 1 });
 
-                // in the process, we've allocated `argv.len()-1` slots if the last arg is variable
-                // and `argv.len()` slots if not.
-                if last_arg.is_multi_result() {
-                    self.dealloc_slots(argv.len()-1);
-                } else {
-                    self.dealloc_slots(argv.len());
-                }
-            }
-            CallArgs::String(ref strn) => {
-                // single string arg
-                let const_id = self.add_const(&TStr(strn.to_owned()));
-                let str_slot = self.alloc_slots(1);
-
-                self.emit(LOADK(str_slot, const_id));
-
-                f(self, 2);
-
-                self.dealloc_slots(1);  // str_slot
-            }
-            CallArgs::Table(ref _cons) => {
-                // single table arg
-                unimplemented!();   // TODO
-            }
+        // in the process, we've allocated `argv.len()-1` slots if the last arg is variable
+        // and `argv.len()` slots if not.
+        if last_arg.is_multi_result() {
+            self.dealloc_slots(argv.len()-1);
+        } else {
+            self.dealloc_slots(argv.len());
         }
     }
 
