@@ -21,7 +21,7 @@ path = "src/lea/leac.rs"
 test = false
 
 [dependencies]
-lea-ast = { path = "src/lea-ast" }
+lea-parser = { path = "src/lea-parser" }
 lea-compiler = { path = "src/lea-compiler" }
 lea-vm = { path = "src/lea-vm" }
 docopt = "*"

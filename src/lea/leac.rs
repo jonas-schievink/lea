@@ -9,14 +9,14 @@ extern crate rustc_serialize;
 extern crate bincode;
 extern crate term;
 extern crate lea_compiler as compiler;
-extern crate lea_ast as ast;
+extern crate lea_parser as parser;
 
 mod encoding;
 
 use encoding::Encoding;
 
-use ast::span::DummyTerm;
-use ast::visit::Visitor;
+use parser::span::DummyTerm;
+use compiler::ast::visit::Visitor;
 
 use compiler::{CompileConfig, FnData};
 use compiler::prettyprint::PrettyPrinter;

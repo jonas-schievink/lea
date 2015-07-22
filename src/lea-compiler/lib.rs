@@ -101,8 +101,8 @@ use ast::Function;
 
 
 mod errors;
-mod ast;
 mod check;
+pub mod ast;
 pub mod transform;
 pub mod emitter;
 pub mod prettyprint;
