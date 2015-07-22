@@ -153,8 +153,8 @@ pub enum _Stmt<'a> {
     /// Loops a block until `abort_on` is true. The body is executed at least once (`abort_on` is
     /// checked after the body has run).
     SRepeat {
-        abort_on: Expr<'a>,
         body: Block<'a>,
+        abort_on: Expr<'a>,
     },
 
     /// Numeric for loop

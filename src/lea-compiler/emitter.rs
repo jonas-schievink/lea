@@ -18,6 +18,7 @@ use std::cmp;
 use std::io::{self, Write};
 use std::mem;
 
+// TODO: fn build_jump_to(&mut self, target: usize) { ... }
 
 #[derive(Clone, Debug)]
 pub struct EmitError {
@@ -851,6 +852,25 @@ impl Emitter {
                 }
                 self.replace_op(jump_op, IFNOT(cond_slot, rel as i16));
             }
+            SRepeat { ref body, ref abort_on } => {
+                let head_op = self.get_next_addr() as isize;
+
+                self.visit_block(body);
+
+                let abort_cond_slot = self.alloc_slots(1);
+                let abort_cond_slot = self.emit_expr(abort_on, abort_cond_slot);
+
+                // If not abort_on, jump to `head_op`
+                let rel = head_op - self.get_next_addr() as isize - 1;
+                if rel > i16::MAX as isize || rel < i16::MIN as isize {
+                    self.err_span("relative jump exceeds limit",
+                        Some(format!("jump dist is {}, limit is {}", rel, i16::MAX)),
+                        s.span);
+                }
+                self.emit(IFNOT(abort_cond_slot, rel as i16));
+
+                self.dealloc_slots(1);  // cond_slot
+            }
 
             _ => panic!("NYI stmt: {:?}", s),    // TODO remove, this is just for testing
         }
@@ -1286,6 +1306,22 @@ mod tests {
             LOADK(1,0),     // 1
             ADD(0,0,1),     // i = i + 1
             JMP(-4),
+            RETURN(0,1),
+        ]);
+    }
+
+    #[test]
+    fn repeat_until() {
+        test!("repeat until nil" => [
+            LOADNIL(0,0),
+            IFNOT(0,-2),
+            RETURN(0,1),
+        ]);
+        test!("local i   repeat i = i + 1 until i" => [
+            LOADNIL(0,0),   // local i
+            LOADK(1,0),     // 1
+            ADD(0,0,1),     // i = i + 1
+            IFNOT(0,-3),
             RETURN(0,1),
         ]);
     }
