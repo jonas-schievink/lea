@@ -36,6 +36,14 @@ pub enum Opcode {
     /// Assigns a boolean to B+1 registers from `R[A]` to `R[A+B]`. If C is `false`, assign `false`
     /// to the registers, otherwise assign `true`.
     LOADBOOL(u8, u8, bool),
+    /// > R[A] := {}
+    ///
+    /// Creates a new table and assigns it to `R[A]`.
+    TABLE(u8),  // TODO Include initial capacity
+    /// > R[A] := []
+    ///
+    /// Creates a new array and assigns it to `R[A]`.
+    ARRAY(u8),  // TODO Include initial capacity
     /// > R[A] := closure of PROTO[Xu]
     ///
     /// Instantiates function prototype number `Xu` and stores a reference to the created closure

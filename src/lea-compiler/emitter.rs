@@ -624,8 +624,34 @@ impl Emitter {
                 self.emit(FUNC(hint_slot, id as u16));
                 hint_slot
             }
+            EVarArgs => {
+                // Fetch the first vararg into `hint_slot`
+                self.emit(VARARGS(hint_slot, 1));
+                hint_slot
+            }
+            ETable(ref cons) => {
+                // TODO Use table prototypes
+                unimplemented!();
+            }
+            EArray(ref elems) => {
+                // TODO Use array prototypes
 
-            _ => panic!("NYI expression {:?}", e),  // TODO remove
+                // Create new array and put all elements into consecutive indexes
+                self.emit(ARRAY(hint_slot));
+                let idx_slot = self.alloc_slots(1);
+                let tmp = self.alloc_slots(1);
+                for (i, elem) in elems.iter().enumerate() {
+                    let real = self.emit_expr(elem, tmp);
+                    let constid = self.add_const(&TInt(i as i64));
+
+                    // TODO Specialized `SETIDX` for constant strings/integers
+                    self.emit(LOADK(idx_slot, constid));
+                    self.emit(SETIDX(hint_slot, idx_slot, real));
+                }
+                self.dealloc_slots(1);
+                self.dealloc_slots(1);
+                hint_slot
+            }
         }
     }
 
@@ -1069,6 +1095,24 @@ mod tests {
             FUNC(0,0),
             LOADNIL(1,0),   // local g
             FUNC(1,1),
+            RETURN(0,1),
+        ]);
+    }
+
+    #[test]
+    fn array() {
+        test!("local a = []   local b = [nil,true,false]" => [
+            ARRAY(0),       // a
+            ARRAY(1),       // b
+            LOADNIL(3,0),
+            LOADK(2,0),     // 0
+            SETIDX(1,2,3),
+            LOADBOOL(3,0,true),
+            LOADK(2,1),     // 1
+            SETIDX(1,2,3),
+            LOADBOOL(3,0,false),
+            LOADK(2,2),     // 2
+            SETIDX(1,2,3),
             RETURN(0,1),
         ]);
     }
