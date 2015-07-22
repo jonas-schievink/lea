@@ -776,38 +776,6 @@ impl Emitter {
             SCall(ref call) => {
                 self.emit_call(call, 1, |_, _| ());    // store 0 results
             }
-            SFunc(ref target, ref func) => {
-                self.visit_func(func);
-                let id = self.funcs.len() - 1;
-                if id > u16::MAX as usize {
-                    self.err_span(
-                        "function limit reached",
-                        Some(format!("limit is {}", u16::MAX)),
-                        s.span
-                    );
-                    return
-                }
-
-                self.emit_assign(target, |emitter, hint| {
-                    emitter.emit(FUNC(hint, id as u16));
-                    hint
-                });
-            }
-            /*SLFunc(ref name, ref func) => {
-                self.visit_func(func);
-                let id = self.funcs.len() - 1;
-                if id > u16::MAX as usize {
-                    self.err_span(
-                        "function limit reached",
-                        Some(format!("limit is {}", u16::MAX)),
-                        s.span
-                    );
-                    return
-                }
-
-                let slot = self.get_slot(*block.get_local(name).unwrap());
-                self.emit(FUNC(slot, id as u16));
-            }*/
 
             _ => panic!("NYI stmt: {:?}", s),    // TODO remove, this is just for testing
         }

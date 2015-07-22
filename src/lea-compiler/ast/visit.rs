@@ -117,20 +117,6 @@ pub fn walk_stmt<'a, V: Transform<'a>>(mut stmt: Stmt<'a>, visitor: &mut V) -> S
             argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
             SCall(MethodCall(callee, name, argv))
         },
-        SFunc(mut var, mut func) => {
-            var = visitor.visit_var(var);
-            func = visitor.visit_func(func);
-            SFunc(var, func)
-        },
-        SMethod(mut var, name, mut func) => {
-            var = visitor.visit_var(var);
-            func = visitor.visit_func(func);
-            SMethod(var, name, func)
-        },
-        SLFunc(name, mut func) => {
-            func = visitor.visit_func(func);
-            SLFunc(name, func)
-        },
         SIf {mut cond, mut body, mut el} => {
             cond = visitor.visit_expr(cond);
             body = visitor.visit_block(body);
@@ -202,17 +188,6 @@ pub fn walk_stmt_ref<'a, V: Visitor<'a>>(stmt: &'a Stmt, visitor: &mut V) {
             for arg in argv {
                 visitor.visit_expr(arg);
             }
-        },
-        SFunc(ref var, ref func) => {
-            visitor.visit_var(var);
-            visitor.visit_func(func);
-        },
-        SMethod(ref var, _, ref func) => {
-            visitor.visit_var(var);
-            visitor.visit_func(func);
-        },
-        SLFunc(_, ref func) => {
-            visitor.visit_func(func);
         },
         SIf {ref cond, ref body, ref el} => {
             visitor.visit_expr(cond);

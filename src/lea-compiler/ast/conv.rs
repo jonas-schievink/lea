@@ -162,15 +162,33 @@ impl<'a> Conv<'a> for parsetree::_Stmt<'a> {
             }
 
             parsetree::SFunc(var, func) => {
-                push(_Stmt::SFunc(spanned_into(var), func.into()));
+                push(_Stmt::SAssign(
+                    vec![spanned_into(var)],
+                    vec![Spanned::new(func.body.span, EFunc(func.into()))]
+                ));
             }
 
             parsetree::SMethod(var, name, func) => {
-                push(_Stmt::SMethod(spanned_into(var), name, func.into()));
+                // var:name(args...) <=> var.name = function(self, args...)
+                let mut func: Function<'a> = func.into();
+                func.params.insert(0, Spanned::new(name.span, "self"));
+
+                push(_Stmt::SAssign(
+                    vec![Spanned::new(var.span, VIndex(
+                        Box::new(spanned_into(var)),
+                        Box::new(Spanned::new(name.span, ELit(literal::TStr(name.to_string()))))
+                    ))],
+                    vec![Spanned::new(func.body.span, EFunc(func))]
+                ));
             }
 
             parsetree::SLFunc(local, func) => {
-                push(_Stmt::SLFunc(local, func.into()));
+                push(_Stmt::SDecl(vec![local], vec![]));
+                push(_Stmt::SAssign(
+                    vec![Spanned::new(local.span, VNamed(local.value))],
+                    vec![Spanned::new(func.body.span, EFunc(func.into()))]
+                ));
+                //push(_Stmt::SLFunc(local, func.into()));
             }
 
             parsetree::SIf { cond, body, el } => {

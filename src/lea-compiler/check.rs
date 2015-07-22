@@ -62,7 +62,9 @@ impl<'a> Visitor<'a> for Checker {
                     });
                 }
             },
-            _ => {},
+            _ => {
+                walk_expr_ref(e, self);
+            },
         }
     }
 
