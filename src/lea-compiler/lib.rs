@@ -19,17 +19,6 @@
 //! This phase runs the generated Lea parser. It is generated at compile-time from the Parsing
 //! Expression Grammar (PEG) in `lea.rustpeg` with help of the `rust-peg` crate.
 //!
-//! After the generated parser was run, an additional expression parser is run. The generated
-//! parser will collect binary expressions in a list, ignoring operator precedences. It returns a
-//! `ERawOp` node for all expressions. The expression parser in `expr_parser.rs` runs over all
-//! `ERawOp`s, applies the shunting-yard algorithm, builds a tree of `EBinOp`s, and replaces the
-//! AST node with the result.
-//!
-//! This could be done in the PEG parser, but since `rust-peg` doesn't support memoization, it
-//! leads to a significant slowdown. Additionally, this would require redefining all operator
-//! precedences as PEG rules (which duplicates code that shouldn't ever be duplicate), and
-//! supporting both left- and right-associative operators is easier in a shunting-yard parser.
-//!
 //! ## Checking
 //!
 //! In `check.rs`, a `Checker` visitor is implemented, which runs over an AST and verifies that all

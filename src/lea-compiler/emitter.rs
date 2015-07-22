@@ -637,7 +637,6 @@ impl Emitter {
                 hint_slot
             }
 
-            ERawOp(..) => panic!("ERawOp encountered by emitter"),
             _ => panic!("NYI expression {:?}", e),  // TODO remove
         }
     }

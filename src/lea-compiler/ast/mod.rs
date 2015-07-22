@@ -1,7 +1,5 @@
 //! The Abstract Syntax Tree (AST) used by the Lea compiler
 
-#![allow(dead_code)]    // XXX WIP
-
 pub mod visit;
 pub mod conv;
 
@@ -44,6 +42,7 @@ impl<'a> Block<'a> {
     ///
     /// Note that this does not check if the local map is valid. This would require access to the
     /// enclosing Function.
+    #[cfg(test)]    // TODO remove
     pub fn with_locals(stmts: Vec<Stmt<'a>>, span: Span, localmap: HashMap<&'a str, usize>)
     -> Block<'a> {
         Block {
@@ -87,19 +86,6 @@ pub struct Function<'a> {
     pub locals: Vec<Spanned<&'a str>>,
     /// Upvalues referenced by this function. Collected while resolving.
     pub upvalues: Vec<UpvalDesc>,
-}
-
-impl<'a> Function<'a> {
-    pub fn new(params: Vec<Spanned<&'a str>>, varargs: bool, body: Block<'a>) -> Function<'a> {
-        Function {
-            params: params,
-            varargs: varargs,
-            body: body,
-
-            locals: vec![],
-            upvalues: vec![],
-        }
-    }
 }
 
 /// Something that can be set to a value
@@ -247,12 +233,6 @@ pub enum _Expr<'a> {
     EUnOp(UnOp, Box<Expr<'a>>),
     EBraced(Box<Expr<'a>>),
 
-    /// Raw binary expression returned from generated parser. Operator precedences are not yet
-    /// applied, since the generated parser doesn't know about them.
-    ///
-    /// These expression are turned into EBinOp's right after the PEG-generated parser is run, so
-    /// following code only has to deal with tree-like expressions.
-    ERawOp(Box<Expr<'a>>, Vec<(BinOp, Expr<'a>)>),
     /// Variable used as expression
     EVar(Variable<'a>),
     /// Calls a function, might return multiple results

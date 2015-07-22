@@ -246,11 +246,6 @@ pub fn walk_stmt_ref<'a, V: Visitor<'a>>(stmt: &'a Stmt, visitor: &mut V) {
 
 pub fn walk_expr<'a, V: Transform<'a>>(mut expr: Expr<'a>, visitor: &mut V) -> Expr<'a> {
     expr.value = match expr.value {
-        ERawOp(mut lhs, mut rest) => {
-            lhs = Box::new(visitor.visit_expr(*lhs));
-            rest = rest.map_in_place(|(a, expr)| (a, visitor.visit_expr(expr)));
-            ERawOp(lhs, rest)
-        },
         EBinOp(mut lhs, op, mut rhs) => {
             lhs = Box::new(visitor.visit_expr(*lhs));
             rhs = Box::new(visitor.visit_expr(*rhs));
@@ -297,13 +292,6 @@ pub fn walk_expr<'a, V: Transform<'a>>(mut expr: Expr<'a>, visitor: &mut V) -> E
 
 pub fn walk_expr_ref<'a, V: Visitor<'a>>(expr: &'a Expr, visitor: &mut V) {
     match expr.value {
-        ERawOp(ref lhs, ref rest) => {
-            visitor.visit_expr(&**lhs);
-            for entry in rest {
-                let (_, ref e) = *entry;
-                visitor.visit_expr(e);
-            }
-        },
         EBinOp(ref lhs, _, ref rhs) => {
             visitor.visit_expr(&**lhs);
             visitor.visit_expr(&**rhs);
