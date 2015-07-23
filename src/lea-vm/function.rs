@@ -3,7 +3,6 @@
 
 use lea_core::fndata::{UpvalDesc, FnData};
 use lea_core::opcode::*;
-use lea_core::literal::*;
 
 use mem::*;
 use value::Value;
@@ -22,7 +21,7 @@ pub struct FunctionProto {
     /// The opcodes emitted for the code in the function bodyt.mark_traceable(r),
     pub opcodes: Opcodes,
     /// Constants used by this function.
-    pub consts: Vec<Literal>,
+    pub consts: Vec<Value>,
     /// List of Upvalue reference descriptions
     pub upvalues: Vec<UpvalDesc>,
     /// Names of Upvalues (names may not be defined)
@@ -42,10 +41,10 @@ impl FunctionProto {
             params: fndata.params,
             varargs: fndata.varargs,
             opcodes: fndata.opcodes,
-            consts: fndata.consts,
             upvalues: fndata.upvals,
             upval_names: vec![],    // TODO
             lines: fndata.lines,
+            consts: fndata.consts.into_iter().map(|lit| Value::from_literal(lit, gc)).collect(),
             child_protos: fndata.child_protos.into_iter()
                 .map(|data| FunctionProto::from_fndata(*data, gc)).collect(),
         };

@@ -199,6 +199,14 @@ impl<G: GcStrategy> VM<G> {
             let op = self.fetch();
 
             match op {
+                MOV(to, from) => {
+                    let val = self.reg_get(from);
+                    self.reg_set(to, val);
+                }
+                LOADK(reg, id) => {
+                    let val = self.cur_proto().consts[id as usize];
+                    self.reg_set(reg, val);
+                }
                 LOADNIL(start, cnt) => {
                     // Set R[start] through R[start+count] to `nil`
                     for i in start..start+cnt+1 {
@@ -210,10 +218,6 @@ impl<G: GcStrategy> VM<G> {
                     for i in start..start+cnt+1 {
                         self.reg_set(i, Value::TBool(val));
                     }
-                }
-                MOV(to, from) => {
-                    let val = self.reg_get(from);
-                    self.reg_set(to, val);
                 }
                 RETURN(start, cnt) => {
                     let i = start;
@@ -248,6 +252,7 @@ mod tests {
 
     use lea_core::fndata::FnData;
     use lea_core::opcode::*;
+    use lea_core::literal::Literal;
 
 
     /// Defines a function. Evaluates to an `FnData` object.
@@ -291,29 +296,53 @@ mod tests {
         }};
     }
 
-    /// Runs a main function and compares the returned values (or VM error).
-    macro_rules! test_ret {
-        ( $main:tt => return [ $($val:expr),* ] ) => {{
-            let (_, ret) = run!($main);
-
-            assert_eq!(ret.unwrap(), [ $($val,)* ]);
-        }};
+    /// FIXME Due to a bug in Rust, `tt` metavariables behave weird when used in an expression
+    /// context. This macro fixes this: It can be invoked with a `tt` variable (or any number of
+    /// them), parses it as an expression, and expands to that.
+    macro_rules! mkexpr {
+        ( $e:expr ) => ( $e );
     }
 
     /// Defines a VM test. A main function definition is run, and the state of the VM compared to
     /// some expected values (in registers, with absolute index).
-    macro_rules! test_regs {
-        ( $main:tt => [ $( $reg:tt : $val:expr, )* ] ) => {{
+    macro_rules! test {
+        ( $main:tt => [ $( $reg:tt : $val:pat, )* ] ) => {{
             let (vm, _) = run!($main);
 
             // Compare VM's value stack with expected values
-            $( assert_eq!(vm.stack[$reg], $val); )*
+            $(
+                let tmp = vm.stack[mkexpr!($reg)];
+                match tmp {
+                    $val => {},
+                    _ => {
+                        panic!("Unexpected value in VM stack: Got {:?}, expected something that matches {}", tmp, stringify!($val));
+                    }
+                }
+            )*
+        }};
+        ( $main:tt => return [ ] ) => {{
+            let (_, ret) = run!($main);
+            assert!(ret.unwrap().is_empty());
+        }};
+        ( $main:tt => return [ $($val:pat),+ ] ) => {{
+            let (_, ret) = run!($main);
+
+            let mut retvals = ret.unwrap().into_iter();
+            $(
+                let tmp = retvals.next().expect("not enough values returned");
+                match tmp {
+                    $val => {},
+                    _ => {
+                        panic!("Unexpected value returned: Got {:?}, expected something that matches {}", tmp, stringify!($val));
+                    }
+                }
+            )*
         }};
     }
 
     #[test] #[should_panic]
     fn meta() {
-        test_regs!({
+        test!({
             stack: 1,
             fns: [],
             consts: [],
@@ -341,7 +370,7 @@ mod tests {
 
     #[test]
     fn simplest() {
-        test_regs!({
+        test!({
             stack: 1,
             fns: [],
             consts: [],
@@ -356,7 +385,8 @@ mod tests {
 
     #[test] #[should_panic]
     fn test_ret_panic() {
-        test_ret!({
+        // Tests the `test_ret!` macro
+        test!({
             stack: 1,
             fns: [],
             consts: [],
@@ -368,8 +398,8 @@ mod tests {
     }
 
     #[test]
-    fn test_ret() {
-        test_ret!({
+    fn test_ret_main() {
+        test!({
             stack: 1,
             fns: [],
             consts: [],
@@ -378,7 +408,7 @@ mod tests {
                 RETURN(0,1),
             ]
         } => return [ ]);
-        test_ret!({
+        test!({
             stack: 1,
             fns: [],
             consts: [],
@@ -387,7 +417,7 @@ mod tests {
                 RETURN(0,2),
             ]
         } => return [ Value::TNil ]);
-        test_ret!({
+        test!({
             stack: 4,
             fns: [],
             consts: [],
@@ -398,5 +428,27 @@ mod tests {
                 RETURN(0,5),
             ]
         } => return [ Value::TNil, Value::TNil, Value::TBool(true), Value::TBool(false) ]);
+    }
+
+    #[test]
+    fn simple() {
+        test!({
+            stack: 5,
+            fns: [],
+            consts: [
+                Literal::TInt(7),
+                Literal::TStr("test".to_string()),
+            ],
+            ops: [
+                LOADNIL(0,0),
+                LOADK(1,0),
+                LOADK(2,1),
+                RETURN(0,1),
+            ]
+        } => [
+            0: Value::TNil,
+            1: Value::TInt(7),
+            2: Value::TStr(_),
+        ]);
     }
 }

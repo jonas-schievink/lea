@@ -5,7 +5,9 @@ pub use self::Value::*;
 use table::Table;
 use array::Array;
 use function::Function;
-use mem::{TracedRef, Tracer};
+use mem::{TracedRef, Tracer, GcStrategy};
+
+use lea_core::literal::Literal;
 
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
@@ -77,6 +79,16 @@ impl Value {
             TFunc(r) => t.mark_traceable(r),
             TArray(r) => t.mark_traceable(r),
             TTable(r) => t.mark_traceable(r),
+        }
+    }
+
+    pub fn from_literal<G: GcStrategy>(lit: Literal, gc: &mut G) -> Value {
+        match lit {
+            Literal::TInt(i) => TInt(i),
+            Literal::TFloat(f) => TFloat(HashedFloat(f)),
+            Literal::TStr(s) => TStr(gc.register_obj(s)),
+            Literal::TBool(b) => TBool(b),
+            Literal::TNil => TNil,
         }
     }
 }
