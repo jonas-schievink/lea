@@ -163,15 +163,15 @@ pub enum Opcode {
 
     /// > R[A] := -R[B]
     NEG(u8, u8),
+    /// > R[A] := ~R[B]
+    INV(u8, u8),
+    /// > R[A] := #R[B]
+    LEN(u8, u8),
     /// > R[A] := !R[B]
     ///
     /// The values `false` and `nil` will be converted to `true`, any other value will be
     /// converted to `false`. This does not call a metamethod.
     NOT(u8, u8),
-    /// > R[A] := ~R[B]
-    INV(u8, u8),
-    /// > R[A] := #R[B]
-    LEN(u8, u8),
     /// Causes a VM panic
     INVALID,
 }

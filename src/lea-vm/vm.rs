@@ -268,6 +268,11 @@ impl<G: GcStrategy> VM<G> {
                         self.reljump(rel);
                     }
                 }
+                //...
+                NOT(target, src) => {
+                    let truthy = self.reg_get(src).is_truthy();
+                    self.reg_set(target, Value::TBool(!truthy));
+                }
                 INVALID => panic!("invalid opcode at ip={}", self.cur_call().ip),
                 _ => panic!("unimplemented opcode: {:?}", op),
             }
@@ -466,7 +471,7 @@ mod tests {
     #[test]
     fn simple() {
         test!({
-            stack: 6,
+            stack: 8,
             fns: [],
             consts: [
                 Literal::TInt(7),
@@ -489,6 +494,8 @@ mod tests {
 
                 IFNOT(5,800),   // 5 should be `true`
                 IF(0,800),      // 0 should be `nil`
+                NOT(6,5),       // `false`
+                NOT(7,0),       // `true`
 
                 RETURN(0,1),
             ]
@@ -499,6 +506,8 @@ mod tests {
             3: Value::TTable(_),
             4: Value::TArray(_),
             5: Value::TBool(true),
+            6: Value::TBool(false),
+            7: Value::TBool(true),
         ]);
     }
 }
