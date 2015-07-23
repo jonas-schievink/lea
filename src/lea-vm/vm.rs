@@ -31,6 +31,8 @@ use lea_core::opcode::*;
 
 use mem::{TracedRef, GcStrategy};
 use function::{Function, FunctionProto, Upval};
+use array::Array;
+use table::Table;
 use value::Value;
 use error::VmResult;
 
@@ -218,6 +220,14 @@ impl<G: GcStrategy> VM<G> {
                     for i in start..start+cnt+1 {
                         self.reg_set(i, Value::TBool(val));
                     }
+                }
+                TABLE(reg) => {
+                    let tab = self.gc.register_obj(Table::default());
+                    self.reg_set(reg, Value::TTable(tab));
+                }
+                ARRAY(reg) => {
+                    let arr = self.gc.register_obj(Array::default());
+                    self.reg_set(reg, Value::TArray(arr));
                 }
                 RETURN(start, cnt) => {
                     let i = start;
@@ -443,12 +453,16 @@ mod tests {
                 LOADNIL(0,0),
                 LOADK(1,0),
                 LOADK(2,1),
+                TABLE(3),
+                ARRAY(4),
                 RETURN(0,1),
             ]
         } => [
             0: Value::TNil,
             1: Value::TInt(7),
             2: Value::TStr(_),
+            3: Value::TTable(_),
+            4: Value::TArray(_),
         ]);
     }
 }

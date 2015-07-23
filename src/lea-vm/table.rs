@@ -26,7 +26,7 @@ use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
 /// A table that maps Lea values to Lea values.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Table {
     data: HashMap<Value, Value>,
     metatable: Option<TracedRef<Table>>,
