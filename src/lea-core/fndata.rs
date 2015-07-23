@@ -24,7 +24,7 @@ pub enum UpvalDesc {
 pub struct FnData {
     /// Size of the variable stack. This is also used as the next slot allocated for a value.
     pub stacksize: u8,
-    pub params: usize,
+    pub params: u8,
     pub varargs: bool,
     pub opcodes: Opcodes,
     pub consts: Vec<Literal>,

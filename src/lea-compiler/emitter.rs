@@ -878,9 +878,14 @@ impl Emitter {
 
     /// Emits a function and returns its ID
     fn emit_func(&mut self, f: &Function) -> u16 {
+        if f.params.len() > u8::MAX as usize {
+            self.err_span("too many function parameters", Some(format!("function has {}, maximum is {}", f.params.len(), u8::MAX)), f.params[f.params.len() - 1].span);
+            return 0
+        }
+
         self.funcs.push(FnData {
             stacksize: 0,
-            params: f.params.len(),
+            params: f.params.len() as u8,
             varargs: f.varargs,
             opcodes: Opcodes(vec![]),
             consts: vec![],

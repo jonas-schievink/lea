@@ -20,7 +20,7 @@ pub struct FunctionProto {
     /// True if declared as a varargs function
     pub varargs: bool,
     /// The opcodes emitted for the code in the function bodyt.mark_traceable(r),
-    pub opcodes: Vec<Opcode>,
+    pub opcodes: Opcodes,
     /// Constants used by this function.
     pub consts: Vec<Literal>,
     /// List of Upvalue reference descriptions
@@ -35,8 +35,32 @@ pub struct FunctionProto {
 }
 
 impl FunctionProto {
-    pub fn from_fndata<G: GcStrategy>(_fndata: FnData, _gc: &mut G) -> TracedRef<FunctionProto> {
-        unimplemented!();
+    pub fn from_fndata<G: GcStrategy>(fndata: FnData, gc: &mut G) -> TracedRef<FunctionProto> {
+        let proto = FunctionProto {
+            source_name: fndata.source_name,
+            stacksize: fndata.stacksize,
+            params: fndata.params,
+            varargs: fndata.varargs,
+            opcodes: fndata.opcodes,
+            consts: fndata.consts,
+            upvalues: fndata.upvals,
+            upval_names: vec![],    // TODO
+            lines: fndata.lines,
+            child_protos: fndata.child_protos.into_iter()
+                .map(|data| FunctionProto::from_fndata(*data, gc)).collect(),
+        };
+
+        gc.register_obj(proto)
+
+        /*pub stacksize: u8,
+        pub params: usize,
+        pub varargs: bool,
+        pub opcodes: Opcodes,
+        pub consts: Vec<Literal>,
+        pub upvals: Vec<UpvalDesc>,
+        pub lines: Vec<usize>,
+        pub source_name: String,
+        pub child_protos: Vec<Box<FnData>>,*/
     }
 }
 
@@ -68,6 +92,23 @@ pub struct Function {
 }
 
 impl Function {
+    /// Create a new `Function` from its prototype.
+    ///
+    /// Upvalues are filled in by calling `search_upval` with the upvalue description from the
+    /// prototype. `search_upval` will be called in the right order: Upvalue 0 will be resolved
+    /// first.
+    pub fn new<F, G: GcStrategy>(gc: &mut G, proto: TracedRef<FunctionProto>, mut search_upval: F)
+    -> Function
+    where F: FnMut(&UpvalDesc) -> Upval {
+        // TODO Code style of fn decl (is there something official?)
+
+        let protoref = unsafe { gc.get_ref(proto) };
+        Function {
+            proto: proto,
+            upvalues: protoref.upvalues.iter().map(|desc| search_upval(desc)).collect(),
+        }
+    }
+
     /// Sets an upvalue to the given value. The upvalue must be closed, otherwise, this function
     /// panics (the VM has to close upvalues, we cannot do that).
     pub fn set_closed_upvalue(&mut self, id: usize, val: Value) {

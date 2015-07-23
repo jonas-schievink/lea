@@ -2,6 +2,7 @@
 
 use value::Value;
 
+#[derive(Debug)]
 pub struct VmError {
     pub msg: &'static str,
     // TODO: Extend this!

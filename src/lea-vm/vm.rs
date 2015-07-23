@@ -30,9 +30,8 @@
 use lea_core::opcode::*;
 
 use mem::{TracedRef, GcStrategy};
-use function::Function;
+use function::{Function, FunctionProto, Upval};
 use value::Value;
-use table::Table;
 use error::VmResult;
 
 use std::iter;
@@ -41,15 +40,17 @@ use std::iter;
 pub struct CallInfo {
     /// The function active at this call level
     func: TracedRef<Function>,
+    /// The instruction pointer (index)
+    ip: usize,
     /// The index in the value stack that contains register 0 of this called function.
     bottom: usize,
     /// Dynamic stack top. This is updated any time an instruction that returns a variable number
-    /// of results is executed and stores the stack slot of the last value returned by it.
+    /// of results is executed and stores the stack slot of value *after* the last value returned
+    /// by the instruction (so `dtop == 0` means that no results were returned).
     ///
-    /// Like `bottom`, this is an absolute index into the value stack.
-    dtop: usize,
-    /// The instruction pointer (index)
-    ip: usize,
+    /// Unlike `bottom`, this is a relative index into the value stack and must be offset by adding
+    /// `bottom` to it (use `reg_get` and `reg_set` to do this).
+    dtop: u8,
 }
 
 /// A VM context. Holds a garbage collector that manages the program's memory, the stack used for
@@ -74,12 +75,20 @@ impl<G: GcStrategy> VM<G> {
         }
     }
 
-    /// Utility function that sets the first upvalue of `main` to `env` (which must be a table
-    /// here) by calling `set_closed_upvalue` on the main function.
-    pub fn with_env(mut gc: G, main: TracedRef<Function>, env: TracedRef<Table>) -> VM<G> {
+    /// Utility function that takes a main function as a `FunctionProto`, instantiates it and sets
+    /// its first upvalue to `env`.
+    pub fn with_env(mut gc: G, main: TracedRef<FunctionProto>, env: Value) -> VM<G> {
         // TODO mark this function unsafe?
-        unsafe { gc.get_mut(main).set_closed_upvalue(0, Value::TTable(env)); }
-        VM::new(gc, main)
+        let mut first = true;
+        let func = Function::new(&mut gc, main, |_| if first {
+            first = false;
+            Upval::Closed(env)
+        } else {
+            Upval::Closed(Value::TNil)
+        });
+
+        let mainref = gc.register_obj(func);
+        VM::new(gc, mainref)
     }
 
     pub fn gc(&self) -> &G {
@@ -113,7 +122,10 @@ impl<G: GcStrategy> VM<G> {
     /// This will also extend the value stack by the number of slots specified in the function
     /// prototype.
     fn push_call_to(&mut self, func: TracedRef<Function>) {
-        let bottom = if self.calls.is_empty() { 0 } else { self.cur_call().dtop };
+        let bottom = if self.calls.is_empty() { 0 } else {
+            let call = self.cur_call();
+            call.bottom + call.dtop as usize
+        };
         let gc = &mut self.gc;
         let proto = unsafe {
             let proto = gc.get_mut(func).proto;
@@ -126,9 +138,9 @@ impl<G: GcStrategy> VM<G> {
 
         self.calls.push(CallInfo {
             func: func,
-            bottom: bottom,
-            dtop: bottom,
             ip: 0,
+            bottom: bottom,
+            dtop: 0,
         });
     }
 
@@ -136,13 +148,23 @@ impl<G: GcStrategy> VM<G> {
         &self.calls[self.calls.len() - 1]
     }
 
-    /// Fetches the current opcode
-    fn fetch(&self) -> Opcode {
+    fn cur_call_mut(&mut self) -> &mut CallInfo {
+        let lastidx = self.calls.len() - 1;
+        &mut self.calls[lastidx]
+    }
+
+    fn cur_proto(&self) -> &FunctionProto {
         let call = self.cur_call();
         let func = unsafe { self.gc().get_ref(call.func) };
-        let proto = unsafe { self.gc().get_ref(func.proto) };
 
-        proto.opcodes[call.ip]
+        unsafe { self.gc().get_ref(func.proto) }
+    }
+
+    /// Fetches the current opcode and increments the instruction pointer by 1
+    fn fetch(&mut self) -> Opcode {
+        let op = self.cur_proto().opcodes[self.cur_call().ip];
+        self.cur_call_mut().ip += 1;
+        op
     }
 
     /// Gets the value inside a register as specified in an opcode.
@@ -165,12 +187,117 @@ impl<G: GcStrategy> VM<G> {
             let op = self.fetch();
 
             match op {
+                LOADNIL(start, cnt) => {
+                    // Set R[start] through R[start+count] to `nil`
+                    for i in start..start+cnt+1 {
+                        self.reg_set(i, Value::TNil);
+                    }
+                }
                 MOV(to, from) => {
                     let val = self.reg_get(from);
                     self.reg_set(to, val);
                 }
-                _ => unimplemented!()
+                RETURN(start, cnt) => {
+                    let i = start;
+                    let lim = if cnt == 0 {
+                        debug!("dynamic ret from {} to {} (excl.)", start, self.cur_call().dtop);
+                        self.cur_call().dtop
+                    } else {
+                        debug!("fixed ret from {} to {} (excl.)", start, cnt-1);
+                        cnt-1
+                    };
+
+                    if self.calls.len() == 1 {
+                        // main function exits
+                        return Ok((i..lim).map(|i| self.reg_get(i)).collect())
+                    } else {
+                        unimplemented!();
+                    }
+                }
+                _ => panic!("unimplemented opcode: {:?}", op),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use mem::noop::NoopGc;
+    use function::FunctionProto;
+    use value::Value;
+
+    use lea_core::fndata::FnData;
+    use lea_core::opcode::*;
+
+
+    /// Defines a function. Evaluates to an `FnData` object.
+    macro_rules! fndef {
+        ( {
+            stack: $stack:expr,
+            fns: [ $( fn $fndef:tt, )* ],
+            consts: [ $( $const_val:expr, )* ],
+            ops: [ $( $ops:expr, )* ]
+        } ) => {{
+            FnData {
+                stacksize: $stack,
+                params: 0,      // TODO
+                varargs: false, // TODO
+                opcodes: Opcodes(vec![
+                    $($ops,)*
+                ]),
+                consts: vec![ $( $const_val, )* ],
+                upvals: Vec::new(), // TODO
+                lines: Vec::new(),  // TODO
+                source_name: String::new(), // TODO
+                child_protos: vec![ $( Box::new(fndef!($fndef)), )* ],
+            }
+        }};
+    }
+
+    /// Defines a VM test. A main function definition is run, and the state of the VM compared to
+    /// some expected values (in registers, with absolute index).
+    macro_rules! test {
+        ( $main:tt => [ $( $reg:tt : $val:expr, )* ] ) => {{
+            let main: FnData = fndef!($main);
+            let mut gc = NoopGc::default();
+            let proto = FunctionProto::from_fndata(main, &mut gc);
+            let mut vm = VM::with_env(gc, proto, Value::TNil);  // TODO
+            vm.start().unwrap();
+
+            // Compare VM's value stack with expected values
+            $( assert_eq!(vm.stack[$reg], $val); )*
+        }};
+    }
+
+    #[test] #[should_panic]
+    fn meta() {
+        test!({
+            stack: 1,
+            fns: [],
+            consts: [],
+            ops: [
+                LOADNIL(0,0),
+                RETURN(0,1),
+            ]
+        } => [
+            0: Value::TBool(true),
+        ]);
+    }
+
+    #[test]
+    fn simplest() {
+        test!({
+            stack: 1,
+            fns: [],
+            consts: [],
+            ops: [
+                LOADNIL(0,0),
+                RETURN(0,1),
+            ]
+        } => [
+            0: Value::TNil,
+        ]);
     }
 }

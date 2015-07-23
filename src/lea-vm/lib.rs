@@ -2,6 +2,8 @@
 
 #![feature(hasher_write, raw)]
 
+#[macro_use]
+extern crate log;
 extern crate lea_core;
 
 pub mod value;
