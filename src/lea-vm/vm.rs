@@ -194,6 +194,11 @@ impl<G: GcStrategy> VM<G> {
         self.stack[bottom + reg as usize] = val;
     }
 
+    fn reljump(&mut self, rel: i16) {
+        let ip = self.cur_call().ip as isize;
+        self.cur_call_mut().ip = (ip + rel as isize) as usize;
+    }
+
     /// VM main loop. This will start dispatching opcodes of the currently active function (at the
     /// top of the call stack).
     fn run(&mut self) -> VmResult {
@@ -229,6 +234,8 @@ impl<G: GcStrategy> VM<G> {
                     let arr = self.gc.register_obj(Array::default());
                     self.reg_set(reg, Value::TArray(arr));
                 }
+                //FUNC
+                //CALL
                 RETURN(start, cnt) => {
                     let i = start;
                     let lim = if cnt == 0 {
@@ -246,6 +253,22 @@ impl<G: GcStrategy> VM<G> {
                         self.return_from_call();
                     }
                 }
+                //CLOSE
+                //VARARGS
+                JMP(rel) => {
+                    self.reljump(rel);
+                }
+                IF(cond, rel) => {
+                    if self.reg_get(cond).is_truthy() {
+                        self.reljump(rel);
+                    }
+                }
+                IFNOT(cond, rel) => {
+                    if !self.reg_get(cond).is_truthy() {
+                        self.reljump(rel);
+                    }
+                }
+                INVALID => panic!("invalid opcode at ip={}", self.cur_call().ip),
                 _ => panic!("unimplemented opcode: {:?}", op),
             }
         }
@@ -443,7 +466,7 @@ mod tests {
     #[test]
     fn simple() {
         test!({
-            stack: 5,
+            stack: 6,
             fns: [],
             consts: [
                 Literal::TInt(7),
@@ -455,6 +478,18 @@ mod tests {
                 LOADK(2,1),
                 TABLE(3),
                 ARRAY(4),
+                JMP(0),     // no-op
+                LOADBOOL(5,0,true),   // is executed
+                JMP(1),
+                LOADBOOL(5,0,false),   // skipped
+
+                JMP(1),     // A: Jumps to C
+                JMP(1),     // B: Jumps behind C
+                JMP(-2),    // C: Jumps to B
+
+                IFNOT(5,800),   // 5 should be `true`
+                IF(0,800),      // 0 should be `nil`
+
                 RETURN(0,1),
             ]
         } => [
@@ -463,6 +498,7 @@ mod tests {
             2: Value::TStr(_),
             3: Value::TTable(_),
             4: Value::TArray(_),
+            5: Value::TBool(true),
         ]);
     }
 }

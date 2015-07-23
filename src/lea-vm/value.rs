@@ -70,6 +70,15 @@ impl Value {
             TFunc(..) => "function",
         }
     }
+    
+    /// Is this value considered true or false when used in a boolean context (if/loop condition,
+    /// shortcircuit operators)?
+    pub fn is_truthy(&self) -> bool {
+        match *self {
+            TNil | TBool(false) => false,
+            _ => true,
+        }
+    }
 
     /// If this `Value` references a GC-object, marks it using the given `Tracer`.
     pub fn trace<T: Tracer>(&self, t: &mut T) {
