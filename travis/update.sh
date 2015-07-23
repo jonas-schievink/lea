@@ -4,6 +4,15 @@
 
 set -e
 
-cargo update
-ls src | xargs -n 1 --max-procs 0 cargo update -p
+for proj in $(ls src); do
+    echo "Updating $proj..."
+    cd "src/$proj"
 
+    if ! cargo update; then
+        echo "Trying to create Cargo.lock"
+        cargo generate-lockfile
+        cargo update
+    fi
+
+    cd ../..
+done
