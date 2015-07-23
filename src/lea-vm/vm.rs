@@ -144,6 +144,18 @@ impl<G: GcStrategy> VM<G> {
         });
     }
 
+    /// Called to return from a called Lea function (*not* from the main function). This pops the
+    /// created `CallInfo` off the call stack and restores the value stack accordingly.
+    ///
+    /// This can not be called when the only active function is the program's main function.
+    fn return_from_call(&mut self) {
+        if self.calls.len() == 1 {
+            panic!("return_from_call called while only main function is active");
+        }
+
+        unimplemented!();
+    }
+
     fn cur_call(&self) -> &CallInfo {
         &self.calls[self.calls.len() - 1]
     }
@@ -193,6 +205,12 @@ impl<G: GcStrategy> VM<G> {
                         self.reg_set(i, Value::TNil);
                     }
                 }
+                LOADBOOL(start, cnt, val) => {
+                    // Set R[start] through R[start+count] to `val` (true or false)
+                    for i in start..start+cnt+1 {
+                        self.reg_set(i, Value::TBool(val));
+                    }
+                }
                 MOV(to, from) => {
                     let val = self.reg_get(from);
                     self.reg_set(to, val);
@@ -211,7 +229,7 @@ impl<G: GcStrategy> VM<G> {
                         // main function exits
                         return Ok((i..lim).map(|i| self.reg_get(i)).collect())
                     } else {
-                        unimplemented!();
+                        self.return_from_call();
                     }
                 }
                 _ => panic!("unimplemented opcode: {:?}", op),
@@ -256,15 +274,37 @@ mod tests {
         }};
     }
 
-    /// Defines a VM test. A main function definition is run, and the state of the VM compared to
-    /// some expected values (in registers, with absolute index).
-    macro_rules! test {
-        ( $main:tt => [ $( $reg:tt : $val:expr, )* ] ) => {{
+    /// Runs a new VM instance with the given main function. Returns a tuple containing the VM and
+    /// the `VmResult` returned by `vm.start()` (see `error.rs`).
+    macro_rules! run {
+        ( $main:tt ) => {{
+            run!($main with Value::TNil)
+        }};
+        ( $main:tt with $env:expr ) => {{
             let main: FnData = fndef!($main);
             let mut gc = NoopGc::default();
             let proto = FunctionProto::from_fndata(main, &mut gc);
-            let mut vm = VM::with_env(gc, proto, Value::TNil);  // TODO
-            vm.start().unwrap();
+            let mut vm = VM::with_env(gc, proto, $env);
+            let ret = vm.start();
+
+            (vm, ret)
+        }};
+    }
+
+    /// Runs a main function and compares the returned values (or VM error).
+    macro_rules! test_ret {
+        ( $main:tt => return [ $($val:expr),* ] ) => {{
+            let (_, ret) = run!($main);
+
+            assert_eq!(ret.unwrap(), [ $($val,)* ]);
+        }};
+    }
+
+    /// Defines a VM test. A main function definition is run, and the state of the VM compared to
+    /// some expected values (in registers, with absolute index).
+    macro_rules! test_regs {
+        ( $main:tt => [ $( $reg:tt : $val:expr, )* ] ) => {{
+            let (vm, _) = run!($main);
 
             // Compare VM's value stack with expected values
             $( assert_eq!(vm.stack[$reg], $val); )*
@@ -273,7 +313,7 @@ mod tests {
 
     #[test] #[should_panic]
     fn meta() {
-        test!({
+        test_regs!({
             stack: 1,
             fns: [],
             consts: [],
@@ -286,9 +326,22 @@ mod tests {
         ]);
     }
 
+    #[test] #[should_panic]
+    fn stack_too_small() {
+        run!({
+            stack: 2,
+            fns: [],
+            consts: [],
+            ops: [
+                LOADNIL(0,2),   // writes 0, 1, 2
+                RETURN(0,1),
+            ]
+        });
+    }
+
     #[test]
     fn simplest() {
-        test!({
+        test_regs!({
             stack: 1,
             fns: [],
             consts: [],
@@ -299,5 +352,51 @@ mod tests {
         } => [
             0: Value::TNil,
         ]);
+    }
+
+    #[test] #[should_panic]
+    fn test_ret_panic() {
+        test_ret!({
+            stack: 1,
+            fns: [],
+            consts: [],
+            ops: [
+                LOADNIL(0,0),
+                RETURN(0,2),
+            ]
+        } => return [ Value::TInt(4) ]);
+    }
+
+    #[test]
+    fn test_ret() {
+        test_ret!({
+            stack: 1,
+            fns: [],
+            consts: [],
+            ops: [
+                LOADNIL(0,0),
+                RETURN(0,1),
+            ]
+        } => return [ ]);
+        test_ret!({
+            stack: 1,
+            fns: [],
+            consts: [],
+            ops: [
+                LOADNIL(0,0),
+                RETURN(0,2),
+            ]
+        } => return [ Value::TNil ]);
+        test_ret!({
+            stack: 4,
+            fns: [],
+            consts: [],
+            ops: [
+                LOADNIL(0,3),
+                LOADBOOL(2,0,true),
+                LOADBOOL(3,0,false),
+                RETURN(0,5),
+            ]
+        } => return [ Value::TNil, Value::TNil, Value::TBool(true), Value::TBool(false) ]);
     }
 }
