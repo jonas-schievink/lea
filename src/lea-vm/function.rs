@@ -50,16 +50,6 @@ impl FunctionProto {
         };
 
         gc.register_obj(proto)
-
-        /*pub stacksize: u8,
-        pub params: usize,
-        pub varargs: bool,
-        pub opcodes: Opcodes,
-        pub consts: Vec<Literal>,
-        pub upvals: Vec<UpvalDesc>,
-        pub lines: Vec<usize>,
-        pub source_name: String,
-        pub child_protos: Vec<Box<FnData>>,*/
     }
 }
 

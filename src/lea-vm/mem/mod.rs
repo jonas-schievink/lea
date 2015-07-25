@@ -28,7 +28,6 @@ pub mod noop;
 pub mod stw;
 
 
-// TODO evaluate the need of the `'gc` lifetime after the last refactoring
 // TODO finalizers and weak references (with callback)
 
 pub type DefaultGc = stw::Stw;

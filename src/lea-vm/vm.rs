@@ -8,11 +8,10 @@
 //! executed, the current instruction pointer and stack top is saved in a `CallInfo` struct, along
 //! with the called function, and pushed onto the call stack.
 //!
+//! The VM will then push all arguments passed as varargs onto the stack
+//!
 //! Then, the stack is extended by the (constant) number of stack slots needed, as stored in the
-//! function prototype, and the call arguments are copied to the first slots. Depending on whether
-//! a variable number of arguments was passed (as encoded in the call instruction) and whether the
-//! callee accepts variable parameters, some of the arguments may be discarded or the stack may be
-//! grown dynamically.
+//! function prototype, and the fixed call arguments are copied to the first slots.
 //!
 //! When executing a return instruction, the current `CallInfo` is popped off the call stack and
 //! the instruction pointer is restored. The returned values are then copied into the caller's
@@ -28,6 +27,7 @@
 // TODO tracing, when GC is possible
 
 use lea_core::opcode::*;
+use lea_core::fndata::UpvalDesc;
 
 use mem::{TracedRef, GcStrategy};
 use function::{Function, FunctionProto, Upval};
@@ -37,14 +37,18 @@ use value::Value;
 use error::VmResult;
 
 use std::iter;
+use std::cmp;
 
 /// Contains information about a called Lea function.
 pub struct CallInfo {
     /// The function active at this call level
     func: TracedRef<Function>,
-    /// The instruction pointer (index)
+    /// The instruction pointer (index into opcode vector)
     ip: usize,
     /// The index in the value stack that contains register 0 of this called function.
+    ///
+    /// For the main function, this is equal to the number of arguments passed to it (varargs are
+    /// copied before the stack frame of the callee).
     bottom: usize,
     /// Dynamic stack top. This is updated any time an instruction that returns a variable number
     /// of results is executed and stores the stack slot of value *after* the last value returned
@@ -53,6 +57,8 @@ pub struct CallInfo {
     /// Unlike `bottom`, this is a relative index into the value stack and must be offset by adding
     /// `bottom` to it (use `reg_get` and `reg_set` to do this).
     dtop: u8,
+    /// Number of varargs stored in the value stack before the stack frame of this call.
+    va_count: u8,
 }
 
 /// A VM context. Holds a garbage collector that manages the program's memory, the stack used for
@@ -110,7 +116,7 @@ impl<G: GcStrategy> VM<G> {
         assert!(self.stack.is_empty());
 
         let main = self.main;
-        self.push_call_to(main);
+        self.push_call(main);
         self.run()
     }
 }
@@ -123,7 +129,11 @@ impl<G: GcStrategy> VM<G> {
     ///
     /// This will also extend the value stack by the number of slots specified in the function
     /// prototype.
-    fn push_call_to(&mut self, func: TracedRef<Function>) {
+    fn push_call(&mut self, func: TracedRef<Function>) {
+        self.push_call_with_varargs(func, 0)
+    }
+
+    fn push_call_with_varargs(&mut self, func: TracedRef<Function>, va_count: u8)  {
         let bottom = if self.calls.is_empty() { 0 } else {
             let call = self.cur_call();
             call.bottom + call.dtop as usize
@@ -143,6 +153,7 @@ impl<G: GcStrategy> VM<G> {
             ip: 0,
             bottom: bottom,
             dtop: 0,
+            va_count: va_count,
         });
     }
 
@@ -151,11 +162,21 @@ impl<G: GcStrategy> VM<G> {
     ///
     /// This can not be called when the only active function is the program's main function.
     fn return_from_call(&mut self) {
+        assert!(!self.calls.is_empty());
         if self.calls.len() == 1 {
             panic!("return_from_call called while only main function is active");
         }
 
-        unimplemented!();
+        // pop stack frame and passed varargs from value stack
+        let frame_sz = self.cur_proto().stacksize;
+        let varargs = self.cur_call().va_count;
+        for _ in 0..frame_sz + varargs {
+            let val = self.stack.pop();
+            if cfg!(debug) { val.unwrap(); }
+        }
+
+        let callinfo = self.calls.pop();
+        if cfg!(debug) { callinfo.unwrap(); }
     }
 
     fn cur_call(&self) -> &CallInfo {
@@ -167,6 +188,7 @@ impl<G: GcStrategy> VM<G> {
         &mut self.calls[lastidx]
     }
 
+    /// Gets a reference to the prototype of the currently executing function.
     fn cur_proto(&self) -> &FunctionProto {
         let call = self.cur_call();
         let func = unsafe { self.gc().get_ref(call.func) };
@@ -188,12 +210,14 @@ impl<G: GcStrategy> VM<G> {
         self.stack[bottom + reg as usize]
     }
 
+    /// Set the value of a register (see `reg_get`).
     fn reg_set(&mut self, reg: u8, val: Value) {
         let bottom = self.cur_call().bottom;
 
         self.stack[bottom + reg as usize] = val;
     }
 
+    /// Performs a relative jump
     fn reljump(&mut self, rel: i16) {
         let ip = self.cur_call().ip as isize;
         self.cur_call_mut().ip = (ip + rel as isize) as usize;
@@ -234,10 +258,90 @@ impl<G: GcStrategy> VM<G> {
                     let arr = self.gc.register_obj(Array::default());
                     self.reg_set(reg, Value::TArray(arr));
                 }
-                //FUNC
-                //CALL
+                FUNC(reg, id) => {
+                    let proto = self.cur_proto().child_protos[id as usize];
+
+                    let func = Function::new(&mut self.gc, proto, |desc| match *desc {
+                        UpvalDesc::Local(_) => panic!("`UpvalDesc::Local` encountered by VM"),
+                        UpvalDesc::Stack(slot) => {
+                            Upval::Open(slot as usize)
+                        }
+                        UpvalDesc::Upval(id) => {
+                            Upval::Open(id)
+                        }
+                    });
+
+                    let func_ref = self.gc.register_obj(func);
+                    self.reg_set(reg, Value::TFunc(func_ref));
+                }
+                CALL(callee_reg, args, _) => {  // return count is only used on return
+                    let callee: Value = self.reg_get(callee_reg);
+
+                    match callee {
+                        Value::TFunc(callee) => {
+                            // number of fixed params the callee can accept
+                            let dest_count: u8;
+                            let dest_varargs: bool;
+
+                            // number of args the caller wants to pass
+                            let src_count: u8 = if args == 0 {
+                                self.cur_call().dtop - callee_reg
+                            } else {
+                                args - 1
+                            };
+
+                            {
+                                let callee_ref: &Function = unsafe { self.gc.get_ref(callee) };
+                                let proto_ref: &FunctionProto = unsafe {
+                                    self.gc.get_ref(callee_ref.proto)
+                                };
+
+                                dest_count = proto_ref.params;
+                                dest_varargs = proto_ref.varargs;
+                            }
+
+                            let fixed_pass: u8 = cmp::min(src_count, dest_count);
+
+                            // args we would like to pass via varargs (if callee accepts it)
+                            let var_pass: u8 = if src_count > dest_count {
+                                src_count - dest_count
+                            } else {
+                                0
+                            };
+
+                            if dest_varargs && var_pass > 0 {
+                                // copy `var_pass` args onto the value stack (starting at
+                                // `dest_count`)
+                                let start_slot = callee_reg + args;
+                                let vararg_count = src_count - dest_count;
+                                println!("passing {} varargs starting at {}", vararg_count, start_slot);
+
+                                for i in 0..vararg_count {
+                                    let slot = start_slot + i;
+                                    let arg = self.reg_get(slot);
+                                    self.stack.push(arg);
+                                }
+                            }
+
+                            let fixed_start_abs: usize = self.cur_call().bottom + callee_reg as usize + 1;
+                            self.push_call_with_varargs(callee, var_pass);
+
+                            // write args-1 arguments to callee stack slots 0..n
+                            // depends on whether callee is varargs
+                            if args > 1 {
+                                for i in 0..fixed_pass {
+                                    let arg = self.stack[fixed_start_abs + i as usize];
+                                    self.reg_set(i, arg);
+                                }
+                            }
+                        }
+                        Value::TTable(_) => panic!("metacall not yet implemented"),
+                        _ => {
+                            return Err(format!("attempt to call {}", callee.get_type_name()).into())
+                        }
+                    }
+                }
                 RETURN(start, cnt) => {
-                    let i = start;
                     let lim = if cnt == 0 {
                         debug!("dynamic ret from {} to {} (excl.)", start, self.cur_call().dtop);
                         self.cur_call().dtop
@@ -248,7 +352,7 @@ impl<G: GcStrategy> VM<G> {
 
                     if self.calls.len() == 1 {
                         // main function exits
-                        return Ok((i..lim).map(|i| self.reg_get(i)).collect())
+                        return Ok((start..lim).map(|i| self.reg_get(i)).collect())
                     } else {
                         self.return_from_call();
                     }
@@ -297,7 +401,7 @@ mod tests {
     macro_rules! fndef {
         ( {
             stack: $stack:expr,
-            fns: [ $( fn $fndef:tt, )* ],
+            fns: [ $( fn $fndef:tt ),* ],
             consts: [ $( $const_val:expr, )* ],
             ops: [ $( $ops:expr, )* ]
         } ) => {{
@@ -353,7 +457,7 @@ mod tests {
                 match tmp {
                     $val => {},
                     _ => {
-                        panic!("Unexpected value in VM stack: Got {:?}, expected something that matches {}", tmp, stringify!($val));
+                        panic!("unexpected value in VM stack: got {:?}, expected {}", tmp, stringify!($val));
                     }
                 }
             )*
@@ -371,15 +475,45 @@ mod tests {
                 match tmp {
                     $val => {},
                     _ => {
-                        panic!("Unexpected value returned: Got {:?}, expected something that matches {}", tmp, stringify!($val));
+                        panic!("unexpected value returned: got {:?}, expected {}", tmp, stringify!($val));
                     }
                 }
             )*
         }};
     }
 
+    #[test]
+    fn call() {
+        // Tests function instantiation, calls and returns
+
+        test!({
+            stack: 1,
+            fns: [
+                fn {
+                    stack: 1,
+                    fns: [],
+                    consts: [],
+                    ops: [
+                        LOADBOOL(0,0,true),
+                        RETURN(0,2),        // `true`
+                    ]
+                }
+            ],
+            consts: [],
+            ops: [
+                FUNC(0,0),
+                CALL(0,1,2),    // call with no args, store 1 return value in reg 0
+                RETURN(0,1),
+            ]
+        } => [
+            0: Value::TBool(true),  // returned from caller
+        ]);
+    }
+
     #[test] #[should_panic]
     fn meta() {
+        // Make sure the `test!` macro correctly panics when a slot value mismatches
+
         test!({
             stack: 1,
             fns: [],
@@ -470,6 +604,8 @@ mod tests {
 
     #[test]
     fn simple() {
+        // Tests simple opcodes (no metamethods, no calls, no dtop)
+
         test!({
             stack: 8,
             fns: [],
@@ -483,10 +619,10 @@ mod tests {
                 LOADK(2,1),
                 TABLE(3),
                 ARRAY(4),
-                JMP(0),     // no-op
-                LOADBOOL(5,0,true),   // is executed
+                JMP(0),                 // no-op
+                LOADBOOL(5,0,true),     // is executed
                 JMP(1),
-                LOADBOOL(5,0,false),   // skipped
+                LOADBOOL(5,0,false),    // skipped
 
                 JMP(1),     // A: Jumps to C
                 JMP(1),     // B: Jumps behind C

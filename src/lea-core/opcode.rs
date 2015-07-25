@@ -87,8 +87,8 @@ pub enum Opcode {
     ///
     /// Unconditional jump. Offsets `PC` by `Xs`, which may be negative.
     ///
-    /// All jumps share the same property: If `Xs` is 0, PC will not be changed. If `Xs` is -1, an
-    /// endless loop is created.
+    /// All jumps share the same property: If `Xs` is 0, PC will not be changed (the jump acts
+    /// like a no-op). If `Xs` is -1, an endless loop is created.
     JMP(i16),
     /// > if R[A]: PC += Xs
     ///
