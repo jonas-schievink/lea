@@ -36,7 +36,6 @@ use table::Table;
 use value::Value;
 use error::VmResult;
 
-use std::iter;
 use std::cmp;
 
 /// Contains information about a called Lea function.
@@ -133,25 +132,30 @@ impl<G: GcStrategy> VM<G> {
         self.push_call_with_varargs(func, 0)
     }
 
+    /// Creates a `CallInfo` object that describes an activation of the given function and pushes
+    /// it onto the callstack.
+    ///
+    /// This will also extend the value stack by the number of slots specified in the function
+    /// prototype.
+    ///
+    /// Note that `va_count` is only used to fill the `CallInfo`, no arguments are actually passed
+    /// to the callee, nor is any stack space reserved.
     fn push_call_with_varargs(&mut self, func: TracedRef<Function>, va_count: u8)  {
-        let bottom = if self.calls.is_empty() { 0 } else {
-            let call = self.cur_call();
-            call.bottom + call.dtop as usize
-        };
         let gc = &mut self.gc;
         let proto = unsafe {
             let proto = gc.get_mut(func).proto;
             gc.get_mut(proto)
         };
 
-        // Ensure we have `proto.stacksize` slots free after current `dtop` (FIXME)
+        // Ensure we have `proto.stacksize + va_count` slots free after current `dtop` (FIXME)
         // XXX is this optimized right?
-        self.stack.extend(iter::repeat(Value::TNil).take(bottom + proto.stacksize as usize));
+        let old_len = self.stack.len();
+        self.stack.resize(old_len + proto.stacksize as usize, Value::TNil);
 
         self.calls.push(CallInfo {
             func: func,
             ip: 0,
-            bottom: bottom,
+            bottom: old_len,
             dtop: 0,
             va_count: va_count,
         });
@@ -160,7 +164,11 @@ impl<G: GcStrategy> VM<G> {
     /// Called to return from a called Lea function (*not* from the main function). This pops the
     /// created `CallInfo` off the call stack and restores the value stack accordingly.
     ///
-    /// This can not be called when the only active function is the program's main function.
+    /// Note that this will not manage any return values (the caller's stack frame is left
+    /// untouched).
+    ///
+    /// This function can not be called when the only active function is the program's main
+    /// function.
     fn return_from_call(&mut self) {
         assert!(!self.calls.is_empty());
         if self.calls.len() == 1 {
@@ -168,15 +176,16 @@ impl<G: GcStrategy> VM<G> {
         }
 
         // pop stack frame and passed varargs from value stack
-        let frame_sz = self.cur_proto().stacksize;
-        let varargs = self.cur_call().va_count;
-        for _ in 0..frame_sz + varargs {
-            let val = self.stack.pop();
-            if cfg!(debug) { val.unwrap(); }
-        }
+        let frame_sz: u8 = self.cur_proto().stacksize;
+        let varargs: u8 = self.cur_call().va_count;
+        let old_len: usize = self.stack.len();
+        let new_len: usize = old_len.checked_sub(frame_sz as usize + varargs as usize)
+            .expect("stack underflow (what?) in `vm.return_from_call`");
+        debug_assert!(new_len <= old_len);
 
-        let callinfo = self.calls.pop();
-        if cfg!(debug) { callinfo.unwrap(); }
+        self.stack.truncate(new_len);
+
+        self.calls.pop().unwrap();
     }
 
     fn cur_call(&self) -> &CallInfo {
@@ -215,6 +224,17 @@ impl<G: GcStrategy> VM<G> {
         let bottom = self.cur_call().bottom;
 
         self.stack[bottom + reg as usize] = val;
+    }
+
+    /// Sets a register. If the register is outside the value stack, the value stack will be
+    /// extended (with `nil` if there is a hole).
+    fn reg_set_or_extend(&mut self, reg: u8, val: Value) {
+        let slot: usize = self.cur_call().bottom + reg as usize;
+        if slot >= self.stack.len() {
+            self.stack.resize(slot + 1, Value::TNil);
+        }
+
+        self.stack[slot] = val;
     }
 
     /// Performs a relative jump
@@ -303,33 +323,36 @@ impl<G: GcStrategy> VM<G> {
                             let fixed_pass: u8 = cmp::min(src_count, dest_count);
 
                             // args we would like to pass via varargs (if callee accepts it)
-                            let var_pass: u8 = if src_count > dest_count {
+                            let var_pass: u8 = if src_count > dest_count && dest_varargs {
                                 src_count - dest_count
                             } else {
                                 0
                             };
 
-                            if dest_varargs && var_pass > 0 {
-                                // copy `var_pass` args onto the value stack (starting at
-                                // `dest_count`)
-                                let start_slot = callee_reg + args;
-                                let vararg_count = src_count - dest_count;
-                                println!("passing {} varargs starting at {}", vararg_count, start_slot);
+                            if var_pass > 0 {
+                                // callee will get varargs
+                                // copy `var_pass` args onto the value stack
+                                let start_slot = callee_reg + fixed_pass + 1;
+                                println!("passing {} varargs starting at {}", var_pass, start_slot);
 
-                                for i in 0..vararg_count {
+                                for i in 0..var_pass {
                                     let slot = start_slot + i;
                                     let arg = self.reg_get(slot);
+                                    println!("va {}: {:?}", i, arg);
                                     self.stack.push(arg);
                                 }
                             }
 
+                            // first register containing an argument
                             let fixed_start_abs: usize = self.cur_call().bottom + callee_reg as usize + 1;
+
                             self.push_call_with_varargs(callee, var_pass);
 
                             // write args-1 arguments to callee stack slots 0..n
                             // depends on whether callee is varargs
                             if args > 1 {
                                 for i in 0..fixed_pass {
+                                    println!("CALL: fixed pass {:?} from slot {} (abs {}) to slot {} (abs {})", self.stack[fixed_start_abs + i as usize], callee_reg + i + 1, fixed_start_abs + i as usize, i, self.cur_call().bottom + i as usize);
                                     let arg = self.stack[fixed_start_abs + i as usize];
                                     self.reg_set(i, arg);
                                 }
@@ -342,23 +365,101 @@ impl<G: GcStrategy> VM<G> {
                     }
                 }
                 RETURN(start, cnt) => {
-                    let lim = if cnt == 0 {
-                        debug!("dynamic ret from {} to {} (excl.)", start, self.cur_call().dtop);
+                    let callee_lim: u8 = if cnt == 0 {
+                        println!("dynamic ret from {} to {} (excl.)", start, self.cur_call().dtop);
                         self.cur_call().dtop
                     } else {
-                        debug!("fixed ret from {} to {} (excl.)", start, cnt-1);
-                        cnt-1
+                        println!("fixed ret from {} to {} (excl.)", start, cnt - 1);
+                        cnt - 1
                     };
 
                     if self.calls.len() == 1 {
                         // main function exits
-                        return Ok((start..lim).map(|i| self.reg_get(i)).collect())
+                        return Ok((start..callee_lim).map(|i| self.reg_get(i)).collect())
                     } else {
+                        {
+                            // How many return values can the caller accept? This is encoded in the
+                            // `CALL` instruction, so we need to look it up, first.
+                            let caller: &CallInfo = &self.calls[self.calls.len() - 2];
+                            let call_ip = caller.ip - 1;
+                            let func: &Function = unsafe { self.gc.get_ref(caller.func) };
+                            let proto: &FunctionProto = unsafe { self.gc.get_ref(func.proto) };
+                            // (I really wish we had less indirections for this sort of stuff)
+
+                            let call_op = proto.opcodes[call_ip];
+                            match call_op {
+                                CALL(func_slot, _, ret) => {
+                                    let caller_lim: u8 = if ret == 0 {
+                                        callee_lim
+                                    } else {
+                                        ret - 1
+                                    };
+
+                                    println!("RET caller_lim: {}, callee_lim: {}", caller_lim, callee_lim);
+
+                                    // number of ret vals copied directly
+                                    let lim: u8 = cmp::min(caller_lim, callee_lim);
+
+                                    // copy `start` to `start + lim` (excl.) into caller's slots
+                                    for i in 0..lim {
+                                        let dest: usize = caller.bottom + func_slot as usize + i as usize;
+                                        println!("copy slot {} ({:?}) to {}", start + i, self.reg_get(start + i as u8), func_slot + i);
+                                        self.stack[dest] = self.reg_get(start + i);
+                                    }
+
+                                    // fill with `caller_lim - lim` `nil`s
+                                    for i in 0..caller_lim - lim {
+                                        let dest = caller.bottom + func_slot as usize + lim as usize + i as usize;
+                                        println!("fill {}", func_slot + lim + i);
+                                        self.stack[dest] = Value::TNil;
+                                    }
+                                }
+                                _ => {
+                                    panic!("couldn't find `CALL` instruction for return (got {:?} at ip = {})", call_op, call_ip);
+                                }
+                            }
+                        }
+
                         self.return_from_call();
                     }
                 }
                 //CLOSE
-                //VARARGS
+                VARARGS(target, count) => {
+                    let va_count: u8 = self.cur_call().va_count;
+                    // slot of the first vararg (invalid if `va_count == 0`)
+                    let first_va = self.cur_call().bottom - self.cur_call().va_count as usize;
+
+                    if count == 0 {
+                        // copy all varargs and update dtop
+                        for i in 0..va_count {
+                            let val = self.stack[first_va + i as usize];
+                            println!("dyn get va {} -> {}: {:?}", i, target + i, val);
+                            self.reg_set_or_extend(target + i, val);
+                        }
+
+                        println!("VARARGS: setting dtop to {} (fixed top: {}, got {} varargs @ {})", target + va_count, self.cur_proto().stacksize, va_count, target);
+                        self.cur_call_mut().dtop = target + va_count;
+                    } else {
+                        // copy exactly `count` varargs to `target` and following regs, fill with
+                        // nil if less varargs were passed
+
+                        // copy this number of varargs to `target` and following regs
+                        let copy_varargs: u8 = cmp::min(count, va_count);
+                        // these are filled with `nil` and stored at `target + copy_varargs`, ...
+                        let fill_varargs: u8 = copy_varargs - count;
+
+                        for i in 0..copy_varargs {
+                            let val = self.stack[first_va + i as usize];
+                            println!("fixed get va {} (target slot {}): {:?}", first_va + i as usize, target + i, val);
+                            self.reg_set(target + i, val);
+                        }
+
+                        for i in 0..fill_varargs {
+                            println!("va fill slot {}", target + copy_varargs + i);
+                            self.reg_set(target + copy_varargs + i, Value::TNil);
+                        }
+                    }
+                }
                 JMP(rel) => {
                     self.reljump(rel);
                 }
@@ -378,6 +479,7 @@ impl<G: GcStrategy> VM<G> {
                     self.reg_set(target, Value::TBool(!truthy));
                 }
                 INVALID => panic!("invalid opcode at ip={}", self.cur_call().ip),
+                DEBUG(slot) => println!("VM DEBUG slot {} (abs {}): {:?}", slot, self.cur_call().bottom + slot as usize, self.reg_get(slot)),
                 _ => panic!("unimplemented opcode: {:?}", op),
             }
         }
@@ -401,14 +503,16 @@ mod tests {
     macro_rules! fndef {
         ( {
             stack: $stack:expr,
+            params: $params:expr,
+            varargs: $varargs:expr,
             fns: [ $( fn $fndef:tt ),* ],
             consts: [ $( $const_val:expr, )* ],
             ops: [ $( $ops:expr, )* ]
-        } ) => {{
+        } ) => {
             FnData {
                 stacksize: $stack,
-                params: 0,      // TODO
-                varargs: false, // TODO
+                params: $params,
+                varargs: $varargs,
                 opcodes: Opcodes(vec![
                     $($ops,)*
                 ]),
@@ -418,7 +522,22 @@ mod tests {
                 source_name: String::new(), // TODO
                 child_protos: vec![ $( Box::new(fndef!($fndef)), )* ],
             }
-        }};
+        };
+        ( {
+            stack: $stack:expr,
+            fns: [ $( fn $fndef:tt ),* ],
+            consts: [ $( $const_val:expr, )* ],
+            ops: [ $( $ops:expr, )* ]
+        } ) => {
+            fndef!({
+                stack: $stack,
+                params: 0,
+                varargs: false,
+                fns: [ $( fn $fndef ),* ],
+                consts: [ $( $const_val, )* ],
+                ops: [ $( $ops, )* ]
+            });
+        };
     }
 
     /// Runs a new VM instance with the given main function. Returns a tuple containing the VM and
@@ -457,7 +576,7 @@ mod tests {
                 match tmp {
                     $val => {},
                     _ => {
-                        panic!("unexpected value in VM stack: got {:?}, expected {}", tmp, stringify!($val));
+                        panic!("unexpected value in stack slot {}: got {:?}, expected {}", $reg, tmp, stringify!($val));
                     }
                 }
             )*
@@ -483,9 +602,7 @@ mod tests {
     }
 
     #[test]
-    fn call() {
-        // Tests function instantiation, calls and returns
-
+    fn return_single() {
         test!({
             stack: 1,
             fns: [
@@ -507,6 +624,123 @@ mod tests {
             ]
         } => [
             0: Value::TBool(true),  // returned from caller
+        ]);
+    }
+
+    #[test]
+    fn return_multi() {
+        test!({
+            stack: 4,
+            fns: [
+                fn {
+                    stack: 3,
+                    fns: [],
+                    consts: [],
+                    ops: [
+                        LOADBOOL(0,0,true),
+                        LOADBOOL(1,0,false),
+                        LOADNIL(2,0),
+                        RETURN(0,4),        // `true`, `false`, `nil`
+                    ]
+                }
+            ],
+            consts: [],
+            ops: [
+                LOADBOOL(2,1,true), // set 2 and 3 to true value
+                FUNC(0,0),
+                CALL(0,1,5),    // call with no args, store 4 return values in reg 0-3
+                RETURN(0,1),
+            ]
+        } => [
+            0: Value::TBool(true),
+            1: Value::TBool(false),
+            2: Value::TNil,
+            3: Value::TNil, // filled on return (only 3 values explicitly returned, but 4 stored)
+        ]);
+    }
+
+    #[test]
+    fn call_args() {
+        test!({
+            stack: 4,
+            fns: [
+                fn {
+                    stack: 3,
+                    params: 2,
+                    varargs: false,
+                    fns: [],
+                    consts: [],
+                    ops: [
+                        DEBUG(0),
+                        DEBUG(1),
+                        NOT(0,0),       // `false` => `true`
+                        IFNOT(0,100),
+                        NOT(1,1),       // `true` => `false`
+                        IF(1,200),
+                        NOT(2,2),       // `nil` => `true`
+                        IFNOT(2,300),
+                        RETURN(0,4),    // `true`, `false`, `true`
+                    ]
+                }
+            ],
+            consts: [],
+            ops: [
+                FUNC(0,0),
+                LOADBOOL(1,0,false),
+                LOADBOOL(2,1,true),
+                CALL(0,4,3),    // call with 3 args (`false`, `true`, `true`, last disposed)
+                                // store 2 return values in reg 0 and 1
+                RETURN(0,1),
+            ]
+        } => [
+            0: Value::TBool(true),
+            1: Value::TBool(false),
+            2: Value::TBool(true),  // left over from before call
+        ]);
+    }
+
+    #[test]
+    fn varargs() {
+        test!({
+            stack: 4,
+            fns: [
+                fn {
+                    stack: 3,
+                    params: 1,
+                    varargs: true,
+                    fns: [],
+                    consts: [],
+                    ops: [
+                        NOT(0,0),       // `false` => `true`
+                        VARARGS(1,1),   // get 1st vararg (`true`)
+                        IFNOT(1,100),
+                        NOT(1,1),       // `true` => `false`
+                        IF(1,150),
+                        VARARGS(2,0),   // get all varargs ([`true`, `true`])
+                        IF(1,500),
+                        IFNOT(2,200),
+                        IFNOT(3,300),
+                        NOT(2,3),       // `true` => `false`
+                        IF(1,600),
+                        RETURN(0,4),    // `true`, `false`, `false`
+                    ]
+                }
+            ],
+            consts: [],
+            ops: [
+                FUNC(0,0),
+                LOADBOOL(1,0,false),
+                LOADBOOL(2,1,true),
+                CALL(0,4,0),    // call with 3 args (`false`, [`true`, `true`] <- varargs)
+                                // store all return values in regs 0..
+                                // TODO check that dtop is set
+                RETURN(0,1),
+            ]
+        } => [
+            0: Value::TBool(true),
+            1: Value::TBool(false),
+            2: Value::TBool(false),
+            3: Value::TBool(true),  // after dtop, left over from call
         ]);
     }
 

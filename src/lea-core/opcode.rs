@@ -172,8 +172,12 @@ pub enum Opcode {
     /// The values `false` and `nil` will be converted to `true`, any other value will be
     /// converted to `false`. This does not call a metamethod.
     NOT(u8, u8),
-    /// Causes a VM panic
+    /// Causes a VM panic. Used by the emitter for opcodes that will be replaced later in the
+    /// compilation (such as forward jumps).
     INVALID,
+
+    /// Testing and debugging opcode that will print the `Value` stored in the given stack slot.
+    DEBUG(u8),
 }
 
 /// Newtype for `Vec<Opcode>` that overrides `Debug` to use at most one line per printed opcode
