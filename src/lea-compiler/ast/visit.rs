@@ -1,5 +1,7 @@
 //! AST visitor implementation
 
+#![allow(deprecated)]   // TODO don't use map_in_place
+
 use super::*;
 
 use std::mem;

@@ -1,4 +1,7 @@
-//! The Abstract Syntax Tree (AST) used by the Lea compiler
+//! The Abstract Syntax Tree (AST) used by the Lea compiler.
+//!
+//! After parsing the source code, the generated parse tree is converted to this simpler AST. The
+//! AST is then used for everything else in the compiler.
 
 pub mod visit;
 pub mod conv;
