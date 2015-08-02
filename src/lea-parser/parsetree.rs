@@ -148,11 +148,12 @@ pub enum _Stmt<'a> {
     /// ```
     SLFunc(Spanned<&'a str>, Function<'a>),
 
-    /// Executes `body` if `cond` is true and `el` if not
+    /// Executes `body` if `cond` is true and the `elseif`s or `else` if not.
     SIf {
         cond: Expr<'a>,
         body: Block<'a>,
-        el: Block<'a>,
+        elifs: Vec<Spanned<(/* cond */ Expr<'a>, /* body */ Block<'a>)>>,
+        el: Option<Block<'a>>,
     },
 
     /// Loops a block while `cond` is true

@@ -523,13 +523,10 @@ mod tests {
         assert_eq!(statement("if 5 then end").unwrap().value, SIf {
             cond: Spanned::default(ELit(TInt(5))),
             body: Default::default(),
-            el: Default::default(),
+            elifs: Vec::new(),
+            el: None,
         });
-        assert_eq!(statement("if 5 then end"), statement("if 5 then else end"));
-        assert_eq!(statement("if 5 then end"), statement("if 5 then\nelse\nend"));
-        assert_eq!(statement("if 5 then end"), statement("if  5  then  else  end"));
-        assert_eq!(statement("if 5 then end"), statement("if\t5\tthen\telse\tend"));
-        assert_eq!(statement("if 5 then end"), statement("if 5 then else\n end"));
+        assert_eq!(statement("if 5 then else end"), statement("if\t5\tthen\telse\tend"));
 
         assert_eq!(statement("if 1 then break elseif 2 then break break else break end").unwrap().value,
         SIf {
@@ -538,20 +535,16 @@ mod tests {
                 stmts: vec![Spanned::default(SBreak)],
                 span: Default::default(),
             },
-            el: Block {
-                stmts: vec![Spanned::default(SIf {
-                    cond: Spanned::default(ELit(TInt(2))),
-                    body: Block {
-                        stmts: vec![Spanned::default(SBreak), Spanned::default(SBreak)],
-                        span: Default::default(),
-                    },
-                    el: Block {
-                        stmts: vec![Spanned::default(SBreak)],
-                        span: Default::default(),
-                    },
-                })],
+            elifs: vec![
+                Spanned::default((Spanned::default(ELit(TInt(2))), Block {
+                    stmts: vec![Spanned::default(SBreak), Spanned::default(SBreak)],
+                    span: Default::default(),
+                })),
+            ],
+            el: Some(Block {
+                stmts: vec![Spanned::default(SBreak)],
                 span: Default::default(),
-            },
+            }),
         });
 
         assert_eq!(statement("return").unwrap().value, SReturn(vec![]));

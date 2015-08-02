@@ -118,33 +118,11 @@ elseif -> Spanned<(Expr<'input>, Block<'input>)>
 
 stmt_if -> Stmt<'input>
     = "if" cond:expression "then" __+ body:block elifs:elseif* el:("else" __+ block)? "end" {
-        // Build else block for this if statement
-
-        // Start with "pure" else at the end
-        let mut myelse = match el {
-            None => Block { stmts: vec![], span: Span::new(pos, pos) },
-            Some(block) => block,
-        };
-
-        for elif in elifs {
-            let (cond, body) = elif.value;
-
-            myelse = Block {
-                span: elif.span,
-                stmts: vec![
-                    Spanned::new(elif.span, SIf {
-                        cond: cond,
-                        body: body,
-                        el: myelse, // Old else block here
-                    }),
-                ],
-            };
-        }
-
         mkspanned(SIf {
             cond: cond,
             body: body,
-            el: myelse,
+            elifs: elifs,
+            el: el,
         }, start_pos, pos)
     }
 

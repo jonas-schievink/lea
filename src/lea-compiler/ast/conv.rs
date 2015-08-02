@@ -197,11 +197,31 @@ impl<'a> Conv<'a> for parsetree::_Stmt<'a> {
                 ));
             }
 
-            parsetree::SIf { cond, body, el } => {
+            parsetree::SIf { cond, body, elifs, el } => {
+                // Build else block for this if statement
+                // Start with "pure" else at the end
+                let mut myelse: Option<Block> = el.map(|el| el.into());
+
+                for elif in elifs {
+                    let (cond, body) = elif.value;
+
+                    myelse = Some(Block {
+                        localmap: Default::default(),
+                        span: elif.span,
+                        stmts: vec![
+                            Spanned::new(elif.span, SIf {
+                                cond: spanned_into(cond),
+                                body: body.into(),
+                                el: myelse, // Old else block here
+                            }),
+                        ],
+                    });
+                }
+
                 push(_Stmt::SIf {
                     cond: spanned_into(cond),
                     body: body.into(),
-                    el: if el.stmts.is_empty() { None } else { Some(el.into()) },
+                    el: myelse,
                 });
             }
 

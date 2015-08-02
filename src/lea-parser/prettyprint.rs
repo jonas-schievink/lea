@@ -249,7 +249,7 @@ impl<'a, W: Write> PrettyPrinter<'a, W> {
                 try!(write!(self.writer, "local function {}", name.value));
                 try!(self.print_funcbody(f));
             }
-            SIf {ref cond, ref body, ref el} => {
+            SIf {ref cond, ref body, ref elifs, ref el} => {
                 try!(write!(self.writer, "if "));
                 try!(self.print_expr(cond));
                 try!(write!(self.writer, " then{}", self.lineend));
@@ -258,8 +258,18 @@ impl<'a, W: Write> PrettyPrinter<'a, W> {
                 try!(self.print_block(body));
                 self.unindent();
 
-                // TODO handle elseif
-                if el.stmts.len() > 0 {
+                for elif in elifs {
+                    try!(self.print_indent());
+                    try!(write!(self.writer, "elseif "));
+                    try!(self.print_expr(&elif.0));
+                    try!(write!(self.writer, " then{}", self.lineend));
+
+                    self.indent();
+                    try!(self.print_block(&elif.1));
+                    self.unindent();
+                }
+
+                if let Some(ref el) = *el {
                     try!(write!(self.writer, "else"));
                     self.indent();
                     for stmt in &el.stmts {

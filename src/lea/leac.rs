@@ -80,7 +80,7 @@ fn prettyprint<W: Write>(code: &str, source_name: &str, mut target: W) -> io::Re
     match parser::block(code) {
         Ok(main) => {
             let mut pp = PrettyPrinter::new(&mut target);
-            pp.print_block(&main);
+            try!(pp.print_block(&main));
         }
         Err(e) => {
             try!(e.format(code, source_name, &mut *stderr_term()));
