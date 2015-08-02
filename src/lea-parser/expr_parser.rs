@@ -1,7 +1,5 @@
-//! This module contains an AST visitor that turns all `ERawOp`s into `EBinOp` expression trees,
-//! ensuring proper operator precedences are used.
-//!
-//! This makes a tree out of the "raw" expressions parsed by the generated parser.
+//! This module contains a shunting-yard operator precedence parser. This is invoked by the main
+//! parser when binary operators need to be resolved.
 
 use parsetree::*;
 use op::*;
