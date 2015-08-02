@@ -4,7 +4,7 @@ use super::*;
 use parser::parsetree;
 use parser::span::Spanned;
 
-use ::lea_core::literal;
+use lea_core::constant::Const;
 
 impl<'a> From<parsetree::Function<'a>> for Function<'a> {
     fn from(func: parsetree::Function<'a>) -> Self {
@@ -38,7 +38,7 @@ impl<'a> From<parsetree::_Variable<'a>> for _Variable<'a> {
                 VIndex(Box::new(spanned_into(*var)), match index {
                     parsetree::VarIndex::DotIndex(name) => {
                         Box::new(Spanned::new(name.span,
-                            ELit(literal::TStr(name.value.to_owned()))))
+                            ELit(Const::Str(name.value.to_owned()))))
                     }
                     parsetree::VarIndex::ExprIndex(expr) => {
                         Box::new(spanned_into(*expr))
@@ -98,7 +98,7 @@ fn conv_table<'a>(cons: parsetree::TableCons<'a>) -> Vec<(Expr<'a>, Expr<'a>)> {
             parsetree::TableEntry::Elem(value) => {
                 let idx = i;
                 i += 1;
-                (Spanned::new(value.span, ELit(literal::TInt(idx))), spanned_into(value))
+                (Spanned::new(value.span, ELit(Const::Int(idx))), spanned_into(value))
             }
         });
     }
@@ -185,7 +185,7 @@ impl<'a> Conv<'a> for parsetree::_Stmt<'a> {
                 push(_Stmt::SAssign(
                     vec![Spanned::new(var.span, VIndex(
                         Box::new(spanned_into(var)),
-                        Box::new(Spanned::new(name.span, ELit(literal::TStr(name.to_string()))))
+                        Box::new(Spanned::new(name.span, ELit(Const::Str(name.to_string()))))
                     ))],
                     vec![Spanned::new(func.body.span, EFunc(func))]
                 ));
@@ -274,7 +274,7 @@ impl<'a> Conv<'a> for parsetree::CallArgs<'a> {
             }
             parsetree::CallArgs::String(s) => {
                 // TODO use real span
-                push(Spanned::default(ELit(literal::TStr(s))))
+                push(Spanned::default(ELit(Const::Str(s))))
             }
             parsetree::CallArgs::Table(cons) => {
                 push(Spanned::default(ETable(conv_table(cons))))

@@ -496,7 +496,7 @@ mod tests {
 
     use lea_core::fndata::FnData;
     use lea_core::opcode::*;
-    use lea_core::literal::Literal;
+    use lea_core::constant::Const;
 
 
     /// Defines a function. Evaluates to an `FnData` object.
@@ -844,8 +844,8 @@ mod tests {
             stack: 8,
             fns: [],
             consts: [
-                Literal::TInt(7),
-                Literal::TStr("test".to_string()),
+                Const::Int(7),
+                Const::Str("test".to_string()),
             ],
             ops: [
                 LOADNIL(0,0),

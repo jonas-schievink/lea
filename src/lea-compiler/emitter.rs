@@ -8,7 +8,7 @@ use parser::span::{Span, Spanned};
 use lea_core::limits;
 use lea_core::fndata::{UpvalDesc, FnData};
 use lea_core::opcode::*;
-use lea_core::literal::*;
+use lea_core::constant::Const;
 
 use term::{color, Terminal, Attr};
 
@@ -129,18 +129,18 @@ impl Emitter {
 
     /// Adds a constant to the program's constant table and returns its index (does not add it if
     /// the same value already exists in the constant table).
-    fn add_const(&mut self, lit: &Literal) -> u16 {
+    fn add_const(&mut self, c: &Const) -> u16 {
         // ensure that only "useful" constant are added
-        debug_assert!(match *lit {
-            TInt(..) | TFloat(..) | TStr(..) => true,
-            TBool(..) | TNil => false, // handled by special opcodes
+        debug_assert!(match *c {
+            Const::Int(..) | Const::Float(..) | Const::Str(..) => true,
+            Const::Bool(..) | Const::Nil => false, // handled by special opcodes
         });
 
         {
             let func = self.cur_func();
             for i in 0..func.consts.len() {
-                let c = &func.consts[i];
-                if lit == c {
+                let c2 = &func.consts[i];
+                if c == c2 {
                     // this cast cannot fail, because we stop adding constants when the u16 limit
                     // is reached
                     return i as u16;
@@ -153,8 +153,8 @@ impl Emitter {
             self.err("constant limit reached", Some(format!("limit: {}", u16::MAX as u64 + 1)));
             u16::MAX
         } else {
-            debug!(" CONST {} = {:?}", id, lit);
-            self.cur_func_mut().consts.push(lit.clone());
+            debug!(" CONST {} = {:?}", id, c);
+            self.cur_func_mut().consts.push(c.clone());
             id as u16
         }
     }
@@ -428,7 +428,7 @@ impl Emitter {
                 let obj_slot = self.alloc_slots(1);
                 self.emit_expr_into(obj, obj_slot);
 
-                let const_id = self.add_const(&TStr(name.to_string()));
+                let const_id = self.add_const(&Const::Str(name.to_string()));
 
                 self.emit(LOADK(method_slot, const_id));
                 self.emit(GETIDX(method_slot, obj_slot, method_slot));
@@ -517,16 +517,16 @@ impl Emitter {
             }
             ELit(ref lit) => {
                 match *lit {
-                    TNil => {
+                    Const::Nil => {
                         self.emit(LOADNIL(hint_slot, 0));
                         hint_slot
                     }
-                    TInt(_) | TFloat(_) | TStr(_) => {
+                    Const::Int(_) | Const::Float(_) | Const::Str(_) => {
                         let id = self.add_const(lit);
                         self.emit(LOADK(hint_slot, id));
                         hint_slot
                     }
-                    TBool(b) => {
+                    Const::Bool(b) => {
                         self.emit(LOADBOOL(hint_slot, 0, b));
                         hint_slot
                     }
@@ -652,7 +652,7 @@ impl Emitter {
                 let tmp = self.alloc_slots(1);
                 for (i, elem) in elems.iter().enumerate() {
                     let real = self.emit_expr(elem, tmp);
-                    let constid = self.add_const(&TInt(i as i64));
+                    let constid = self.add_const(&Const::Int(i as i64));
 
                     // TODO Specialized `SETIDX` for constant strings/integers
                     self.emit(LOADK(idx_slot, constid));
@@ -689,7 +689,7 @@ impl Emitter {
 
                 // build fake assignment node and use generic assigment code to emit code
                 let mut vals = exprs.clone();
-                vals.push(Spanned::default(ELit(TNil)));
+                vals.push(Spanned::default(ELit(Const::Nil)));
 
                 let assign = SAssign(locals, vals);
                 self.emit_stmt(&Spanned::new(s.span, assign), block);

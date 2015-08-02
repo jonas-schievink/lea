@@ -10,7 +10,7 @@ pub use self::Call::*;
 use span::{Span, Spanned};
 use op::*;
 
-use lea_core::literal::*;
+use lea_core::constant::Const;
 
 
 /// A block containing any number of statements. All blocks define a scope in which local variables
@@ -102,7 +102,7 @@ pub enum _Stmt<'a> {
 
     /// Abort the current loop
     SBreak,
-    
+
     /// No-op semicolon statement
     SSemi,
 
@@ -204,7 +204,7 @@ pub type TableCons<'a> = Vec<TableEntry<'a>>;
 /// Expression nodes
 #[derive(Clone, PartialEq, Debug)]
 pub enum _Expr<'a> {
-    ELit(Literal),
+    ELit(Const),
     EBinOp(Box<Expr<'a>>, BinOp, Box<Expr<'a>>),
     EUnOp(UnOp, Box<Expr<'a>>),
     EBraced(Box<Expr<'a>>),

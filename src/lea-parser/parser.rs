@@ -70,61 +70,61 @@ mod tests {
     use span::Spanned;
     use op::*;
 
-    use lea_core::literal::*;
+    use lea_core::constant::Const;
 
     use std::default::Default;
 
     #[test]
     fn literals() {
-        assert_eq!(literal("0").unwrap().value, TInt(0));
-        assert_eq!(literal("1").unwrap().value, TInt(1));
-        assert_eq!(literal("-1").unwrap().value, TInt(-1));
-        assert_eq!(literal("9999999999").unwrap().value, TInt(9999999999i64));
-        assert_eq!(literal("-9999999999").unwrap().value, TInt(-9999999999i64));
+        assert_eq!(literal("0").unwrap().value, Const::Int(0));
+        assert_eq!(literal("1").unwrap().value, Const::Int(1));
+        assert_eq!(literal("-1").unwrap().value, Const::Int(-1));
+        assert_eq!(literal("9999999999").unwrap().value, Const::Int(9999999999i64));
+        assert_eq!(literal("-9999999999").unwrap().value, Const::Int(-9999999999i64));
 
-        assert_eq!(literal("0x00").unwrap().value, TInt(0));
-        assert_eq!(literal("-0x00").unwrap().value, TInt(0));
-        assert_eq!(literal("0xff").unwrap().value, TInt(255));
-        assert_eq!(literal("-0xff").unwrap().value, TInt(-255));
-        assert_eq!(literal("0xffffffffff").unwrap().value, TInt(0xffffffffff));
+        assert_eq!(literal("0x00").unwrap().value, Const::Int(0));
+        assert_eq!(literal("-0x00").unwrap().value, Const::Int(0));
+        assert_eq!(literal("0xff").unwrap().value, Const::Int(255));
+        assert_eq!(literal("-0xff").unwrap().value, Const::Int(-255));
+        assert_eq!(literal("0xffffffffff").unwrap().value, Const::Int(0xffffffffff));
 
-        assert_eq!(literal("0o76").unwrap().value, TInt(0o76));
-        assert_eq!(literal("-0o76").unwrap().value, TInt(-0o76));
+        assert_eq!(literal("0o76").unwrap().value, Const::Int(0o76));
+        assert_eq!(literal("-0o76").unwrap().value, Const::Int(-0o76));
 
-        assert_eq!(literal("0.0").unwrap().value, TFloat(0.0));
-        assert_eq!(literal("-0.0").unwrap().value, TFloat(-0.0));
-        assert_eq!(literal("10000.0").unwrap().value, TFloat(10000.0));
+        assert_eq!(literal("0.0").unwrap().value, Const::Float(0.0));
+        assert_eq!(literal("-0.0").unwrap().value, Const::Float(-0.0));
+        assert_eq!(literal("10000.0").unwrap().value, Const::Float(10000.0));
 
-        assert_eq!(literal("1e4").unwrap().value, TFloat(1e+4));
-        assert_eq!(literal("1e+4").unwrap().value, TFloat(1e+4));
-        assert_eq!(literal("-1e+4").unwrap().value, TFloat(-1e+4));
-        assert_eq!(literal("2e-4").unwrap().value, TFloat(2e-4));
+        assert_eq!(literal("1e4").unwrap().value, Const::Float(1e+4));
+        assert_eq!(literal("1e+4").unwrap().value, Const::Float(1e+4));
+        assert_eq!(literal("-1e+4").unwrap().value, Const::Float(-1e+4));
+        assert_eq!(literal("2e-4").unwrap().value, Const::Float(2e-4));
 
-        assert_eq!(literal("nil").unwrap().value, TNil);
-        assert_eq!(literal("false").unwrap().value, TBool(false));
-        assert_eq!(literal("true").unwrap().value, TBool(true));
+        assert_eq!(literal("nil").unwrap().value, Const::Nil);
+        assert_eq!(literal("false").unwrap().value, Const::Bool(false));
+        assert_eq!(literal("true").unwrap().value, Const::Bool(true));
 
-        assert_eq!(literal("\"\"").unwrap().value, TStr("".to_string()));
-        assert_eq!(literal("\" test_string \"").unwrap().value, TStr(" test_string ".to_string()));
-        assert_eq!(literal("\"hi\\n\\r\\t\\\\ \\\"\"").unwrap().value, TStr("hi\n\r\t\\ \"".to_string()));
-        assert_eq!(literal("\"\\127\\0\\1\\255\\xff\"").unwrap().value, TStr("\x7f\0\x01\u{ff}\u{ff}".to_string()));
+        assert_eq!(literal("\"\"").unwrap().value, Const::Str("".to_string()));
+        assert_eq!(literal("\" test_string \"").unwrap().value, Const::Str(" test_string ".to_string()));
+        assert_eq!(literal("\"hi\\n\\r\\t\\\\ \\\"\"").unwrap().value, Const::Str("hi\n\r\t\\ \"".to_string()));
+        assert_eq!(literal("\"\\127\\0\\1\\255\\xff\"").unwrap().value, Const::Str("\x7f\0\x01\u{ff}\u{ff}".to_string()));
 
-        assert_eq!(literal("''").unwrap().value, TStr("".to_string()));
-        assert_eq!(literal("'\\n\\r'").unwrap().value, TStr("\n\r".to_string()));
-        assert_eq!(literal("'\\z   \n\"'").unwrap().value, TStr("\"".to_string()));
+        assert_eq!(literal("''").unwrap().value, Const::Str("".to_string()));
+        assert_eq!(literal("'\\n\\r'").unwrap().value, Const::Str("\n\r".to_string()));
+        assert_eq!(literal("'\\z   \n\"'").unwrap().value, Const::Str("\"".to_string()));
 
         assert!(literal("\"\n\"").is_err());
         assert!(literal("\"\\q\"").is_err());       // invalid escape seq
 
-        assert_eq!(literal("[[test]]").unwrap().value, TStr("test".to_string()));
-        assert_eq!(literal("[=[test]=]").unwrap().value, TStr("test".to_string()));
-        assert_eq!(literal("[======[test]======]").unwrap().value, TStr("test".to_string()));
+        assert_eq!(literal("[[test]]").unwrap().value, Const::Str("test".to_string()));
+        assert_eq!(literal("[=[test]=]").unwrap().value, Const::Str("test".to_string()));
+        assert_eq!(literal("[======[test]======]").unwrap().value, Const::Str("test".to_string()));
 
-        assert_eq!(literal("[=[test]]]=]").unwrap().value, TStr("test]]".to_string()));
+        assert_eq!(literal("[=[test]]]=]").unwrap().value, Const::Str("test]]".to_string()));
         assert_eq!(expression("[=[test]=] + [=[bla]=]").unwrap().value, EBinOp(
-            Box::new(Spanned::default(ELit(TStr("test".to_string())))),
+            Box::new(Spanned::default(ELit(Const::Str("test".to_string())))),
             BinOp::Add,
-            Box::new(Spanned::default(ELit(TStr("bla".to_string())))),
+            Box::new(Spanned::default(ELit(Const::Str("bla".to_string())))),
         ));
     }
 
@@ -145,58 +145,58 @@ mod tests {
     fn expr() {
         assert_eq!(expression("1+2+3").unwrap().value, EBinOp(
             Box::new(Spanned::default(EBinOp(
-                Box::new(Spanned::default(ELit(TInt(1)))),
+                Box::new(Spanned::default(ELit(Const::Int(1)))),
                 BinOp::Add,
-                Box::new(Spanned::default(ELit(TInt(2))))
+                Box::new(Spanned::default(ELit(Const::Int(2))))
             ))), BinOp::Add,
-                Box::new(Spanned::default(ELit(TInt(3))))
+                Box::new(Spanned::default(ELit(Const::Int(3))))
             )
         );
         assert_eq!(expression("4+1*2").unwrap().value, EBinOp(
-            Box::new(Spanned::default(ELit(TInt(4)))),
+            Box::new(Spanned::default(ELit(Const::Int(4)))),
             BinOp::Add,
             Box::new(Spanned::default(EBinOp(
-                Box::new(Spanned::default(ELit(TInt(1)))),
+                Box::new(Spanned::default(ELit(Const::Int(1)))),
                 BinOp::Mul,
-                Box::new(Spanned::default(ELit(TInt(2))))
+                Box::new(Spanned::default(ELit(Const::Int(2))))
             ))
         )));
         assert_eq!(expression("4*1+2").unwrap().value, EBinOp(
             Box::new(Spanned::default(EBinOp(
-                Box::new(Spanned::default(ELit(TInt(4)))),
+                Box::new(Spanned::default(ELit(Const::Int(4)))),
                 BinOp::Mul,
-                Box::new(Spanned::default(ELit(TInt(1))))
+                Box::new(Spanned::default(ELit(Const::Int(1))))
             ))),
             BinOp::Add,
-            Box::new(Spanned::default(ELit(TInt(2))))
+            Box::new(Spanned::default(ELit(Const::Int(2))))
         ));
 
         assert_eq!(expression("-(5)").unwrap().value, EUnOp(
             UnOp::Negate,
-            Box::new(Spanned::default(EBraced(Box::new(Spanned::default(ELit(TInt(5)))))))
+            Box::new(Spanned::default(EBraced(Box::new(Spanned::default(ELit(Const::Int(5)))))))
         ));
         assert_eq!(expression("-(5+1)").unwrap().value, EUnOp(
             UnOp::Negate,
             Box::new(Spanned::default(EBraced(Box::new(Spanned::default(EBinOp(
-                Box::new(Spanned::default(ELit(TInt(5)))),
+                Box::new(Spanned::default(ELit(Const::Int(5)))),
                 BinOp::Add,
-                Box::new(Spanned::default(ELit(TInt(1))))
+                Box::new(Spanned::default(ELit(Const::Int(1))))
             ))))))
         ));
         assert_eq!(expression("(1+2)*3").unwrap().value, EBinOp(
             Box::new(Spanned::default(EBraced(Box::new(Spanned::default(EBinOp(
-                Box::new(Spanned::default(ELit(TInt(1)))),
+                Box::new(Spanned::default(ELit(Const::Int(1)))),
                 BinOp::Add,
-                Box::new(Spanned::default(ELit(TInt(2))))
+                Box::new(Spanned::default(ELit(Const::Int(2))))
             )))))),
             BinOp::Mul,
-            Box::new(Spanned::default(ELit(TInt(3))))
+            Box::new(Spanned::default(ELit(Const::Int(3))))
         ));
         assert_eq!(expression("-!~(#5)").unwrap().value, EUnOp(
             UnOp::Negate, Box::new(Spanned::default(EUnOp(
                 UnOp::LNot, Box::new(Spanned::default(EUnOp(
                     UnOp::BNot, Box::new(Spanned::default(EBraced(Box::new(Spanned::default(EUnOp(
-                        UnOp::Len, Box::new(Spanned::default(ELit(TInt(5))))
+                        UnOp::Len, Box::new(Spanned::default(ELit(Const::Int(5))))
                     ))))))
                 )))
             )))
@@ -205,44 +205,44 @@ mod tests {
         // right-associativity
         assert_eq!(expression("1^2^3+4").unwrap().value, EBinOp(
             Box::new(Spanned::default(EBinOp(
-                Box::new(Spanned::default(ELit(TInt(1)))),
+                Box::new(Spanned::default(ELit(Const::Int(1)))),
                 BinOp::Pow,
                 Box::new(Spanned::default(EBinOp(
-                    Box::new(Spanned::default(ELit(TInt(2)))),
+                    Box::new(Spanned::default(ELit(Const::Int(2)))),
                     BinOp::Pow,
-                    Box::new(Spanned::default(ELit(TInt(3)))),
+                    Box::new(Spanned::default(ELit(Const::Int(3)))),
                 )))
             ))),
             BinOp::Add,
-            Box::new(Spanned::default(ELit(TInt(4)))),
+            Box::new(Spanned::default(ELit(Const::Int(4)))),
         ));
 
         // This requires reversing everything because of op. precedences
         assert_eq!(expression("9||8==7&6~5|4>>3+2*1").unwrap().value, EBinOp(
-            Box::new(Spanned::default(ELit(TInt(9)))),
+            Box::new(Spanned::default(ELit(Const::Int(9)))),
             BinOp::LOr,
             Box::new(Spanned::default(EBinOp(
-                Box::new(Spanned::default(ELit(TInt(8)))),
+                Box::new(Spanned::default(ELit(Const::Int(8)))),
                 BinOp::Eq,
                 Box::new(Spanned::default(EBinOp(
-                    Box::new(Spanned::default(ELit(TInt(7)))),
+                    Box::new(Spanned::default(ELit(Const::Int(7)))),
                     BinOp::BAnd,
                     Box::new(Spanned::default(EBinOp(
-                        Box::new(Spanned::default(ELit(TInt(6)))),
+                        Box::new(Spanned::default(ELit(Const::Int(6)))),
                         BinOp::BXor,
                         Box::new(Spanned::default(EBinOp(
-                            Box::new(Spanned::default(ELit(TInt(5)))),
+                            Box::new(Spanned::default(ELit(Const::Int(5)))),
                             BinOp::BOr,
                             Box::new(Spanned::default(EBinOp(
-                                Box::new(Spanned::default(ELit(TInt(4)))),
+                                Box::new(Spanned::default(ELit(Const::Int(4)))),
                                 BinOp::ShiftR,
                                 Box::new(Spanned::default(EBinOp(
-                                    Box::new(Spanned::default(ELit(TInt(3)))),
+                                    Box::new(Spanned::default(ELit(Const::Int(3)))),
                                     BinOp::Add,
                                     Box::new(Spanned::default(EBinOp(
-                                        Box::new(Spanned::default(ELit(TInt(2)))),
+                                        Box::new(Spanned::default(ELit(Const::Int(2)))),
                                         BinOp::Mul,
-                                        Box::new(Spanned::default(ELit(TInt(1))))
+                                        Box::new(Spanned::default(ELit(Const::Int(1))))
                                     )))
                                 )))
                             )))
@@ -272,39 +272,39 @@ mod tests {
     fn expr_special() {
         assert_eq!(expression("[]").unwrap().value, EArray(vec![]));
         assert_eq!(expression("[1]").unwrap().value, EArray(vec![
-            Spanned::default(ELit(TInt(1))),
+            Spanned::default(ELit(Const::Int(1))),
         ]));
         assert_eq!(expression("[1,]").unwrap().value, EArray(vec![
-            Spanned::default(ELit(TInt(1))),
+            Spanned::default(ELit(Const::Int(1))),
         ]));
         assert_eq!(expression("[1,2]").unwrap().value, EArray(vec![
-            Spanned::default(ELit(TInt(1))),
-            Spanned::default(ELit(TInt(2))),
+            Spanned::default(ELit(Const::Int(1))),
+            Spanned::default(ELit(Const::Int(2))),
         ]));
         assert_eq!(expression("[1,2,]").unwrap().value, EArray(vec![
-            Spanned::default(ELit(TInt(1))),
-            Spanned::default(ELit(TInt(2))),
+            Spanned::default(ELit(Const::Int(1))),
+            Spanned::default(ELit(Const::Int(2))),
         ]));
 
         assert_eq!(expression("{}").unwrap().value, ETable(vec![]));
         assert_eq!(expression("[{k=[1,2,],}]").unwrap().value, EArray(vec![
             Spanned::default(ETable(vec![
                 TableEntry::Pair(
-                    Spanned::default(ELit(TStr("k".to_string()))),
+                    Spanned::default(ELit(Const::Str("k".to_string()))),
                     Spanned::default(EArray(vec![
-                        Spanned::default(ELit(TInt(1))),
-                        Spanned::default(ELit(TInt(2))),
+                        Spanned::default(ELit(Const::Int(1))),
+                        Spanned::default(ELit(Const::Int(2))),
                     ]))
                 ),
             ]))
         ]));
         assert_eq!(expression("{ [9] = 0, [9] }").unwrap().value, ETable(vec![
             TableEntry::Pair(
-                Spanned::default(ELit(TInt(9))),
-                Spanned::default(ELit(TInt(0))),
+                Spanned::default(ELit(Const::Int(9))),
+                Spanned::default(ELit(Const::Int(0))),
             ),
             TableEntry::Elem(Spanned::default(EArray(vec![
-                Spanned::default(ELit(TInt(9)))
+                Spanned::default(ELit(Const::Int(9)))
             ]))),
         ]));
 
@@ -337,8 +337,8 @@ mod tests {
         assert_eq!(statement("f ( 1 , 2 )").unwrap().value, SCall(SimpleCall(
             Box::new(Spanned::default(EVar(Spanned::default(VNamed("f"))))),
             CallArgs::Normal(vec![
-                Spanned::default(ELit(TInt(1))),
-                Spanned::default(ELit(TInt(2))),
+                Spanned::default(ELit(Const::Int(1))),
+                Spanned::default(ELit(Const::Int(2))),
             ]),
         )));
         assert_eq!(expression("f()").unwrap().value, ECall(SimpleCall(
@@ -397,9 +397,9 @@ mod tests {
         assert_eq!(statement("i, j = 1, 2, 3").unwrap().value, SAssign(vec![
             Spanned::default(VNamed("i")), Spanned::default(VNamed("j")),
         ], vec![
-            Spanned::default(ELit(TInt(1))),
-            Spanned::default(ELit(TInt(2))),
-            Spanned::default(ELit(TInt(3))),
+            Spanned::default(ELit(Const::Int(1))),
+            Spanned::default(ELit(Const::Int(2))),
+            Spanned::default(ELit(Const::Int(3))),
         ]));
 
         assert_eq!(statement("local\nfunction\nt()\nend").unwrap().value, SLFunc(
@@ -443,12 +443,12 @@ mod tests {
         assert_eq!(statement("local i").unwrap().value, SDecl(vec![Spanned::default("i")], vec![]));
         assert_eq!(statement("local j,k").unwrap().value, SDecl(vec![Spanned::default("j"), Spanned::default("k")], vec![]));
         assert_eq!(statement("local i = nil").unwrap().value, SDecl(vec![Spanned::default("i")], vec![
-            Spanned::default(ELit(TNil))
+            Spanned::default(ELit(Const::Nil))
         ]));
         assert_eq!(statement("local i,j = 0, 2").unwrap().value, SDecl(vec![
             Spanned::default("i"), Spanned::default("j"),
         ], vec![
-            Spanned::default(ELit(TInt(0))), Spanned::default(ELit(TInt(2))),
+            Spanned::default(ELit(Const::Int(0))), Spanned::default(ELit(Const::Int(2))),
         ]));
 
         assert_eq!(statement("for i in j do end").unwrap().value, SForIn {
@@ -459,10 +459,10 @@ mod tests {
         assert_eq!(statement(" for  i,j, k , l in 1, 2,3 , 4 do break end").unwrap().value, SForIn {
             vars: vec![Spanned::default("i"), Spanned::default("j"), Spanned::default("k"), Spanned::default("l")],
             iter: vec![
-                Spanned::default(ELit(TInt(1))),
-                Spanned::default(ELit(TInt(2))),
-                Spanned::default(ELit(TInt(3))),
-                Spanned::default(ELit(TInt(4))),
+                Spanned::default(ELit(Const::Int(1))),
+                Spanned::default(ELit(Const::Int(2))),
+                Spanned::default(ELit(Const::Int(3))),
+                Spanned::default(ELit(Const::Int(4))),
             ],
             body: Block {
                 stmts: vec![
@@ -474,7 +474,7 @@ mod tests {
 
         assert_eq!(statement("for i = 1, #t do do end break end").unwrap().value, SFor {
             var: Spanned::default("i"),
-            start: Spanned::default(ELit(TInt(1))),
+            start: Spanned::default(ELit(Const::Int(1))),
             end: Spanned::default(EUnOp(
                 UnOp::Len,
                 Box::new(Spanned::default(EVar(Spanned::default(VNamed("t")))))
@@ -490,9 +490,9 @@ mod tests {
         });
         assert_eq!(statement("for i = 1,2,3 do do end break end").unwrap().value, SFor {
             var: Spanned::default("i"),
-            start: Spanned::default(ELit(TInt(1))),
-            end: Spanned::default(ELit(TInt(2))),
-            step: Some(Spanned::default(ELit(TInt(3)))),
+            start: Spanned::default(ELit(Const::Int(1))),
+            end: Spanned::default(ELit(Const::Int(2))),
+            step: Some(Spanned::default(ELit(Const::Int(3)))),
             body: Block {
                 stmts: vec![
                     Spanned::default(SDo(Default::default())),
@@ -503,7 +503,7 @@ mod tests {
         });
 
         assert_eq!(statement("repeat break until 1").unwrap().value, SRepeat {
-            abort_on: Spanned::default(ELit(TInt(1))),
+            abort_on: Spanned::default(ELit(Const::Int(1))),
             body: Block {
                 stmts: vec![Spanned::default(SBreak)],
                 span: Default::default(),
@@ -511,7 +511,7 @@ mod tests {
         });
 
         assert_eq!(statement("while 1 do break end").unwrap().value, SWhile {
-            cond: Spanned::default(ELit(TInt(1))),
+            cond: Spanned::default(ELit(Const::Int(1))),
             body: Block {
                 stmts: vec![Spanned::default(SBreak)],
                 span: Default::default(),
@@ -521,7 +521,7 @@ mod tests {
         assert_eq!(statement("while 1 do break end"), statement(" while \n1\n do break\t\n end "));
 
         assert_eq!(statement("if 5 then end").unwrap().value, SIf {
-            cond: Spanned::default(ELit(TInt(5))),
+            cond: Spanned::default(ELit(Const::Int(5))),
             body: Default::default(),
             elifs: Vec::new(),
             el: None,
@@ -530,13 +530,13 @@ mod tests {
 
         assert_eq!(statement("if 1 then break elseif 2 then break break else break end").unwrap().value,
         SIf {
-            cond: Spanned::default(ELit(TInt(1))),
+            cond: Spanned::default(ELit(Const::Int(1))),
             body: Block {
                 stmts: vec![Spanned::default(SBreak)],
                 span: Default::default(),
             },
             elifs: vec![
-                Spanned::default((Spanned::default(ELit(TInt(2))), Block {
+                Spanned::default((Spanned::default(ELit(Const::Int(2))), Block {
                     stmts: vec![Spanned::default(SBreak), Spanned::default(SBreak)],
                     span: Default::default(),
                 })),
@@ -548,7 +548,7 @@ mod tests {
         });
 
         assert_eq!(statement("return").unwrap().value, SReturn(vec![]));
-        assert_eq!(statement("return 1").unwrap().value, SReturn(vec![Spanned::default(ELit(TInt(1)))]));
+        assert_eq!(statement("return 1").unwrap().value, SReturn(vec![Spanned::default(ELit(Const::Int(1)))]));
         assert_eq!(statement("return 1, 2"), statement("return \t\n1 \n,  \t2"));
 
         assert!(statement("return 1,").is_err());
@@ -576,12 +576,12 @@ mod tests {
             stmts: vec![
                 Spanned::default(SAssign(
                     vec![Spanned::default(VNamed("t"))],
-                    vec![Spanned::default(ELit(TInt(1)))]
+                    vec![Spanned::default(ELit(Const::Int(1)))]
                 )),
                 Spanned::default(SDecl(vec![Spanned::default("r"), Spanned::default("s")], vec![
-                    Spanned::default(ELit(TInt(4))),
-                    Spanned::default(ELit(TInt(2))),
-                    Spanned::default(ELit(TInt(1)))
+                    Spanned::default(ELit(Const::Int(4))),
+                    Spanned::default(ELit(Const::Int(2))),
+                    Spanned::default(ELit(Const::Int(1)))
                 ])),
                 Spanned::default(SFunc(Spanned::default(VNamed("f")), Function {
                     params: vec![Spanned::default("g")],

@@ -7,177 +7,177 @@ use ast::visit::*;
 use parser::span::Spanned;
 use parser::op::*;
 
-use lea_core::literal::*;
+use lea_core::constant::Const;
 
 
 struct Folder {
     warns: Vec<Warning>,
 }
 
-fn unary_err(op: UnOp, lit: &Literal) -> String {
+fn unary_err(op: UnOp, lit: &Const) -> String {
     format!("attempt to apply unary `{}` to {}", op, lit.get_type_str())
 }
 
-fn bin_err(lhs: &Literal, op: BinOp, rhs: &Literal) -> String {
+fn bin_err(lhs: &Const, op: BinOp, rhs: &Const) -> String {
     format!("attempt to apply binary `{}` to {} and {}", op, lhs.get_type_str(), rhs.get_type_str())
 }
 
 /// Folds a literal used as a truth value (eg. as an if condition or in a logical operator).
-fn fold_truth(lit: &Literal) -> bool {
+fn fold_truth(lit: &Const) -> bool {
     match *lit {
-        TInt(_) | TFloat(_) | TStr(_) | TBool(true) => true,
-        TBool(false) | TNil => false,
+        Const::Int(_) | Const::Float(_) | Const::Str(_) | Const::Bool(true) => true,
+        Const::Bool(false) | Const::Nil => false,
     }
 }
 
 /// Tries to fold a unary operator applied to a literal.
 ///
-/// Returns `Ok(Literal)` on success and `Err(String)` with an appropriate error message if the
+/// Returns `Ok(Const)` on success and `Err(String)` with an appropriate error message if the
 /// type of the literal mismatched the operator's expected type or domain.
-fn fold_unop(op: UnOp, lit: &Literal) -> Result<Literal, String> {
+fn fold_unop(op: UnOp, lit: &Const) -> Result<Const, String> {
     match op {
         UnOp::Negate => match *lit { // -
-            TInt(i) => Ok(TInt(-i)),
-            TFloat(f) => Ok(TFloat(-f)),
-            TStr(_) | TBool(_) | TNil => Err(unary_err(op, lit)),
+            Const::Int(i) => Ok(Const::Int(-i)),
+            Const::Float(f) => Ok(Const::Float(-f)),
+            Const::Str(_) | Const::Bool(_) | Const::Nil => Err(unary_err(op, lit)),
         },
         UnOp::LNot | UnOp::LNotLua => match *lit { // ! / not
-            TInt(_) | TFloat(_) | TStr(_) => Ok(TBool(false)),  // all these evaluate to true
-            TBool(b) => Ok(TBool(!b)),
-            TNil => Ok(TBool(true)),
+            Const::Int(_) | Const::Float(_) | Const::Str(_) => Ok(Const::Bool(false)),  // all these evaluate to true
+            Const::Bool(b) => Ok(Const::Bool(!b)),
+            Const::Nil => Ok(Const::Bool(true)),
         },
         UnOp::BNot => match *lit { // ~
-            TInt(i) => Ok(TInt(!i)),
-            TFloat(_) | TStr(_) | TBool(_) | TNil => Err(unary_err(op, lit)),
+            Const::Int(i) => Ok(Const::Int(!i)),
+            Const::Float(_) | Const::Str(_) | Const::Bool(_) | Const::Nil => Err(unary_err(op, lit)),
         },
         UnOp::Len => match *lit { // #
-            TInt(_) | TFloat(_) | TBool(_) | TNil => Err(unary_err(op, lit)),
+            Const::Int(_) | Const::Float(_) | Const::Bool(_) | Const::Nil => Err(unary_err(op, lit)),
 
             // Return number of bytes in the string (compat. to Lua)
-            TStr(ref s) => Ok(TInt(s.len() as i64)),
+            Const::Str(ref s) => Ok(Const::Int(s.len() as i64)),
         },
     }
 }
 
 /// Tries to fold a binary operator applied to 2 literals.
 ///
-/// Returns `Ok(Literal)` on success and `Err(String)` if the operator is applied to invalid types
+/// Returns `Ok(Const)` on success and `Err(String)` if the operator is applied to invalid types
 /// or values.
-fn fold_binop(lhs: &Literal, op: BinOp, rhs: &Literal) -> Result<Literal, String> {
+fn fold_binop(lhs: &Const, op: BinOp, rhs: &Const) -> Result<Const, String> {
     match op {
         BinOp::Add => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => Ok(TInt(i + j)),
-            (&TInt(i), &TFloat(j)) => Ok(TFloat(i as f64 + j)),
-            (&TFloat(i), &TInt(j)) => Ok(TFloat(i + j as f64)),
-            (&TFloat(i), &TFloat(j)) => Ok(TFloat(i + j)),
+            (&Const::Int(i), &Const::Int(j)) => Ok(Const::Int(i + j)),
+            (&Const::Int(i), &Const::Float(j)) => Ok(Const::Float(i as f64 + j)),
+            (&Const::Float(i), &Const::Int(j)) => Ok(Const::Float(i + j as f64)),
+            (&Const::Float(i), &Const::Float(j)) => Ok(Const::Float(i + j)),
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::Sub => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => Ok(TInt(i - j)),
-            (&TInt(i), &TFloat(j)) => Ok(TFloat(i as f64 - j)),
-            (&TFloat(i), &TInt(j)) => Ok(TFloat(i - j as f64)),
-            (&TFloat(i), &TFloat(j)) => Ok(TFloat(i - j)),
+            (&Const::Int(i), &Const::Int(j)) => Ok(Const::Int(i - j)),
+            (&Const::Int(i), &Const::Float(j)) => Ok(Const::Float(i as f64 - j)),
+            (&Const::Float(i), &Const::Int(j)) => Ok(Const::Float(i - j as f64)),
+            (&Const::Float(i), &Const::Float(j)) => Ok(Const::Float(i - j)),
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::Mul => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => Ok(TInt(i * j)),
-            (&TInt(i), &TFloat(j)) => Ok(TFloat(i as f64 * j)),
-            (&TFloat(i), &TInt(j)) => Ok(TFloat(i * j as f64)),
-            (&TFloat(i), &TFloat(j)) => Ok(TFloat(i * j)),
+            (&Const::Int(i), &Const::Int(j)) => Ok(Const::Int(i * j)),
+            (&Const::Int(i), &Const::Float(j)) => Ok(Const::Float(i as f64 * j)),
+            (&Const::Float(i), &Const::Int(j)) => Ok(Const::Float(i * j as f64)),
+            (&Const::Float(i), &Const::Float(j)) => Ok(Const::Float(i * j)),
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::Div => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => Ok(TInt(i / j)),
-            (&TInt(i), &TFloat(j)) => Ok(TFloat(i as f64 / j)),
-            (&TFloat(i), &TInt(j)) => Ok(TFloat(i / j as f64)),
-            (&TFloat(i), &TFloat(j)) => Ok(TFloat(i / j)),
+            (&Const::Int(i), &Const::Int(j)) => Ok(Const::Int(i / j)),
+            (&Const::Int(i), &Const::Float(j)) => Ok(Const::Float(i as f64 / j)),
+            (&Const::Float(i), &Const::Int(j)) => Ok(Const::Float(i / j as f64)),
+            (&Const::Float(i), &Const::Float(j)) => Ok(Const::Float(i / j)),
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::Mod => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => Ok(TInt(i % j)),
-            (&TInt(i), &TFloat(j)) => Ok(TFloat(i as f64 % j)),
-            (&TFloat(i), &TInt(j)) => Ok(TFloat(i % j as f64)),
-            (&TFloat(i), &TFloat(j)) => Ok(TFloat(i % j)),
+            (&Const::Int(i), &Const::Int(j)) => Ok(Const::Int(i % j)),
+            (&Const::Int(i), &Const::Float(j)) => Ok(Const::Float(i as f64 % j)),
+            (&Const::Float(i), &Const::Int(j)) => Ok(Const::Float(i % j as f64)),
+            (&Const::Float(i), &Const::Float(j)) => Ok(Const::Float(i % j)),
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::Pow => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => {
+            (&Const::Int(i), &Const::Int(j)) => {
                 if j > u32::max_value() as i64 {
                     Err(format!("exponent {} is out of range", j))
                 } else {
-                    Ok(TInt(i.pow(j as u32)))
+                    Ok(Const::Int(i.pow(j as u32)))
                 }
             },
-            (&TInt(i), &TFloat(j)) => {
-                Ok(TFloat((i as f64).powf(j)))
+            (&Const::Int(i), &Const::Float(j)) => {
+                Ok(Const::Float((i as f64).powf(j)))
             },
-            (&TFloat(i), &TInt(j)) => {
+            (&Const::Float(i), &Const::Int(j)) => {
                 if j > i32::max_value() as i64 {
                     Err(format!("exponent {} is out of range", j))
                 } else {
-                    Ok(TFloat(i.powi(j as i32)))
+                    Ok(Const::Float(i.powi(j as i32)))
                 }
             },
-            (&TFloat(i), &TFloat(j)) => {
-                Ok(TFloat(i.powf(j)))
+            (&Const::Float(i), &Const::Float(j)) => {
+                Ok(Const::Float(i.powf(j)))
             },
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::Concat => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => Ok(TStr(format!("{}{}", i, j))),
-            (&TInt(i), &TFloat(j)) => Ok(TStr(format!("{}{}", i, j))),
-            (&TFloat(i), &TInt(j)) => Ok(TStr(format!("{}{}", i, j))),
-            (&TFloat(i), &TFloat(j)) => Ok(TStr(format!("{}{}", i, j))),
-            (&TStr(ref s), &TInt(i)) => Ok(TStr(format!("{}{}", s, i))),
-            (&TInt(i), &TStr(ref s)) => Ok(TStr(format!("{}{}", i, s))),
-            (&TStr(ref s), &TFloat(f)) => Ok(TStr(format!("{}{}", s, f))),
-            (&TFloat(f), &TStr(ref s)) => Ok(TStr(format!("{}{}", f, s))),
-            (&TStr(ref a), &TStr(ref b)) => Ok(TStr(format!("{}{}", a, b))),
+            (&Const::Int(i), &Const::Int(j)) => Ok(Const::Str(format!("{}{}", i, j))),
+            (&Const::Int(i), &Const::Float(j)) => Ok(Const::Str(format!("{}{}", i, j))),
+            (&Const::Float(i), &Const::Int(j)) => Ok(Const::Str(format!("{}{}", i, j))),
+            (&Const::Float(i), &Const::Float(j)) => Ok(Const::Str(format!("{}{}", i, j))),
+            (&Const::Str(ref s), &Const::Int(i)) => Ok(Const::Str(format!("{}{}", s, i))),
+            (&Const::Int(i), &Const::Str(ref s)) => Ok(Const::Str(format!("{}{}", i, s))),
+            (&Const::Str(ref s), &Const::Float(f)) => Ok(Const::Str(format!("{}{}", s, f))),
+            (&Const::Float(f), &Const::Str(ref s)) => Ok(Const::Str(format!("{}{}", f, s))),
+            (&Const::Str(ref a), &Const::Str(ref b)) => Ok(Const::Str(format!("{}{}", a, b))),
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::Eq | BinOp::NEq | BinOp::NEqLua => {
             let res = match (lhs, rhs) {
-                (&TInt(i), &TInt(j)) => i == j,
-                (&TInt(i), &TFloat(j)) => i as f64 == j,
-                (&TFloat(i), &TInt(j)) => i == j as f64,
-                (&TFloat(i), &TFloat(j)) => i == j,
-                (&TBool(i), &TBool(j)) => i == j,
-                (&TStr(ref a), &TStr(ref b)) => a == b,
-                (&TNil, &TNil) => true,
+                (&Const::Int(i), &Const::Int(j)) => i == j,
+                (&Const::Int(i), &Const::Float(j)) => i as f64 == j,
+                (&Const::Float(i), &Const::Int(j)) => i == j as f64,
+                (&Const::Float(i), &Const::Float(j)) => i == j,
+                (&Const::Bool(i), &Const::Bool(j)) => i == j,
+                (&Const::Str(ref a), &Const::Str(ref b)) => a == b,
+                (&Const::Nil, &Const::Nil) => true,
                 _ => false,
             };
-            if op == BinOp::Eq { Ok(TBool(res)) } else { Ok(TBool(!res)) }
+            if op == BinOp::Eq { Ok(Const::Bool(res)) } else { Ok(Const::Bool(!res)) }
         },
         BinOp::LEq => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => Ok(TBool(i <= j)),
-            (&TInt(i), &TFloat(j)) => Ok(TBool(i as f64 <= j)),
-            (&TFloat(i), &TInt(j)) => Ok(TBool(i <= j as f64)),
-            (&TFloat(i), &TFloat(j)) => Ok(TBool(i <= j)),
-            (&TStr(ref a), &TStr(ref b)) => Ok(TBool(a <= b)),
+            (&Const::Int(i), &Const::Int(j)) => Ok(Const::Bool(i <= j)),
+            (&Const::Int(i), &Const::Float(j)) => Ok(Const::Bool(i as f64 <= j)),
+            (&Const::Float(i), &Const::Int(j)) => Ok(Const::Bool(i <= j as f64)),
+            (&Const::Float(i), &Const::Float(j)) => Ok(Const::Bool(i <= j)),
+            (&Const::Str(ref a), &Const::Str(ref b)) => Ok(Const::Bool(a <= b)),
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::GEq => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => Ok(TBool(i >= j)),
-            (&TInt(i), &TFloat(j)) => Ok(TBool(i as f64 >= j)),
-            (&TFloat(i), &TInt(j)) => Ok(TBool(i >= j as f64)),
-            (&TFloat(i), &TFloat(j)) => Ok(TBool(i >= j)),
-            (&TStr(ref a), &TStr(ref b)) => Ok(TBool(a >= b)),
+            (&Const::Int(i), &Const::Int(j)) => Ok(Const::Bool(i >= j)),
+            (&Const::Int(i), &Const::Float(j)) => Ok(Const::Bool(i as f64 >= j)),
+            (&Const::Float(i), &Const::Int(j)) => Ok(Const::Bool(i >= j as f64)),
+            (&Const::Float(i), &Const::Float(j)) => Ok(Const::Bool(i >= j)),
+            (&Const::Str(ref a), &Const::Str(ref b)) => Ok(Const::Bool(a >= b)),
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::Less => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => Ok(TBool(i < j)),
-            (&TInt(i), &TFloat(j)) => Ok(TBool((i as f64) < j)),
-            (&TFloat(i), &TInt(j)) => Ok(TBool(i < j as f64)),
-            (&TFloat(i), &TFloat(j)) => Ok(TBool(i < j)),
-            (&TStr(ref a), &TStr(ref b)) => Ok(TBool(a < b)),
+            (&Const::Int(i), &Const::Int(j)) => Ok(Const::Bool(i < j)),
+            (&Const::Int(i), &Const::Float(j)) => Ok(Const::Bool((i as f64) < j)),
+            (&Const::Float(i), &Const::Int(j)) => Ok(Const::Bool(i < j as f64)),
+            (&Const::Float(i), &Const::Float(j)) => Ok(Const::Bool(i < j)),
+            (&Const::Str(ref a), &Const::Str(ref b)) => Ok(Const::Bool(a < b)),
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::Greater => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => Ok(TBool(i > j)),
-            (&TInt(i), &TFloat(j)) => Ok(TBool(i as f64 > j)),
-            (&TFloat(i), &TInt(j)) => Ok(TBool(i > j as f64)),
-            (&TFloat(i), &TFloat(j)) => Ok(TBool(i > j)),
-            (&TStr(ref a), &TStr(ref b)) => Ok(TBool(a > b)),
+            (&Const::Int(i), &Const::Int(j)) => Ok(Const::Bool(i > j)),
+            (&Const::Int(i), &Const::Float(j)) => Ok(Const::Bool(i as f64 > j)),
+            (&Const::Float(i), &Const::Int(j)) => Ok(Const::Bool(i > j as f64)),
+            (&Const::Float(i), &Const::Float(j)) => Ok(Const::Bool(i > j)),
+            (&Const::Str(ref a), &Const::Str(ref b)) => Ok(Const::Bool(a > b)),
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::LAnd | BinOp::LAndLua => {
@@ -195,40 +195,40 @@ fn fold_binop(lhs: &Literal, op: BinOp, rhs: &Literal) -> Result<Literal, String
             }
         },
         BinOp::BAnd => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => Ok(TInt(i & j)),
+            (&Const::Int(i), &Const::Int(j)) => Ok(Const::Int(i & j)),
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::BOr => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => Ok(TInt(i | j)),
+            (&Const::Int(i), &Const::Int(j)) => Ok(Const::Int(i | j)),
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::BXor => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => Ok(TInt(i ^ j)),
+            (&Const::Int(i), &Const::Int(j)) => Ok(Const::Int(i ^ j)),
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::ShiftL => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => {
+            (&Const::Int(i), &Const::Int(j)) => {
                 if j < 0 {
-                    fold_binop(lhs, BinOp::ShiftR, &TInt(-j))
+                    fold_binop(lhs, BinOp::ShiftR, &Const::Int(-j))
                 } else {
                     if j <= 64 {
-                        Ok(TInt(i << j))
+                        Ok(Const::Int(i << j))
                     } else {
-                        Ok(TInt(0))
+                        Ok(Const::Int(0))
                     }
                 }
             },
             _ => Err(bin_err(lhs, op, rhs)),
         },
         BinOp::ShiftR => match (lhs, rhs) {
-            (&TInt(i), &TInt(j)) => {
+            (&Const::Int(i), &Const::Int(j)) => {
                 if j < 0 {
-                    fold_binop(lhs, BinOp::ShiftL, &TInt(-j))
+                    fold_binop(lhs, BinOp::ShiftL, &Const::Int(-j))
                 } else {
                     if j <= 64 {
-                        Ok(TInt(i >> j))
+                        Ok(Const::Int(i >> j))
                     } else {
-                        Ok(TInt(0))
+                        Ok(Const::Int(0))
                     }
                 }
             },

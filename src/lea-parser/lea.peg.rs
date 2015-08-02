@@ -9,7 +9,7 @@ use span::{Span, Spanned, mkspanned};
 use op::*;
 use parsetree::*;
 
-use lea_core::literal::*;
+use lea_core::constant::Const;
 
 
 index -> VarIndex<'input>
@@ -83,7 +83,7 @@ kvpair -> (Expr<'input>, Expr<'input>)
     = __* kv:(
         "[" key:expression "]" __* "=" __* val:expression { (key, val) }
         / id:ident __* "=" __* val:expression {
-            (Spanned::new(id.span, ELit(TStr(id.value.to_string()))), val)
+            (Spanned::new(id.span, ELit(Const::Str(id.value.to_string()))), val)
         }
     ) __* { kv }
 
@@ -327,15 +327,15 @@ string -> String
 boolean -> bool
     = "true" { true } / "false" { false }
 
-_literal -> Literal
-    = f:float   { TFloat(f) }
-    / i:integer { TInt(i) }
-    / s:string  { TStr(s) }
-    / b:boolean { TBool(b) }
-    / "nil"     { TNil }
+_literal -> Const
+    = f:float   { Const::Float(f) }
+    / i:integer { Const::Int(i) }
+    / s:string  { Const::Str(s) }
+    / b:boolean { Const::Bool(b) }
+    / "nil"     { Const::Nil }
 
 #[pub]
-literal -> Spanned<Literal>
+literal -> Spanned<Const>
     = l:_literal { mkspanned(l, start_pos, pos) }
 
 binop -> BinOp

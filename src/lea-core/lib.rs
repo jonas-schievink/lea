@@ -5,4 +5,4 @@ extern crate rustc_serialize;
 pub mod opcode;
 pub mod fndata;
 pub mod limits;
-pub mod literal;
+pub mod constant;

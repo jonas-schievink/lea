@@ -11,7 +11,7 @@ use ast::visit::*;
 use parser::span::{Span, Spanned};
 
 use lea_core::fndata::UpvalDesc;
-use lea_core::literal;
+use lea_core::constant::Const;
 
 use std::collections::HashMap;
 
@@ -170,7 +170,7 @@ impl<'a> Resolver<'a> {
                 let envvar = Box::new(Spanned::new(span,
                     self.resolve_var("_ENV", span)));
 
-                VIndex(envvar, Box::new(Spanned::new(span, ELit(literal::TStr(name.to_string())))))
+                VIndex(envvar, Box::new(Spanned::new(span, ELit(Const::Str(name.to_string())))))
             }
         }
     }
@@ -254,7 +254,7 @@ mod tests {
     use ast::*;
 
     use lea_core::fndata::UpvalDesc;
-    use lea_core::literal::*;
+    use lea_core::constant::Const;
 
     use std::default::Default;
 
@@ -286,8 +286,8 @@ j = i
 
         assert_eq!(f.body, Block::with_locals(vec![
             Spanned::default(SAssign(
-                vec![Spanned::default(VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(TStr("i".to_string()))))))],
-                vec![Spanned::default(ELit(TInt(0)))],
+                vec![Spanned::default(VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(Const::Str("i".to_string()))))))],
+                vec![Spanned::default(ELit(Const::Int(0)))],
             )),
             Spanned::default(SDecl(vec![Spanned::default("a")], vec![])),
             Spanned::default(SDo(Block::with_locals(vec![
@@ -305,10 +305,10 @@ j = i
             ], Default::default(), localmap!{ i: 1, j: 2 }))),
             Spanned::default(SAssign(
                 vec![Spanned::default(
-                    VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(TStr("j".to_string())))))
+                    VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(Const::Str("j".to_string())))))
                 )],
                 vec![Spanned::default(EVar(Spanned::default(
-                    VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(TStr("i".to_string())))))
+                    VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(Const::Str("i".to_string())))))
                 )))],
             )),
         ], Default::default(), localmap!{ a: 0 }));
@@ -346,7 +346,7 @@ end
                         Spanned::default(SAssign(vec![
                             Spanned::default(VUpval(0))
                         ], vec![
-                            Spanned::default(ELit(TNil))
+                            Spanned::default(ELit(Const::Nil))
                         ])),
                         Spanned::default(SDecl(vec![Spanned::default("f")], vec![
                             Spanned::default(EVar(Spanned::default(VUpval(0))))
@@ -382,7 +382,7 @@ end
             Spanned::default(SAssign(vec![
                 Spanned::default(VUpval(0))
             ], vec![
-                Spanned::default(ELit(TInt(0)))
+                Spanned::default(ELit(Const::Int(0)))
             ])),
         ], Default::default()));
     }
@@ -407,7 +407,7 @@ local function h() local function h1() r = nil end end
                 Spanned::default(SAssign(vec![
                     Spanned::default(VUpval(0))
                 ], vec![
-                    Spanned::default(ELit(TNil))
+                    Spanned::default(ELit(Const::Nil))
                 ])),
                 Spanned::default(SDecl(vec![Spanned::default("_ENV")], vec![])),
                 Spanned::default(SDecl(vec![Spanned::default("f")], vec![])),
@@ -422,9 +422,9 @@ local function h() local function h1() r = nil end end
                         Spanned::default(SDecl(vec![Spanned::default("_ENV")], vec![])),
                         Spanned::default(SAssign(vec![
                             Spanned::default(VIndex(
-                                Box::new(Spanned::default(VLocal(0))), Box::new(Spanned::default(ELit(TStr("i".to_string()))))
+                                Box::new(Spanned::default(VLocal(0))), Box::new(Spanned::default(ELit(Const::Str("i".to_string()))))
                             )),
-                        ], vec![Spanned::default(ELit(TNil))])),
+                        ], vec![Spanned::default(ELit(Const::Nil))])),
                     ], Default::default(), localmap!{ _ENV: 0 }),
                 }))])),
                 Spanned::default(SDecl(vec![Spanned::default("g")], vec![])),
@@ -439,7 +439,7 @@ local function h() local function h1() r = nil end end
                         Spanned::default(SAssign(vec![
                             Spanned::default(VUpval(0))
                         ], vec![
-                            Spanned::default(ELit(TNil))
+                            Spanned::default(ELit(Const::Nil))
                         ])),
                     ], Default::default(), localmap!{}),
                 }))])),
@@ -463,10 +463,10 @@ local function h() local function h1() r = nil end end
                             body: Block::new(vec![
                                 Spanned::default(SAssign(vec![
                                     Spanned::default(VIndex(
-                                        Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(TStr("r".to_string()))))
+                                        Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(Const::Str("r".to_string()))))
                                     ))
                                 ], vec![
-                                    Spanned::default(ELit(TNil)),
+                                    Spanned::default(ELit(Const::Nil)),
                                 ])),
                             ], Default::default()),
                         }))])),

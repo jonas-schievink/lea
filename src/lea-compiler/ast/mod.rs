@@ -14,7 +14,7 @@ pub use self::Call::*;
 use parser::span::{Span, Spanned};
 use parser::op::*;
 
-use lea_core::literal::*;
+use lea_core::constant::Const;
 use lea_core::fndata::UpvalDesc;
 
 use std::collections::HashMap;
@@ -182,7 +182,7 @@ pub enum _Stmt<'a> {
 /// Expression nodes
 #[derive(Clone, PartialEq, Debug)]
 pub enum _Expr<'a> {
-    ELit(Literal),
+    ELit(Const),
     EBinOp(Box<Expr<'a>>, BinOp, Box<Expr<'a>>),
     EUnOp(UnOp, Box<Expr<'a>>),
 

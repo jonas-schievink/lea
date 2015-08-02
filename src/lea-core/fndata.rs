@@ -2,7 +2,7 @@
 //! passed to the VM for execution.
 
 use opcode::Opcodes;
-use literal::Literal;
+use constant::Const;
 
 
 /// Describes how an Upvalue is referenced
@@ -27,7 +27,7 @@ pub struct FnData {
     pub params: u8,
     pub varargs: bool,
     pub opcodes: Opcodes,
-    pub consts: Vec<Literal>,
+    pub consts: Vec<Const>,
     pub upvals: Vec<UpvalDesc>,
     pub lines: Vec<usize>,
     pub source_name: String,

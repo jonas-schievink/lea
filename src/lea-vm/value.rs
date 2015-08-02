@@ -7,7 +7,7 @@ use array::Array;
 use function::Function;
 use mem::{TracedRef, Tracer, GcStrategy};
 
-use lea_core::literal::Literal;
+use lea_core::constant::Const;
 
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
@@ -70,7 +70,7 @@ impl Value {
             TFunc(..) => "function",
         }
     }
-    
+
     /// Is this value considered true or false when used in a boolean context (if/loop condition,
     /// shortcircuit operators)?
     pub fn is_truthy(&self) -> bool {
@@ -91,13 +91,13 @@ impl Value {
         }
     }
 
-    pub fn from_literal<G: GcStrategy>(lit: Literal, gc: &mut G) -> Value {
-        match lit {
-            Literal::TInt(i) => TInt(i),
-            Literal::TFloat(f) => TFloat(HashedFloat(f)),
-            Literal::TStr(s) => TStr(gc.register_obj(s)),
-            Literal::TBool(b) => TBool(b),
-            Literal::TNil => TNil,
+    pub fn from_literal<G: GcStrategy>(c: Const, gc: &mut G) -> Value {
+        match c {
+            Const::Int(i) => TInt(i),
+            Const::Float(f) => TFloat(HashedFloat(f)),
+            Const::Str(s) => TStr(gc.register_obj(s)),
+            Const::Bool(b) => TBool(b),
+            Const::Nil => TNil,
         }
     }
 }

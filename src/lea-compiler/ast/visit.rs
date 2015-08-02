@@ -319,7 +319,7 @@ mod tests {
     use ast::*;
     use parser::span::{Span, Spanned};
 
-    use lea_core::literal::*;
+    use lea_core::constant::Const;
 
     #[test]
     fn visit_count() {
@@ -346,7 +346,7 @@ mod tests {
         let myblock = Block::new(vec![
             Spanned::default(SAssign(
                 vec![Spanned::default(VNamed("i"))],
-                vec![Spanned::default(ELit(TInt(0)))],
+                vec![Spanned::default(ELit(Const::Int(0)))],
             )),
         ], Span::new(0, 0));
         let mut v = NoopVisitor {stmts: 0, exprs: 0, vars: 0};
@@ -363,7 +363,7 @@ mod tests {
         impl<'a> Transform<'a> for MutVisitor {
             fn visit_expr(&mut self, mut expr: Expr<'a>) -> Expr<'a> {
                 expr.value = match expr.value {
-                    ELit(TInt(1)) => ELit(TInt(0)),
+                    ELit(Const::Int(1)) => ELit(Const::Int(0)),
                     _ => { return expr; }
                 };
 
@@ -372,13 +372,13 @@ mod tests {
         }
 
         let mut b = Block::new(vec![
-            Spanned::default(SReturn(vec![Spanned::default(ELit(TInt(1)))])),
+            Spanned::default(SReturn(vec![Spanned::default(ELit(Const::Int(1)))])),
         ], Span::new(0, 0));
         b = walk_block(b, &mut MutVisitor);
 
         assert_eq!(b.stmts, vec![
             Spanned::default(SReturn(vec![
-                Spanned::default(ELit(TInt(0)))
+                Spanned::default(ELit(Const::Int(0)))
             ])),
         ]);
     }

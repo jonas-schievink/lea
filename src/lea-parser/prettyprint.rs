@@ -4,7 +4,7 @@ use super::parser;
 
 use parsetree::*;
 
-use lea_core::literal::*;
+use lea_core::constant::Const;
 
 use std::io::{self, Write};
 
@@ -66,7 +66,7 @@ impl<'a, W: Write> PrettyPrinter<'a, W> {
             match *entry {
                 TableEntry::Pair(ref key, ref val) => {
                     match key.value {
-                        ELit(TStr(ref s)) if parser::ident(s.as_ref()).is_ok() => {
+                        ELit(Const::Str(ref s)) if parser::ident(s.as_ref()).is_ok() => {
                             // If it's an identifier, don't use "[expr] = " syntax
                             try!(write!(self.writer, "{}", s));
                         }
@@ -421,13 +421,13 @@ impl<'a, W: Write> PrettyPrinter<'a, W> {
             EVarArgs => {
                 try!(write!(self.writer, "..."));
             }
-            ELit(ref lit) => {
-                match *lit {
-                    TInt(i) => try!(write!(self.writer, "{}", i)),
-                    TFloat(f) => try!(write!(self.writer, "{}", f)),
-                    TStr(ref s) => try!(self.print_string(s.as_ref())),
-                    TBool(b) => try!(write!(self.writer, "{}", b)),
-                    TNil => try!(write!(self.writer, "nil")),
+            ELit(ref c) => {
+                match *c {
+                    Const::Int(i) => try!(write!(self.writer, "{}", i)),
+                    Const::Float(f) => try!(write!(self.writer, "{}", f)),
+                    Const::Str(ref s) => try!(self.print_string(s.as_ref())),
+                    Const::Bool(b) => try!(write!(self.writer, "{}", b)),
+                    Const::Nil => try!(write!(self.writer, "nil")),
                 }
             }
         }
