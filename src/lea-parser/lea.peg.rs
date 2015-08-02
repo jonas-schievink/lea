@@ -13,12 +13,8 @@ use lea_core::literal::*;
 
 
 index -> VarIndex<'input>
-    = __* "." __* id:ident {
-        VarIndex::DotIndex(id)
-    }
-    / __* "[" e:expression "]" {
-        VarIndex::ExprIndex(Box::new(e))
-    }
+    = __* "." __* id:ident      { VarIndex::DotIndex(id) }
+    / __* "[" e:expression "]"  { VarIndex::ExprIndex(Box::new(e)) }
 
 variable -> Variable<'input>
     = i:ident idxs:index* {
@@ -38,16 +34,16 @@ variable -> Variable<'input>
 
 /// Returns the expressions to pass as arguments to an invoked function
 callargs -> CallArgs<'input>
-    = __* "(" args:expression ** listsep __* ")" { CallArgs::Normal(args) }
-    / __* strn:string { CallArgs::String(strn) }
-    / __* tbl:tablecons { CallArgs::Table(tbl) }
+    = __* "(" args:expression ** listsep __* ")"    { CallArgs::Normal(args) }
+    / __* strn:string                               { CallArgs::String(strn) }
+    / __* tbl:tablecons                             { CallArgs::Table(tbl) }
 
 methodname -> Spanned<&'input str>
     = ":" __* name:ident __* { name }
 
 callee -> Expr<'input>
-    = v:variable { mkspanned(EVar(v), start_pos, pos) }
-    / "(" e:expression ")" { mkspanned(EBraced(Box::new(e)), start_pos, pos) }
+    = v:variable            { mkspanned(EVar(v), start_pos, pos) }
+    / "(" e:expression ")"  { mkspanned(EBraced(Box::new(e)), start_pos, pos) }
 
 call -> Call<'input>
     = callee:callee name:methodname? args:callargs+ {
@@ -69,13 +65,13 @@ call -> Call<'input>
     }
 
 atom_inner -> Expr<'input>
-    = lit:literal               { Spanned::new(lit.span, ELit(lit.value)) }
-    / op:unop a:atom            { mkspanned(EUnOp(op, Box::new(a)), start_pos, pos) }
-    / t:tablecons               { mkspanned(ETable(t), start_pos, pos) }
-    / a:arraycons               { mkspanned(EArray(a), start_pos, pos) }
-    / "function" f:funcbody     { mkspanned(EFunc(f), start_pos, pos) }
-    / "..."                     { mkspanned(EVarArgs, start_pos, pos) }
-    / c:call                    { mkspanned(ECall(c), start_pos, pos) }
+    = lit:literal           { Spanned::new(lit.span, ELit(lit.value)) }
+    / op:unop a:atom        { mkspanned(EUnOp(op, Box::new(a)), start_pos, pos) }
+    / t:tablecons           { mkspanned(ETable(t), start_pos, pos) }
+    / a:arraycons           { mkspanned(EArray(a), start_pos, pos) }
+    / "function" f:funcbody { mkspanned(EFunc(f), start_pos, pos) }
+    / "..."                 { mkspanned(EVarArgs, start_pos, pos) }
+    / c:call                { mkspanned(ECall(c), start_pos, pos) }
     / callee
 
 // Atomic expression. Either a literal, a unary operator applied to another atom or a full expr
@@ -92,16 +88,16 @@ kvpair -> (Expr<'input>, Expr<'input>)
     ) __* { kv }
 
 tableentry -> TableEntry<'input>
-    = pair:kvpair { TableEntry::Pair(pair.0, pair.1) }
-    / e:expression { TableEntry::Elem(e) }
+    = pair:kvpair   { TableEntry::Pair(pair.0, pair.1) }
+    / e:expression  { TableEntry::Elem(e) }
 
 tablecons -> TableCons<'input>
-    = "{" pairs:tableentry ++ listsep listsep? "}" { pairs }
-    / "{" __* "}" { Vec::new() }
+    = "{" pairs:tableentry ++ listsep listsep? "}"  { pairs }
+    / "{" __* "}"                                   { Vec::new() }
 
 arraycons -> Vec<Expr<'input>>
     = "[" vals:expression_list listsep? "]" { vals }
-    / "[" __* "]" { Vec::new() }
+    / "[" __* "]"                           { Vec::new() }
 
 #[pub]
 expression -> Expr<'input>
@@ -224,7 +220,7 @@ longbracket -> &'input str
     }) . )* "]" "="* "]" { &match_str[open.len()+2 .. match_str.len() - open.len() - 2] }
 
 comment -> ()
-    = "--" longbracket {()}
+    = "--" longbracket { () }
     / "--" [^\n]*
 
 real_whitespace = " " / "\t" / "\n" / "\r"
@@ -249,9 +245,9 @@ octstr -> &'input str
 
 // integer without preceding sign
 uinteger -> i64
-    = "0x" hex:hexstr { i64::from_str_radix(hex, 16).unwrap() }
-    / "0o" oct:octstr { i64::from_str_radix(oct, 8).unwrap() }
-    / [0-9]+ { match_str.parse().unwrap() }
+    = "0x" hex:hexstr   { i64::from_str_radix(hex, 16).unwrap() }
+    / "0o" oct:octstr   { i64::from_str_radix(oct, 8).unwrap() }
+    / [0-9]+            { match_str.parse().unwrap() }
 
 integer -> i64
     = minus:"-"? i:uinteger {
@@ -285,25 +281,25 @@ dec_byte -> u8
     }
 
 esc_seq -> char
-    = "\\a" { '\x07' }  // bell
-    / "\\b" { '\x08' }  // backspace
-    / "\\f" { '\x0c' }  // form feed
-    / "\\n" { '\n' }
-    / "\\r" { '\r' }
-    / "\\t" { '\t' }
-    / "\\v" { '\x0b' }  // vertical tab
-    / "\\\\" { '\\' }
-    / "\\\"" { '\"' }
-    / "\\'" { '\'' }
-    / "\\\n" { '\n' }   // '\' at the end of a line continues the string and embeds a "\n"
-    / "\\\r\n" { '\n' } // There's a bug in Windows where a newline is preceded by a "\r"
+    = "\\a"     { '\x07' }  // bell
+    / "\\b"     { '\x08' }  // backspace
+    / "\\f"     { '\x0c' }  // form feed
+    / "\\n"     { '\n' }
+    / "\\r"     { '\r' }
+    / "\\t"     { '\t' }
+    / "\\v"     { '\x0b' }  // vertical tab
+    / "\\\\"    { '\\' }
+    / "\\\""    { '\"' }
+    / "\\'"     { '\'' }
+    / "\\\n"    { '\n' }    // '\' at the end of a line continues the string and embeds a "\n"
+    / "\\\r\n"  { '\n' }    // There's a bug in Windows where a newline is preceded by a "\r"
     / "\\x" digits:hexdigit{2} {
         let string: String = digits.into_iter().collect();
         let i = u8::from_str_radix(string.as_ref(), 16).unwrap();
 
         i as char
     }
-    / "\\0" { 0 as char }
+    / "\\0"     { 0 as char }
     / "\\" val:dec_byte { val as char }
 
 /// \z will skip all whitespace that follows it. Useful for breaking string literals into multiple
@@ -324,9 +320,9 @@ _single_quote_content -> char
 
 #[pub]
 string -> String
-    = '"' chars:_double_quote_content* blank_esc? '"' { chars.into_iter().collect() }
+    = '"' chars:_double_quote_content* blank_esc? '"'   { chars.into_iter().collect() }
     / '\'' chars:_single_quote_content* blank_esc? '\'' { chars.into_iter().collect() }
-    / content:longbracket { content.to_string() }
+    / content:longbracket                               { content.to_string() }
 
 boolean -> bool
     = "true" { true } / "false" { false }
