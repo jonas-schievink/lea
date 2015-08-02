@@ -153,6 +153,8 @@ impl<'a> Conv<'a> for parsetree::_Stmt<'a> {
                 push(_Stmt::SBreak);
             }
 
+            parsetree::SSemi => {}
+
             parsetree::SReturn(exprs) => {
                 push(_Stmt::SReturn(vec_into(exprs)));
             }

@@ -186,6 +186,7 @@ stmt_inner -> Stmt<'input>
     }
     / "do" __+ b:block "end" { mkspanned(SDo(b), start_pos, pos) }
     / "break" { mkspanned(SBreak, start_pos, pos) }
+    / ";" { mkspanned(SSemi, start_pos, pos) }
     / "return" vals:expression_list { mkspanned(SReturn(vals), start_pos, pos) }
     / "return" { mkspanned(SReturn(vec![]), start_pos, pos) }
     / "local" __+ locals:identlist __* "=" exprs:expression_list {

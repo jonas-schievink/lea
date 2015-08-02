@@ -216,7 +216,7 @@ impl<'a, W: Write> PrettyPrinter<'a, W> {
                 self.indent();
                 try!(self.print_block(block));
                 self.unindent();
-                try!(write!(self.writer, "end{}", self.lineend));
+                try!(write!(self.writer, "end"));
             }
             SReturn(ref vals) => {
                 try!(write!(self.writer, "return"));
@@ -339,7 +339,11 @@ impl<'a, W: Write> PrettyPrinter<'a, W> {
                 try!(write!(self.writer, "end"));
             }
             SBreak => {
-                try!(write!(self.writer, "break{}", self.lineend));
+                try!(write!(self.writer, "break"));
+            }
+            SSemi => {
+                // FIXME don't print a newline if this is the next stmt
+                try!(write!(self.writer, ";"));
             }
         }
 

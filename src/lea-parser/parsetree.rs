@@ -102,6 +102,9 @@ pub enum _Stmt<'a> {
 
     /// Abort the current loop
     SBreak,
+    
+    /// No-op semicolon statement
+    SSemi,
 
     /// Return a possibly empty list of values to the caller
     SReturn(Vec<Expr<'a>>),
