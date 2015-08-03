@@ -20,6 +20,7 @@ pub use self::Opcode::*;
 /// * `Ls` = `((A << 16) | Xu) as i32` signed version of `Lu`
 /// * `PC` is the program counter, which holds the number of the next opcode by default
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, RustcEncodable, RustcDecodable)]
+#[repr(u8)]
 pub enum Opcode {
     /// > R[A] := R[B]
     MOV(u8, u8),
@@ -231,12 +232,12 @@ mod tests {
 
     #[test]
     fn format() {
-        assert_eq!(format!("\n{:#?}", Opcodes(vec![
+        assert_eq!(format!("{:#?}", Opcodes(vec![
             MOV(0, 1),
             IFNOT(5, -1),
             CONCAT(2, 3, 4),
             LOADBOOL(7, 0, true),
-        ])), "
+        ])), "\
 [
     MOV(0, 1),
     IFNOT(5, -1),

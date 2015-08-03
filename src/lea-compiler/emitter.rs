@@ -75,6 +75,10 @@ struct Emitter {
     /// declared in the current block as an upvalue. Causes the emission of a `CLOSE` opcode when
     /// leaving the current block.
     needs_close: bool,
+
+    /// Opcode indices of `SBreak` (was emitted as opcode `INVALID`). These are replaced by
+    /// forward jumps after the current loop when the loop is fully emitted.
+    break_indices: Vec<usize>,
 }
 
 impl Emitter {
@@ -83,8 +87,9 @@ impl Emitter {
             source_name: source_name.to_string(),
             errs: Vec::new(),
             funcs: Vec::new(),
-            alloc: HashMap::with_capacity(8),
+            alloc: HashMap::new(),
             needs_close: false,
+            break_indices: Vec::new(),
         }
     }
 
@@ -251,6 +256,25 @@ impl Emitter {
 
             self.cur_func_mut().opcodes.push(op);
         }
+    }
+
+    /// Insert forward jumps to the next opcode for all `break` statements that were encountered
+    /// since this method was last called.
+    ///
+    /// This must be called after emitting a loop.
+    fn finalize_breaks(&mut self) {
+        let mut break_indices = mem::replace(&mut self.break_indices, Vec::new());
+        for &index in &break_indices {
+            let rel = self.get_next_addr() - index - 1;
+            if rel > i16::MAX as usize {
+                self.err("relative jump exceeds limit (when emitting break statement)",
+                    Some(format!("jump dist is {}, limit is {}", rel, i16::MAX)));
+            }
+            self.replace_op(index, JMP(rel as i16));
+        }
+        break_indices.clear();
+
+        mem::replace(&mut self.break_indices, break_indices);
     }
 
     /// Emits an assignment to a variable. The function `f` is called with an emitter reference and
@@ -797,6 +821,11 @@ impl Emitter {
             SDo(ref block) => {
                 self.visit_block(block);
             }
+            SBreak => {
+                let index = self.emit_raw(INVALID);
+                self.break_indices.push(index);
+            }
+            //SReturn
             SCall(ref call) => {
                 self.emit_call(call, 1, |_, _| ());    // store 0 results
             }
@@ -851,6 +880,7 @@ impl Emitter {
                         s.span);
                 }
                 self.replace_op(jump_op, IFNOT(cond_slot, rel as i16));
+                self.finalize_breaks();
             }
             SRepeat { ref body, ref abort_on } => {
                 let head_op = self.get_next_addr() as isize;
@@ -870,7 +900,16 @@ impl Emitter {
                 self.emit(IFNOT(abort_cond_slot, rel as i16));
 
                 self.dealloc_slots(1);  // cond_slot
+                self.finalize_breaks();
             }
+            /*SFor { ref var, ref start, ref step, ref end, ref body } => {
+                unimplemented!();
+                self.finalize_breaks();
+            }
+            SForIn { ref vars, ref iter, ref body } => {
+                unimplemented!();
+                self.finalize_breaks();
+            }*/
 
             _ => panic!("NYI stmt: {:?}", s),    // TODO remove, this is just for testing
         }
@@ -1327,6 +1366,17 @@ mod tests {
             LOADK(1,0),     // 1
             ADD(0,0,1),     // i = i + 1
             IFNOT(0,-3),
+            RETURN(0,1),
+        ]);
+    }
+
+    #[test]
+    fn break_loop() {
+        test!("repeat break break until nil" => [
+            JMP(3),
+            JMP(2),
+            LOADNIL(0,0),
+            IFNOT(0,-4),
             RETURN(0,1),
         ]);
     }
