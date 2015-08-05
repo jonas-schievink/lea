@@ -14,8 +14,8 @@ pub use self::Opcode::*;
 /// * `C[n]` is the constant at index `n` (looked up in the current function's constant table)
 /// * `PROTO[n]` is function prototype number `n`
 /// * `A`, `B`, `C` are the values of the first, second and third `u8` parameters (resp.)
-/// * `Xu` is the value of the second operand, which must be a `u16` (eXtended unsigned)
-/// * `Xs` is the value of the second operand, which must be a `i16` (eXtended signed)
+/// * `Xu` is the value of the operand of type `u16` (eXtended unsigned)
+/// * `Xs` is the value of the operand of type `i16` (eXtended signed)
 /// * `Lu` = `((A << 16) | Xu) as u32` emulates one 24 bit parameter (eg. for jumps)
 /// * `Ls` = `((A << 16) | Xu) as i32` signed version of `Lu`
 /// * `PC` is the program counter, which holds the number of the next opcode by default
@@ -72,8 +72,8 @@ pub enum Opcode {
     /// values and just leaves the current function, returning control to the caller. If B is 0,
     /// returns all values from A to the top of the stack.
     ///
-    /// If the program's main function executes this opcode, the VM will pass the first return
-    /// value (if any) to the code that started the VM.
+    /// If the program's main function executes this opcode, the VM will pass the return values to
+    /// the code that started the VM.
     RETURN(u8, u8),
     /// > close_upval(R[A], R[A+1], ...)
     ///

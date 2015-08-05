@@ -351,57 +351,57 @@ impl Emitter {
         }
     }
 
-    /// Emits a `CallArgs` structure. This will evaluate all arguments from left to right. The last
-    /// argument may result in any number of results.
+    /// Emits a list of expressions. This will evaluate all expressions from left to right. The
+    /// last expression may evaluate to any number of results.
     ///
-    /// The arguments will be stored in the next free stack slots (left to right).
+    /// The results will be stored in the next `n` stack slots.
     ///
-    /// The passed closure will be called when all arguments are evaluated, with the total number
-    /// of arguments (slots) plus 1. If the last argument (count) is 0, the last argument can
-    /// evaluate to any number of values at runtime, which will be placed after the last fixed
-    /// argument.
-    fn emit_call_args<'a, F>(&mut self, argv: &Vec<Expr<'a>>, f: F)
+    /// The passed closure will be called when all expressions are emitted, with the total number
+    /// of arguments (slots) plus 1. If the last argument to the closure (count) is 0, the last
+    /// expression can evaluate to any number of values at runtime, which will be placed after the
+    /// last fixed argument.
+    fn emit_expr_list<'a, F>(&mut self, exprs: &[Expr<'a>], f: F)
     where F: FnOnce(&mut Emitter, /* count-1 */ u8) {
-        if argv.len() == 0 {
+        if exprs.len() == 0 {
             f(self, 1);
             return
         }
 
-        if argv.len() >= 255 {
+        if exprs.len() > 254 {
             self.err_span(
                 "too many call arguments",
-                Some(format!("got {} arguments, limit is {}", argv.len(), 255)),
-                argv[argv.len() - 1].span
+                Some(format!("got {} arguments, limit is {}", exprs.len(), 254)),
+                exprs[exprs.len() - 1].span
             );
         }
 
-        // may result in dynamic number of args, if the last arg is a call or varargs
         // emit all args except the last one into freshly allocated registers (these must
         // be allocated in ascending order)
-        for i in 0..argv.len()-1 {
-            let arg = &argv[i];
+        for i in 0..exprs.len()-1 {
+            let arg = &exprs[i];
             let slot = self.alloc_slots(1);
             self.emit_expr_into(arg, slot);
         }
 
         // emit last expression
-        let last_arg = &argv[argv.len() - 1];
+        let last_arg = &exprs[exprs.len() - 1];
         if last_arg.is_multi_result() {
-            fn id(_: &mut Emitter, _: u8) {}
-            self.emit_expr_multi(last_arg, 0, id);
+            // `dummy` isn't a closure because that causes monomorphization to never terminate
+            fn dummy(_: &mut Emitter, _: u8) {}
+            self.emit_expr_multi(last_arg, 0, dummy);
         } else {
             let slot = self.alloc_slots(1);
             self.emit_expr_into(last_arg, slot);
         }
 
-        f(self, if last_arg.is_multi_result() { 0 } else { argv.len() as u8 + 1 });
+        f(self, if last_arg.is_multi_result() { 0 } else { exprs.len() as u8 + 1 });
 
         // in the process, we've allocated `argv.len()-1` slots if the last arg is variable
         // and `argv.len()` slots if not.
         if last_arg.is_multi_result() {
-            self.dealloc_slots(argv.len()-1);
+            self.dealloc_slots(exprs.len() - 1);
         } else {
-            self.dealloc_slots(argv.len());
+            self.dealloc_slots(exprs.len());
         }
     }
 
@@ -432,7 +432,7 @@ impl Emitter {
                 let func_slot = self.alloc_slots(1);
                 self.emit_expr_into(callee, func_slot);
 
-                self.emit_call_args(args, |emitter, count| {
+                self.emit_expr_list(args, |emitter, count| {
                     // `CALL`s semantics match exactly
                     emitter.emit(CALL(func_slot, count, max_res));
 
@@ -457,8 +457,8 @@ impl Emitter {
                 self.emit(LOADK(method_slot, const_id));
                 self.emit(GETIDX(method_slot, obj_slot, method_slot));
 
-                self.emit_call_args(args, |emitter, count| {
-                    // we actually pass one more argument than `emit_call_args` tells us: the
+                self.emit_expr_list(args, |emitter, count| {
+                    // we actually pass one more argument than `emit_expr_list` tells us: the
                     // object.
                     if count == 0 {
                         // dynamic arg count
@@ -825,7 +825,12 @@ impl Emitter {
                 let index = self.emit_raw(INVALID);
                 self.break_indices.push(index);
             }
-            //SReturn
+            SReturn(ref vals) => {
+                let start = self.cur_func().stacksize;  // first return value here (if any)
+                self.emit_expr_list(vals, |emitter, count| {
+                    emitter.emit(RETURN(start, count));
+                });
+            }
             SCall(ref call) => {
                 self.emit_call(call, 1, |_, _| ());    // store 0 results
             }
@@ -1255,6 +1260,30 @@ mod tests {
             GETIDX(3,4,3),  // o.n
             CALL(3,2,0),
             CALL(1,0,1),
+            RETURN(0,1),
+        ]);
+    }
+
+    #[test]
+    fn ret() {
+        test!("return" => [
+            RETURN(0,1),
+            RETURN(0,1),
+        ]);
+        test!("return true" => [
+            LOADBOOL(0, 0, true),
+            RETURN(0,2),
+            RETURN(0,1),
+        ]);
+        test!("return ..." => [
+            VARARGS(0,0),
+            RETURN(0,0),
+            RETURN(0,1),
+        ]);
+        test!("return ..., true" => [
+            VARARGS(0,1),
+            LOADBOOL(1,0,true),
+            RETURN(0,3),
             RETURN(0,1),
         ]);
     }
