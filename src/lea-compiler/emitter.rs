@@ -931,6 +931,7 @@ impl Emitter {
                 self.emit(MOV(var_slot, inner_var_slot));
 
                 self.visit_block(body);
+                self.dealloc_slots(1);  // var_slot
 
                 self.emit(ADD(inner_var_slot, inner_var_slot, step_slot));
 
@@ -942,6 +943,7 @@ impl Emitter {
                         s.span);
                 }
                 self.emit(JMP(rel as i16));
+                self.dealloc_slots(3);      // inner_var_slot, step, end
 
                 let rel = self.get_next_addr() - for_check - 1;
                 if rel > u16::MAX as usize {
@@ -953,12 +955,86 @@ impl Emitter {
 
                 self.finalize_breaks();
             }
-            /*SForIn { ref vars, ref iter, ref body } => {
-                unimplemented!();
-                self.finalize_breaks();
-            }*/
+            SForIn { ref vars, ref iter, ref body } => {
+                // Initialize invisible loop state:
+                // > local f, s, var = iter...
+                // (see the Lua manual for info)
 
-            _ => panic!("NYI stmt: {:?}", s),    // TODO remove, this is just for testing
+                let f_slot = self.alloc_slots(3);
+                let s_slot = f_slot + 1;
+                let var_slot = f_slot + 2;
+
+                // XXX This is really ugly
+                // TODO Check if only one expression can be used to init all 3
+                if iter.len() >= 1 {
+                    self.emit_expr_into(&iter[0], f_slot);
+
+                    if iter.len() >= 2 {
+                        self.emit_expr_into(&iter[1], s_slot);
+
+                        if iter.len() >= 3 {
+                            self.emit_expr_into(&iter[2], var_slot);
+                        } else {
+                            self.emit(LOADNIL(var_slot, 0));
+                        }
+                    } else {
+                        self.emit(LOADNIL(s_slot, 1));
+                    }
+                } else {
+                    self.emit(LOADNIL(f_slot, 2));
+                }
+
+                // The `vars` are assigned to the return values of f. If the first return value is
+                // nil, the loop is exited. At the end of the loop, `var` is assigned to the first
+                // value returned by `f`. At the beginning of each iteration, the following is
+                // executed:
+                // > local var_1, var_2, ... = f(s, var)
+
+                // temp slots for the function call
+                let callslots = cmp::max(3, vars.len());
+                let ftemp = self.alloc_slots(callslots);
+
+                // Register loop vars:
+                for (i, var) in vars.iter().enumerate() {
+                    let var_id = *body.get_local(var)
+                        .expect(&format!("loop var {} not found", **var));
+                    self.alloc.insert(var_id, ftemp + i as u8);
+                }
+
+                // local var_1, var_2, ... = f(s, var)
+                let loop_start = self.get_next_addr();
+                self.emit(MOV(ftemp, f_slot));
+                self.emit(MOV(ftemp+1, s_slot));
+                self.emit(MOV(ftemp+2, var_slot));
+                self.emit(CALL(ftemp, 3, vars.len() as u8 + 1));
+                let exit_check = self.emit_raw(INVALID); // replaced with `IFNOT(ftemp, ...)`
+                self.emit(MOV(var_slot, ftemp));
+
+                self.visit_block(body);
+
+                self.dealloc_slots(callslots);  // vars
+
+                // jump to `loop_start`
+                let rel = loop_start as isize - self.get_next_addr() as isize - 1;
+                if rel > i16::MAX as isize || rel < i16::MIN as isize {
+                    self.err_span("relative jump exceeds limit",
+                        Some(format!("jump dist is {}, limit is {}", rel, i16::MAX)),
+                        s.span);
+                }
+                self.emit(JMP(rel as i16));
+
+                // jump here when leaving the loop
+                let rel = self.get_next_addr() - exit_check - 1;
+                if rel > u16::MAX as usize {
+                    self.err_span("relative jump exceeds limit",
+                        Some(format!("jump dist is {}, limit is {}", rel, i16::MAX)),
+                        s.span);
+                }
+                self.replace_op(exit_check, IFNOT(ftemp, rel as i16));
+
+                self.dealloc_slots(3);          // f, s, var
+                self.finalize_breaks();
+            }
         }
     }
 
@@ -975,7 +1051,7 @@ impl Emitter {
             varargs: f.varargs,
             opcodes: Opcodes(vec![]),
             consts: vec![],
-            upvals: f.upvalues.clone(),     // TODO Convert
+            upvals: vec![],
             lines: vec![],
             source_name: self.source_name.clone(),
             child_protos: vec![],
@@ -1466,6 +1542,21 @@ mod tests {
             MOV(3,0),
             ADD(0,0,1),
             JMP(-4),
+            RETURN(0,1),
+        ]);
+    }
+
+    #[test]
+    fn generic_for() {
+        test!("for i in nil do end" => [
+            LOADNIL(0,2),   // internal vars: f, s, var
+            MOV(3,0),
+            MOV(4,1),
+            MOV(5,2),
+            CALL(3,3,2),    // i (3) = f(s, var)
+            IFNOT(3,2),
+            MOV(2,3),       // var = i
+            JMP(-7),
             RETURN(0,1),
         ]);
     }
