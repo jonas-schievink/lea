@@ -1100,12 +1100,16 @@ mod tests {
 
     use lea_core::opcode::*;
 
+    fn runtest(code: &str, ops: &[Opcode]) {
+        let opvec = emit_func(&parse_and_resolve(code).unwrap(), "<test>").unwrap().opcodes;
+
+        assert_eq!(*opvec, ops);
+    }
+
     /// A simple test that compiles a main function and compares the emitted opcodes
     macro_rules! test {
         ($code:expr => [ $($op:expr,)* ]) => {{
-            let opvec = emit_func(&parse_and_resolve($code).unwrap(), "<test>").unwrap().opcodes;
-
-            assert_eq!(*opvec, vec![ $($op),* ]);
+            runtest($code, &[$($op,)*]);
         }}
     }
 
