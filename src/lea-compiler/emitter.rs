@@ -663,9 +663,21 @@ impl Emitter {
                 self.emit(VARARGS(hint_slot, 1));
                 hint_slot
             }
-            ETable(ref _cons) => {
+            ETable(ref cons) => {
                 // TODO Use table prototypes
-                unimplemented!();
+
+                self.emit(TABLE(hint_slot));
+
+                for &(ref key, ref value) in cons {
+                    let key_slot = self.alloc_slots(1);
+                    let key_slot = self.emit_expr(key, key_slot);
+                    let val_slot = self.alloc_slots(1);
+                    let val_slot = self.emit_expr(value, val_slot);
+                    self.emit(SETIDX(hint_slot, key_slot, val_slot));
+                    self.dealloc_slots(2);
+                }
+
+                hint_slot
             }
             EArray(ref elems) => {
                 // TODO Use array prototypes
@@ -965,7 +977,7 @@ impl Emitter {
                 let var_slot = f_slot + 2;
 
                 // XXX This is really ugly
-                // TODO Check if only one expression can be used to init all 3
+                // FIXME Check if only one expression can be used to init all 3 in Lua
                 if iter.len() >= 1 {
                     self.emit_expr_into(&iter[0], f_slot);
 
@@ -1417,6 +1429,26 @@ mod tests {
             FUNC(0,0),
             LOADNIL(1,0),   // local g
             FUNC(1,1),
+            RETURN(0,1),
+        ]);
+    }
+
+    #[test]
+    fn table() {
+        test!("local a = {4, 5, key = 1, [3] = 2}" => [
+            TABLE(0),       // a
+            LOADK(1,0),     // 0
+            LOADK(2,1),     // 4
+            SETIDX(0,1,2),  // a[0] = 4
+            LOADK(1,2),     // 1
+            LOADK(2,3),     // 5
+            SETIDX(0,1,2),  // a[1] = 5
+            LOADK(1,4),     // "key"
+            LOADK(2,2),     // 1
+            SETIDX(0,1,2),  // a["key"] = 1
+            LOADK(1,5),     // 3
+            LOADK(2,6),     // 2
+            SETIDX(0,1,2),  // a[3] = 2
             RETURN(0,1),
         ]);
     }
