@@ -907,11 +907,53 @@ impl Emitter {
                 self.dealloc_slots(1);  // cond_slot
                 self.finalize_breaks();
             }
-            /*SFor { ref var, ref start, ref step, ref end, ref body } => {
-                unimplemented!();
+            SFor { ref var, ref start, ref step, ref end, ref body } => {
+                // internal loop variable
+                let inner_var_slot = self.alloc_slots(3);
+                let step_slot = inner_var_slot + 1;
+                let end_slot = step_slot + 1;
+
+                self.emit_expr_into(start, inner_var_slot);
+                if let Some(ref step) = *step {
+                    self.emit_expr_into(step, step_slot);
+                } else {
+                    let id = self.add_const(&Const::Int(1));
+                    self.emit(LOADK(step_slot, id));
+                }
+                self.emit_expr_into(end, end_slot);
+
+                // allocate slot for externally visible loop variable
+                let var_id = *body.get_local(var).expect(&format!("local {} not found", **var));
+                let var_slot = self.alloc_slots(1);
+                self.alloc.insert(var_id, var_slot);
+
+                let for_check = self.emit_raw(INVALID);
+                self.emit(MOV(var_slot, inner_var_slot));
+
+                self.visit_block(body);
+
+                self.emit(ADD(inner_var_slot, inner_var_slot, step_slot));
+
+                // jump back to `for_check`
+                let rel = for_check as isize - self.get_next_addr() as isize - 1;
+                if rel > i16::MAX as isize || rel < i16::MIN as isize {
+                    self.err_span("relative jump exceeds limit",
+                        Some(format!("jump dist is {}, limit is {}", rel, i16::MAX)),
+                        s.span);
+                }
+                self.emit(JMP(rel as i16));
+
+                let rel = self.get_next_addr() - for_check - 1;
+                if rel > u16::MAX as usize {
+                    self.err_span("relative jump exceeds limit",
+                        Some(format!("jump dist is {}, limit is {}", rel, u16::MAX)),
+                        s.span);
+                }
+                self.replace_op(for_check, FORCHECK(inner_var_slot, rel as u16));
+
                 self.finalize_breaks();
             }
-            SForIn { ref vars, ref iter, ref body } => {
+            /*SForIn { ref vars, ref iter, ref body } => {
                 unimplemented!();
                 self.finalize_breaks();
             }*/
@@ -1406,6 +1448,20 @@ mod tests {
             JMP(2),
             LOADNIL(0,0),
             IFNOT(0,-4),
+            RETURN(0,1),
+        ]);
+    }
+
+    #[test]
+    fn numeric_for() {
+        test!("for i=0,10 do end" => [
+            LOADK(0,0),     // 0
+            LOADK(1,1),     // 1 (implicit step)
+            LOADK(2,2),     // 10
+            FORCHECK(0, 3),
+            MOV(3,0),
+            ADD(0,0,1),
+            JMP(-4),
             RETURN(0,1),
         ]);
     }

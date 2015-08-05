@@ -271,7 +271,7 @@ mod tests {
     }
 
     #[test]
-    fn simple() {
+    fn locals() {
         let mut f = parse_main(r#"
 i = 0
 local a
@@ -315,7 +315,7 @@ j = i
     }
 
     #[test]
-    fn complex() {
+    fn upvalues() {
         let mut f = parse_main(r#"
 local a
 local function f()

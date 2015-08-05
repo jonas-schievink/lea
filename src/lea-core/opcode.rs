@@ -100,6 +100,14 @@ pub enum Opcode {
     ///
     /// If the value in `R[A]` is `false` or `nil`, offsets `PC` by `Xs`.
     IFNOT(u8, i16),
+    /// > assert: R[A], R[A+1], R[A+2] are numeric
+    /// > if (R[A+1] >= 0 && R[A] > R[A+2]) || (R[A+1] < 0 && R[A] < R[A+2]): PC += Xu
+    ///
+    /// Jumps out of a for-loop if the loop variable in `R[A]` is outside the range of the loop:
+    /// If the loop step in `R[A+1]` is non-negative, this occurs exactly when the value is larger
+    /// than the loop limit in `R[A+2]`. If the step is negative, this occurs when the value is
+    /// smaller than the limit, since the loop runs backwards.
+    FORCHECK(u8, u16),
     /// > R[A] := U[B]
     GETUPVAL(u8, u8),
     /// > U[A] := R[B]
