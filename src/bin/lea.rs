@@ -18,7 +18,7 @@ use vm::function::FunctionProto;
 use vm::value::Value;
 use vm::vm::VM;
 
-use std::io::{self, stdin, stderr, Write};
+use std::io::{self, stdin, stderr, Write, BufRead};
 
 
 docopt!(Args derive Debug, "
@@ -73,8 +73,10 @@ fn run_fndata(main: FnData) {
     let ret: VmResult = vm.start();
     match ret {
         Ok(vals) => {
-            let vals: Vec<String> = vals.into_iter().map(|val| format!("{:?}", val)).collect();
-            println!("{}", vals.join("\t"));
+            if !vals.is_empty() {
+                let vals: Vec<String> = vals.into_iter().map(|val| format!("{:?}", val)).collect();
+                println!("{}", vals.join("\t"));
+            }
         }
         Err(e) => {
             println!("{:?}", e);
@@ -82,22 +84,29 @@ fn run_fndata(main: FnData) {
     }
 }
 
-fn repl() -> io::Result<()> {
-    let mut input = String::new();
-    let mut stdin = io::stdin();
+fn print_prompt() -> io::Result<()> {
     let mut stdout = io::stdout();
+    try!(write!(stdout, "> "));
+    try!(stdout.flush());
 
-    loop {
-        try!(write!(stdout, "> "));
-        try!(stdout.flush());
-        try!(stdin.read_line(&mut input));
+    Ok(())
+}
 
+fn repl() -> io::Result<()> {
+    let stdin = io::stdin();
+    let stdin = io::BufReader::new(stdin);
+
+    try!(print_prompt());
+    for input in stdin.lines() {
+        let input = try!(input);
         if let Some(fndata) = try!(compile(&input, "<repl>")) {
             run_fndata(fndata);
         }
 
-        input.clear();
+        try!(print_prompt());
     }
+
+    Ok(())
 }
 
 #[allow(dead_code)]     // TODO write tests
