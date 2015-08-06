@@ -211,7 +211,7 @@ pub fn apply_transforms<'a>(mut main: Function<'a>, conf: &CompileConfig) -> (Fu
 }
 
 /// Compiles source code into an `FnData` instance. This executes the whole compilation process and
-/// emits byte code (TODO).
+/// emits byte code.
 ///
 /// Note that this will not return the `Function` node on error, even if parsing succeeded.
 ///
