@@ -200,7 +200,7 @@ statement -> Stmt<'input>
 
 #[pub]
 block -> Block<'input>
-    = s:statement* {
+    = __* s:statement* {
         Block {
             stmts: s,
             span: Span::new(start_pos, pos),
