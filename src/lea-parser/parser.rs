@@ -62,6 +62,20 @@ pub fn parse_main(input: &str) -> Result<Function, ParseError> {
     Ok(Function::new(vec![], true, blk))
 }
 
+/// Parses an expression and builds a `Function` node that will evalute and return the expression
+/// when executed.
+pub fn parse_expr_as_main(expr: &str) -> Result<Function, ParseError> {
+    let expr = try!(expression(expr));
+    let block = Block {
+        span: expr.span,
+        stmts: vec![
+            Spanned::new(expr.span, SReturn(vec![expr])),
+        ],
+    };
+
+    Ok(Function::new(vec![], true, block))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

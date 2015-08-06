@@ -236,3 +236,24 @@ pub fn compile_str<'a>(code: &'a str, source_name: &str, conf: &CompileConfig) -
         Err(errs) => Err(ErrEmit(errs)),
     }
 }
+
+/// Compiles an expression into an `FnData` object that will return the result(s) of the expression
+/// to the caller.
+pub fn compile_expr<'a>(expr: &'a str, source_name: &str, conf: &CompileConfig) -> CompileResult<CompileOutput<'a>> {
+    let main = try!(parser::parse_expr_as_main(expr));
+    let main = main.into();
+    try!(check::check_func(&main));
+    let main = resolve::resolve_func(main);
+    let (main, tr_res) = apply_transforms(main, &conf);
+    let warnings = try!(tr_res);
+    let emit_res = emit_func(&main, source_name);
+
+    match emit_res {
+        Ok(proto) => Ok(CompileOutput {
+            warns: warnings,
+            main: main,
+            mainproto: proto,
+        }),
+        Err(errs) => Err(ErrEmit(errs)),
+    }
+}

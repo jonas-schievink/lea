@@ -29,6 +29,18 @@ pub enum CompileError {
     ErrEmit(Vec<EmitError>),
 }
 
+impl From<ParseError> for CompileError {
+    fn from(e: ParseError) -> Self {
+        ErrParse(e)
+    }
+}
+
+impl From<Vec<CheckError>> for CompileError {
+    fn from(errs: Vec<CheckError>) -> Self {
+        ErrCheck(errs)
+    }
+}
+
 impl CompileError {
     pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<Output=W>) -> io::Result<()> {
         match *self {

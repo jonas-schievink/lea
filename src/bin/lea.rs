@@ -40,13 +40,19 @@ fn stderr_term() -> Box<term::StderrTerminal> {
     term::stderr().unwrap_or_else(|| Box::new(DummyTerm(io::stderr())))
 }
 
-/// Compiles a piece of code. Prints all errors / warnings to stderr, using color if stderr is a
-/// terminal.
+/// Compiles a piece of code (expression or block of statements). Prints all errors / warnings to
+/// stderr, using color if stderr is a terminal.
 fn compile(code: &str, filename: &str) -> io::Result<Option<FnData>> {
     let mut fmt_target = stderr_term();
     let fmt_target = &mut *fmt_target;
 
-    match compiler::compile_str(code, filename, &CompileConfig::default()) {
+    // try to compile an expression first
+    let mut result = compiler::compile_expr(code, filename, &CompileConfig::default());
+    if result.is_err() {
+        result = compiler::compile_str(code, filename, &CompileConfig::default());
+    }
+
+    match result {
         Err(e) => {
             try!(e.format(code, filename, fmt_target));
             Ok(None)
