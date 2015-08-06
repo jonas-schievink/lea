@@ -79,6 +79,9 @@ struct Emitter {
     /// Opcode indices of `SBreak` (was emitted as opcode `INVALID`). These are replaced by
     /// forward jumps after the current loop when the loop is fully emitted.
     break_indices: Vec<usize>,
+
+    /// Current stack size.
+    stacksize: u8,
 }
 
 impl Emitter {
@@ -90,6 +93,7 @@ impl Emitter {
             alloc: HashMap::new(),
             needs_close: false,
             break_indices: Vec::new(),
+            stacksize: 0,
         }
     }
 
@@ -116,20 +120,24 @@ impl Emitter {
     /// Allocates `count` stack slots. Returns the lowest one that was allocated (slots are
     /// allocated consecutively).
     fn alloc_slots(&mut self, count: usize) -> u8 {
-        let stacksz = self.cur_func().stacksize;
+        let stacksz = self.stacksize;
         if count + stacksz as usize >= u8::MAX as usize {
             self.err("stack limit reached", Some(format!(
                 "limit {} was reached when attempting to allocate {} slots", u8::MAX, count)));
-            u8::MAX
+            0
         } else {
-            self.cur_func_mut().stacksize += count as u8;
+            self.stacksize += count as u8;
+            if self.cur_func().stacksize < self.stacksize {
+                self.cur_func_mut().stacksize = self.stacksize;
+            }
+
             stacksz
         }
     }
 
     fn dealloc_slots(&mut self, count: usize) {
-        debug_assert!(self.cur_func().stacksize as usize >= count);
-        self.cur_func_mut().stacksize -= count as u8;
+        debug_assert!(self.stacksize as usize >= count);
+        self.stacksize -= count as u8;
     }
 
     /// Adds a constant to the program's constant table and returns its index (does not add it if
@@ -492,7 +500,7 @@ impl Emitter {
             EVarArgs => {
                 let start_slot = if max_res == 0 {
                     // top of stack
-                    self.cur_func().stacksize
+                    self.stacksize
                 } else {
                     // alloc fixed reg count
                     self.alloc_slots(max_res as usize)
@@ -764,7 +772,7 @@ impl Emitter {
                     return;
                 }
 
-                debug!("assign: {} tmps", tmpcount);
+                println!("assign: {} tmps", tmpcount);
 
                 for i in 0..tmpcount {
                     let slot: usize = tmpstart + i;
@@ -821,14 +829,14 @@ impl Emitter {
                 self.dealloc_slots(tmpcount);
 
                 // eval. excess expressions (if they could cause side effects)
-                let slot = self.alloc_slots(1);
                 for i in tmpcount+1..vals.len() {
                     let expr = &vals[i];
                     if expr.has_side_effects() {
+                        let slot = self.alloc_slots(1);
                         self.emit_expr(expr, slot);
+                        self.dealloc_slots(1);
                     }
                 }
-                self.dealloc_slots(1);
             }
             SDo(ref block) => {
                 self.visit_block(block);
@@ -838,7 +846,7 @@ impl Emitter {
                 self.break_indices.push(index);
             }
             SReturn(ref vals) => {
-                let start = self.cur_func().stacksize;  // first return value here (if any)
+                let start = self.stacksize;  // first return value here (if any)
                 self.emit_expr_list(vals, |emitter, count| {
                     emitter.emit(RETURN(start, count));
                 });
@@ -1052,6 +1060,9 @@ impl Emitter {
 
     /// Emits a function and returns its ID
     fn emit_func(&mut self, f: &Function) -> u16 {
+        let oldstack = self.stacksize;
+        self.stacksize = 0;
+
         if f.params.len() > u8::MAX as usize {
             self.err_span("too many function parameters", Some(format!("function has {}, maximum is {}", f.params.len(), u8::MAX)), f.params[f.params.len() - 1].span);
             return 0
@@ -1101,6 +1112,8 @@ impl Emitter {
             UpvalDesc::Upval(id) => UpvalDesc::Upval(id),
         }).collect();
 
+        self.stacksize = oldstack;
+
         // TODO shrink vectors to save space
 
         if self.funcs.is_empty() {
@@ -1140,7 +1153,7 @@ impl<'a> Visitor<'a> for Emitter {
     }
 
     fn visit_block(&mut self, b: &Block) {
-        let oldstack = self.cur_func().stacksize;
+        let oldstack = self.stacksize;
         let old_needs_close = self.needs_close;
         self.needs_close = false;
 
@@ -1161,7 +1174,7 @@ impl<'a> Visitor<'a> for Emitter {
             debug!("dealloc: {} (id {}) -> slot {}", name, id, slot);
         }
 
-        self.cur_func_mut().stacksize = oldstack;
+        self.stacksize = oldstack;
         self.needs_close = old_needs_close;
     }
 
