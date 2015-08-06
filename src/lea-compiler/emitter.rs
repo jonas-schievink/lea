@@ -772,7 +772,7 @@ impl Emitter {
                     return;
                 }
 
-                println!("assign: {} tmps", tmpcount);
+                debug!("assign: {} tmps", tmpcount);
 
                 for i in 0..tmpcount {
                     let slot: usize = tmpstart + i;
