@@ -58,6 +58,11 @@ pub struct CallInfo {
     dtop: u8,
     /// Number of varargs stored in the value stack before the stack frame of this call.
     va_count: u8,
+    /// Number of return values the caller can accept (minus 1). 0 = any number.
+    return_lim: u8,
+    /// First (local) slot that a return value should be placed in. If `return_lim` is 1, this
+    /// field is ignored.
+    return_start: u8,
 }
 
 /// A VM context. Holds a garbage collector that manages the program's memory, the stack used for
@@ -115,7 +120,7 @@ impl<G: GcStrategy> VM<G> {
         assert!(self.stack.is_empty());
 
         let main = self.main;
-        self.push_call(main);
+        self.push_call(main, 0, 0, 0);  // `ret_count` and `ret_start` are ignored for main
         self.run()
     }
 }
@@ -128,19 +133,10 @@ impl<G: GcStrategy> VM<G> {
     ///
     /// This will also extend the value stack by the number of slots specified in the function
     /// prototype.
-    fn push_call(&mut self, func: TracedRef<Function>) {
-        self.push_call_with_varargs(func, 0)
-    }
-
-    /// Creates a `CallInfo` object that describes an activation of the given function and pushes
-    /// it onto the callstack.
-    ///
-    /// This will also extend the value stack by the number of slots specified in the function
-    /// prototype.
     ///
     /// Note that `va_count` is only used to fill the `CallInfo`, no arguments are actually passed
     /// to the callee, nor is any stack space reserved.
-    fn push_call_with_varargs(&mut self, func: TracedRef<Function>, va_count: u8)  {
+    fn push_call(&mut self, func: TracedRef<Function>, va_count: u8, ret_count: u8, ret_start: u8) {
         let gc = &mut self.gc;
         let proto = unsafe {
             let proto = gc.get_mut(func).proto;
@@ -158,6 +154,8 @@ impl<G: GcStrategy> VM<G> {
             bottom: old_len,
             dtop: 0,
             va_count: va_count,
+            return_lim: ret_count,
+            return_start: ret_start,
         });
     }
 
@@ -294,7 +292,7 @@ impl<G: GcStrategy> VM<G> {
                     let func_ref = self.gc.register_obj(func);
                     self.reg_set(reg, Value::TFunc(func_ref));
                 }
-                CALL(callee_reg, args, _) => {  // return count is only used on return
+                CALL(callee_reg, args, ret_lim) => {  // return count is only used on return
                     let callee: Value = self.reg_get(callee_reg);
 
                     match callee {
@@ -346,7 +344,7 @@ impl<G: GcStrategy> VM<G> {
                             // first register containing an argument
                             let fixed_start_abs: usize = self.cur_call().bottom + callee_reg as usize + 1;
 
-                            self.push_call_with_varargs(callee, var_pass);
+                            self.push_call(callee, var_pass, ret_lim, callee_reg);
 
                             // write args-1 arguments to callee stack slots 0..n
                             // depends on whether callee is varargs
@@ -385,48 +383,37 @@ impl<G: GcStrategy> VM<G> {
                         // main function exits
                         return Ok((start..callee_lim).map(|i| self.reg_get(i)).collect())
                     } else {
+                        let caller_lim = self.cur_call().return_lim;
+                        let func_slot = self.cur_call().return_start;
+                        let caller_lim: u8 = if caller_lim == 0 {
+                            callee_lim
+                        } else {
+                            caller_lim - 1
+                        };
+                        // number of ret vals copied directly
+                        let lim: u8 = cmp::min(caller_lim, callee_lim);
+                        let caller_info_idx = self.calls.len() - 2;
+
                         {
-                            // How many return values can the caller accept? This is encoded in the
-                            // `CALL` instruction, so we need to look it up, first.
-                            let caller: &CallInfo = &self.calls[self.calls.len() - 2];
-                            let call_ip = caller.ip - 1;
-                            let func: &Function = unsafe { self.gc.get_ref(caller.func) };
-                            let proto: &FunctionProto = unsafe { self.gc.get_ref(func.proto) };
-                            // (I really wish we had less indirections for this sort of stuff)
+                            let caller: &CallInfo = &self.calls[caller_info_idx];
+                            debug!("RET caller_lim: {}, callee_lim: {}", caller_lim, callee_lim);
 
-                            let call_op = proto.opcodes[call_ip];
-                            match call_op {
-                                CALL(func_slot, _, ret) => {
-                                    let caller_lim: u8 = if ret == 0 {
-                                        callee_lim
-                                    } else {
-                                        ret - 1
-                                    };
+                            // copy `start` to `start + lim` (excl.) into caller's slots
+                            for i in 0..lim {
+                                let dest: usize = caller.bottom + func_slot as usize + i as usize;
+                                debug!("copy slot {} ({:?}) to {}", start + i, self.reg_get(start + i as u8), func_slot + i);
+                                self.stack[dest] = self.reg_get(start + i);
+                            }
 
-                                    debug!("RET caller_lim: {}, callee_lim: {}", caller_lim, callee_lim);
-
-                                    // number of ret vals copied directly
-                                    let lim: u8 = cmp::min(caller_lim, callee_lim);
-
-                                    // copy `start` to `start + lim` (excl.) into caller's slots
-                                    for i in 0..lim {
-                                        let dest: usize = caller.bottom + func_slot as usize + i as usize;
-                                        debug!("copy slot {} ({:?}) to {}", start + i, self.reg_get(start + i as u8), func_slot + i);
-                                        self.stack[dest] = self.reg_get(start + i);
-                                    }
-
-                                    // fill with `caller_lim - lim` `nil`s
-                                    for i in 0..caller_lim - lim {
-                                        let dest = caller.bottom + func_slot as usize + lim as usize + i as usize;
-                                        debug!("fill {}", func_slot + lim + i);
-                                        self.stack[dest] = Value::TNil;
-                                    }
-                                }
-                                _ => {
-                                    panic!("couldn't find `CALL` instruction for return (got {:?} at ip = {})", call_op, call_ip);
-                                }
+                            // fill with `caller_lim - lim` `nil`s
+                            for i in 0..caller_lim - lim {
+                                let dest = caller.bottom + func_slot as usize + lim as usize + i as usize;
+                                debug!("fill {}", func_slot + lim + i);
+                                self.stack[dest] = Value::TNil;
                             }
                         }
+
+                        self.calls[caller_info_idx].dtop = func_slot + lim;  // XXX verify this
 
                         self.return_from_call();
                     }
@@ -814,7 +801,7 @@ mod tests {
 
     #[test] #[should_panic]
     fn test_ret_panic() {
-        // Tests the `test_ret!` macro
+        // Tests the `test!` macro with return values
         test!({
             stack: 1,
             fns: [],
