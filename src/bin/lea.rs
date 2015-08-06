@@ -9,6 +9,7 @@ extern crate term;
 extern crate lea_compiler as compiler;
 extern crate lea_parser as parser;
 extern crate lea_vm as vm;
+extern crate lea;
 
 use parser::span::DummyTerm;
 use compiler::{CompileConfig, FnData};
@@ -118,7 +119,7 @@ fn main() {
         Ok(args) => {
             match args {
                 Args { flag_version: true, .. } => {
-                    println!("Lea {}", option_env!("CARGO_PKG_VERSION").unwrap_or("<unknown version>"));
+                    println!("Lea {}", lea::version_str());
                 }
                 Args { .. } => {
                     match repl() {

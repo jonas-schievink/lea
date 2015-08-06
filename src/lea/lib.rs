@@ -6,3 +6,8 @@
 
 extern crate lea_compiler as compiler;
 extern crate lea_vm as vm;
+
+/// Returns a version string for the main Lea crate (this crate).
+pub fn version_str() -> &'static str {
+    option_env!("CARGO_PKG_VERSION").unwrap_or("<unknown version>")
+}

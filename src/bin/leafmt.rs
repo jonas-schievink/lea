@@ -10,6 +10,7 @@ extern crate docopt;
 extern crate term;
 extern crate rustc_serialize;
 extern crate lea_parser as parser;
+extern crate lea;
 
 use parser::span::DummyTerm;
 use parser::prettyprint::PrettyPrinter;
@@ -72,7 +73,7 @@ fn main() {
         Ok(args) => {
             match args {
                 Args { flag_version: true, .. } => {
-                    println!("Lea {}", option_env!("CARGO_PKG_VERSION").unwrap_or("<unknown version>"));
+                    println!("Lea {}", lea::version_str());
                 }
                 Args { arg_file, flag_out, .. } => {
                     // Read input
