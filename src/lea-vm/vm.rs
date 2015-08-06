@@ -333,12 +333,12 @@ impl<G: GcStrategy> VM<G> {
                                 // callee will get varargs
                                 // copy `var_pass` args onto the value stack
                                 let start_slot = callee_reg + fixed_pass + 1;
-                                println!("passing {} varargs starting at {}", var_pass, start_slot);
+                                debug!("passing {} varargs starting at {}", var_pass, start_slot);
 
                                 for i in 0..var_pass {
                                     let slot = start_slot + i;
                                     let arg = self.reg_get(slot);
-                                    println!("va {}: {:?}", i, arg);
+                                    debug!("va {}: {:?}", i, arg);
                                     self.stack.push(arg);
                                 }
                             }
@@ -352,7 +352,15 @@ impl<G: GcStrategy> VM<G> {
                             // depends on whether callee is varargs
                             if args > 1 {
                                 for i in 0..fixed_pass {
-                                    println!("CALL: fixed pass {:?} from slot {} (abs {}) to slot {} (abs {})", self.stack[fixed_start_abs + i as usize], callee_reg + i + 1, fixed_start_abs + i as usize, i, self.cur_call().bottom + i as usize);
+                                    debug!(
+                                        "CALL: fixed pass {:?} from slot {} (abs {}) to slot {} (abs {})",
+                                        self.stack[fixed_start_abs + i as usize],
+                                        callee_reg + i + 1,
+                                        fixed_start_abs + i as usize,
+                                        i,
+                                        self.cur_call().bottom + i as usize
+                                    );
+
                                     let arg = self.stack[fixed_start_abs + i as usize];
                                     self.reg_set(i, arg);
                                 }
@@ -366,10 +374,10 @@ impl<G: GcStrategy> VM<G> {
                 }
                 RETURN(start, cnt) => {
                     let callee_lim: u8 = if cnt == 0 {
-                        println!("dynamic ret from {} to {} (excl.)", start, self.cur_call().dtop);
+                        debug!("dynamic ret from {} to {} (excl.)", start, self.cur_call().dtop);
                         self.cur_call().dtop
                     } else {
-                        println!("fixed ret from {} to {} (excl.)", start, cnt - 1);
+                        debug!("fixed ret from {} to {} (excl.)", start, cnt - 1);
                         cnt - 1
                     };
 
@@ -395,7 +403,7 @@ impl<G: GcStrategy> VM<G> {
                                         ret - 1
                                     };
 
-                                    println!("RET caller_lim: {}, callee_lim: {}", caller_lim, callee_lim);
+                                    debug!("RET caller_lim: {}, callee_lim: {}", caller_lim, callee_lim);
 
                                     // number of ret vals copied directly
                                     let lim: u8 = cmp::min(caller_lim, callee_lim);
@@ -403,14 +411,14 @@ impl<G: GcStrategy> VM<G> {
                                     // copy `start` to `start + lim` (excl.) into caller's slots
                                     for i in 0..lim {
                                         let dest: usize = caller.bottom + func_slot as usize + i as usize;
-                                        println!("copy slot {} ({:?}) to {}", start + i, self.reg_get(start + i as u8), func_slot + i);
+                                        debug!("copy slot {} ({:?}) to {}", start + i, self.reg_get(start + i as u8), func_slot + i);
                                         self.stack[dest] = self.reg_get(start + i);
                                     }
 
                                     // fill with `caller_lim - lim` `nil`s
                                     for i in 0..caller_lim - lim {
                                         let dest = caller.bottom + func_slot as usize + lim as usize + i as usize;
-                                        println!("fill {}", func_slot + lim + i);
+                                        debug!("fill {}", func_slot + lim + i);
                                         self.stack[dest] = Value::TNil;
                                     }
                                 }
@@ -433,11 +441,17 @@ impl<G: GcStrategy> VM<G> {
                         // copy all varargs and update dtop
                         for i in 0..va_count {
                             let val = self.stack[first_va + i as usize];
-                            println!("dyn get va {} -> {}: {:?}", i, target + i, val);
+                            debug!("dyn get va {} -> {}: {:?}", i, target + i, val);
                             self.reg_set_or_extend(target + i, val);
                         }
 
-                        println!("VARARGS: setting dtop to {} (fixed top: {}, got {} varargs @ {})", target + va_count, self.cur_proto().stacksize, va_count, target);
+                        debug!(
+                            "VARARGS: setting dtop to {} (fixed top: {}, got {} varargs @ {})",
+                            target + va_count,
+                            self.cur_proto().stacksize,
+                            va_count,
+                            target
+                        );
                         self.cur_call_mut().dtop = target + va_count;
                     } else {
                         // copy exactly `count` varargs to `target` and following regs, fill with
@@ -450,12 +464,16 @@ impl<G: GcStrategy> VM<G> {
 
                         for i in 0..copy_varargs {
                             let val = self.stack[first_va + i as usize];
-                            println!("fixed get va {} (target slot {}): {:?}", first_va + i as usize, target + i, val);
+                            debug!("fixed get va {} (target slot {}): {:?}",
+                                first_va + i as usize,
+                                target + i,
+                                val
+                            );
                             self.reg_set(target + i, val);
                         }
 
                         for i in 0..fill_varargs {
-                            println!("va fill slot {}", target + copy_varargs + i);
+                            debug!("va fill slot {}", target + copy_varargs + i);
                             self.reg_set(target + copy_varargs + i, Value::TNil);
                         }
                     }
@@ -479,7 +497,12 @@ impl<G: GcStrategy> VM<G> {
                     self.reg_set(target, Value::TBool(!truthy));
                 }
                 INVALID => panic!("invalid opcode at ip={}", self.cur_call().ip),
-                DEBUG(slot) => println!("VM DEBUG slot {} (abs {}): {:?}", slot, self.cur_call().bottom + slot as usize, self.reg_get(slot)),
+                DEBUG(slot) => println!(
+                    "VM DEBUG slot {} (abs {}): {:?}",
+                    slot,
+                    self.cur_call().bottom + slot as usize,
+                    self.reg_get(slot)
+                ),
                 _ => panic!("unimplemented opcode: {:?}", op),
             }
         }

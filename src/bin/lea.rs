@@ -66,8 +66,6 @@ fn compile(code: &str, filename: &str) -> io::Result<Option<FnData>> {
 /// Creates a VM and GC and executes the given `FnData` object. Prints the returned value or the
 /// error thrown.
 fn run_fndata(main: FnData) {
-    println!("{:#?}", main);
-
     let mut gc = DefaultGc::default();
     let proto = FunctionProto::from_fndata(main, &mut gc);
     let mut vm = VM::with_env(gc, proto, Value::TNil);
