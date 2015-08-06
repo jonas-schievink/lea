@@ -2,18 +2,25 @@
 //! simple: Neither Finalizers nor `Drop` glue needs to run, Weak references can be ignored (they
 //! will always be valid) and we don't have to keep track of all live objects.
 //!
-//! As a simplification, this also won't run `Drop` on GC objects when a `NoopGc` is dropped.
+//! When the `NoopGc` is dropped, all objects will be dropped along with it.
 //!
-//! The `NoopGc` strategy might even prove useful in practice, when a script is supposed to only
-//! run very shortly and/or not create much garbage.
+//! This is the default GC until the stop-the-world collector works correctly.
 
 use std::any::Any;
-use std::mem::transmute;
+use std::mem::replace;
 
 use super::*;
 
+#[allow(dead_code)]     // possible bug in dead_code lint
+struct Boxed {
+    obj: Box<Any>,
+    next: Option<Box<Boxed>>,
+}
+
 #[derive(Default)]
-pub struct NoopGc;
+pub struct NoopGc {
+    first: Option<Box<Boxed>>,
+}
 
 impl GcStrategy for NoopGc {
     /// Does nothing (hence `NoopGc`)
@@ -24,14 +31,52 @@ impl GcStrategy for NoopGc {
     #[inline]
     fn collect_atomic<G: GcCallback>(&mut self, _: &mut G) {}
 
-    /// Allocates `T` on the heap and leaks it.
     #[inline]
     fn register_obj<T: Any>(&mut self, t: T) -> TracedRef<T> {
-        // The transmute is safe, but leaks the object (this is intended).
-        let ptr: *const T = unsafe { transmute(Box::new(t)) };
+        let b = Box::new(t);
+        let ptr = &*b as *const T;
+
+        let next = replace(&mut self.first, None);
+        let boxed = Boxed {
+            obj: b as Box<Any>,
+            next: next,
+        };
+
+        self.first = Some(Box::new(boxed));
 
         TracedRef {
             ptr: ptr,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mem::GcStrategy;
+
+    #[test]
+    fn test_drop() {
+        static mut DROPPED: u8 = 0;
+
+        struct DropGc;
+
+        impl Drop for DropGc {
+            fn drop(&mut self) {
+                unsafe {
+                    DROPPED += 1;
+                }
+            }
+        }
+
+        let mut gc = NoopGc::default();
+        gc.register_obj(DropGc);
+        gc.register_obj("test".to_owned()); // just for fun
+        gc.register_obj(DropGc);
+        gc.register_obj(());
+
+        drop(gc);
+
+        assert_eq!(unsafe {DROPPED}, 2);
     }
 }

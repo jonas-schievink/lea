@@ -30,7 +30,7 @@ pub mod stw;
 
 // TODO finalizers and weak references (with callback)
 
-pub type DefaultGc = stw::Stw;
+pub type DefaultGc = noop::NoopGc;
 
 /// A GC-managed object that may reference other GC-managed objects and keep them alive. Provides a
 /// `trace` method that will be invoked by the GC to trace these references.
