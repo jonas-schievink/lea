@@ -81,8 +81,14 @@ fn run_fndata(main: FnData) {
     match ret {
         Ok(vals) => {
             if !vals.is_empty() {
-                let vals: Vec<String> = vals.into_iter().map(|val| format!("{:?}", val)).collect();
-                println!("{}", vals.join("\t"));
+                for (i, val) in vals.into_iter().enumerate() {
+                    if i != 0 {
+                        print!("\t");
+                    }
+
+                    unsafe { val.fmt(io::stdout(), vm.gc()) }.unwrap();
+                }
+                println!("");
             }
         }
         Err(e) => {

@@ -369,7 +369,7 @@ impl Emitter {
     /// expression can evaluate to any number of values at runtime, which will be placed after the
     /// last fixed argument.
     fn emit_expr_list<'a, F>(&mut self, exprs: &[Expr<'a>], f: F)
-    where F: FnOnce(&mut Emitter, /* count-1 */ u8) {
+    where F: FnOnce(&mut Emitter, /* count+1 */ u8) {
         if exprs.len() == 0 {
             f(self, 1);
             return

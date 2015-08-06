@@ -76,6 +76,12 @@ impl<T: Any> fmt::Debug for TracedRef<T> {
     }
 }
 
+impl<T: Any> fmt::Pointer for TracedRef<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:p}", self.ptr)
+    }
+}
+
 /// A `Tracer` provides methods to mark objects as reachable. A `GcStrategy` will pass an object
 /// that implements `Tracer` to the `trace` method of all `Traceable` and reachable objects.
 pub trait Tracer {

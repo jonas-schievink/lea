@@ -9,6 +9,7 @@ use mem::{TracedRef, Tracer, GcStrategy};
 
 use lea_core::constant::Const;
 
+use std::io::{self, Write};
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 use std::mem::transmute;
@@ -98,6 +99,21 @@ impl Value {
             Const::Str(s) => TStr(gc.register_obj(s)),
             Const::Bool(b) => TBool(b),
             Const::Nil => TNil,
+        }
+    }
+
+    /// Formats this `Value`. This requires a reference to the GC that owns the referenced objects
+    /// and is unsafe because the `TracedRef`s are dereferenced using the GC.
+    pub unsafe fn fmt<G: GcStrategy, W: Write>(&self, mut f: W, gc: &G) -> io::Result<()> {
+        match *self {
+            TNil => write!(f, "nil"),
+            TBool(b) => write!(f, "{}", b),
+            TInt(i) => write!(f, "{}", i),
+            TFloat(flt) => write!(f, "{}", *flt),
+            TStr(s) => write!(f, "{}", gc.get_ref(s)),
+            TFunc(func) => write!(f, "function:{:p}", func),
+            TArray(a) => write!(f, "array:{:p}", a),
+            TTable(t) => write!(f, "table:{:p}", t),
         }
     }
 }

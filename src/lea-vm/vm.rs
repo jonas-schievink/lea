@@ -377,8 +377,8 @@ impl<G: GcStrategy> VM<G> {
                         debug!("dynamic ret from {} to {} (excl.)", start, self.cur_call().dtop);
                         self.cur_call().dtop
                     } else {
-                        debug!("fixed ret from {} to {} (excl.)", start, cnt - 1);
-                        cnt - 1
+                        debug!("fixed ret from {} to {} (excl.)", start, start + cnt - 1);
+                        start + cnt - 1
                     };
 
                     if self.calls.len() == 1 {

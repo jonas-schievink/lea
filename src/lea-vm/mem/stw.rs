@@ -1,5 +1,7 @@
 //! A simple Stop-The-World atomic GC.
 
+// XXX This is incomplete, doesn't really work and stores nasty pointer offsets in TracedRefs!
+
 use super::*;
 
 use std::any::Any;
