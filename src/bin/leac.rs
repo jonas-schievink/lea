@@ -15,7 +15,8 @@ use parser::span::DummyTerm;
 use compiler::{CompileConfig, FnData};
 
 use rustc_serialize::json;
-use bincode::{EncodingError, SizeLimit};
+use bincode::SizeLimit;
+use bincode::rustc_serialize::EncodingError;
 
 use std::io::{self, stdin, stderr, stdout, Read, Write};
 use std::fs::File;
@@ -41,7 +42,7 @@ impl Encoding {
                 }
             }
             Encoding::bin => {
-                match bincode::encode_into(fndata, wr, SizeLimit::Infinite) {
+                match bincode::rustc_serialize::encode_into(fndata, wr, SizeLimit::Infinite) {
                     Ok(_) => Ok(()),
                     Err(EncodingError::IoError(e)) => Err(e),
                     Err(EncodingError::SizeLimit) => Err(io::Error::new(io::ErrorKind::Other, "size limit reached")),
