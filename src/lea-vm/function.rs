@@ -7,6 +7,9 @@ use lea_core::opcode::*;
 use mem::*;
 use value::Value;
 
+use std::rc::Rc;
+use std::cell::Cell;
+
 /// A compiled function. When instantiated by the VM, becomes a `Function`.
 #[derive(Clone, Debug)]
 pub struct FunctionProto {
@@ -62,12 +65,11 @@ impl Traceable for FunctionProto {
 }
 
 /// An active Upvalue
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Upval {
-    /// Upvalue owned by parent. usize is either the stack slot or the index in the parent's upval
-    /// list (stored in Upvalue definition in function prototype).
+    /// Upvalue is stored in a stack slot
     Open(usize),
-    /// Closed upvalue owned by the function that references it
+    /// Closed upvalue, storing its value inline
     Closed(Value),
 }
 
@@ -77,7 +79,7 @@ pub struct Function {
     /// The prototype from which this function was instantiated
     pub proto: TracedRef<FunctionProto>,
     /// Upvalue references, indexed by upvalue ID
-    pub upvalues: Vec<Upval>,
+    pub upvalues: Vec<Rc<Cell<Upval>>>,
 }
 
 impl Function {
@@ -86,9 +88,9 @@ impl Function {
     /// Upvalues are filled in by calling `search_upval` with the upvalue description from the
     /// prototype. `search_upval` will be called in the right order: Upvalue 0 will be resolved
     /// first.
-    pub fn new<F, G: GcStrategy>(gc: &mut G, proto: TracedRef<FunctionProto>, mut search_upval: F)
+    pub fn new<F, G: GcStrategy>(gc: &G, proto: TracedRef<FunctionProto>, mut search_upval: F)
     -> Function
-    where F: FnMut(&UpvalDesc) -> Upval {
+    where F: FnMut(&UpvalDesc) -> Rc<Cell<Upval>> {
         // TODO Code style of fn decl (is there something official?)
 
         let protoref = unsafe { gc.get_ref(proto) };
@@ -98,16 +100,9 @@ impl Function {
         }
     }
 
-    /// Sets an upvalue to the given value. The upvalue must be closed, otherwise, this function
-    /// panics (the VM has to close upvalues, we cannot do that).
-    pub fn set_closed_upvalue(&mut self, id: usize, val: Value) {
-        let upval: &mut Upval = &mut self.upvalues[id];
-
-        if let Upval::Closed(ref mut oldval) = *upval {
-            *oldval = val;
-        } else {
-            panic!("set_closed_upvalue called on open upvalue #{}", id);
-        }
+    /// Sets an upvalue to the given value.
+    pub fn set_upvalue(&mut self, id: usize, val: Upval) {
+        self.upvalues[id].set(val);
     }
 }
 
@@ -116,7 +111,7 @@ impl Traceable for Function {
         t.mark_traceable(self.proto);
 
         for uv in &self.upvalues {
-            if let Upval::Closed(ref val) = *uv {
+            if let Upval::Closed(val) = uv.get() {
                 val.trace(t);
             }
         }
