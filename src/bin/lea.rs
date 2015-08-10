@@ -136,7 +136,7 @@ fn main() {
                 Args { .. } => {
                     match repl() {
                         Err(e) => println!("{}", e),
-                        Ok(_) => unreachable!(),
+                        Ok(_) => {}
                     }
                 }
             }
