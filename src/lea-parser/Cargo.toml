@@ -9,7 +9,7 @@ name = "lea_parser"
 path = "lib.rs"
 
 [dependencies]
-term = "*"
-unicode-segmentation = "*"
+term = "0.2"
+unicode-segmentation = "0.1"
 peg = { git = "https://github.com/kevinmehall/rust-peg.git" }
 lea-core = { path = "../lea-core" }

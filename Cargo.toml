@@ -21,6 +21,6 @@ lea-compiler = { path = "src/lea-compiler" }
 lea-vm = { path = "src/lea-vm" }
 docopt = { git = "https://github.com/docopt/docopt.rs" }
 docopt_macros = { git = "https://github.com/docopt/docopt.rs" }
-rustc-serialize = "*"
-bincode = "*"
-term = "*"
+rustc-serialize = "0.3"
+bincode = "0.4"
+term = "0.2"
