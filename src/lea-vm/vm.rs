@@ -9,7 +9,7 @@ use mem::{TracedRef, GcStrategy};
 use function::{Function, FunctionProto, Upval};
 use array::Array;
 use table::Table;
-use value::Value;
+use value::{HashedFloat, Value};
 use error::VmResult;
 
 use std::cmp;
@@ -222,6 +222,11 @@ impl<G: GcStrategy> VM<G> {
 
     /// Performs a relative jump
     fn reljump(&mut self, rel: i16) {
+        let ip = self.cur_call().ip as isize;
+        self.cur_call_mut().ip = (ip + rel as isize) as usize;
+    }
+
+    fn fwdjump(&mut self, rel: u16) {
         let ip = self.cur_call().ip as isize;
         self.cur_call_mut().ip = (ip + rel as isize) as usize;
     }
@@ -507,7 +512,26 @@ impl<G: GcStrategy> VM<G> {
                         self.reljump(rel);
                     }
                 }
-                //FORCHECK
+                FORCHECK(slot, rel) => {
+                    // TODO Support floats here
+                    let loop_var = self.reg_get(slot);
+                    let loop_var_int = match loop_var {
+                        Value::TInt(val) => val,
+                        _ => return Err(format!("invalid for loop var (must be integer)").into()),
+                    };
+                    let step = match self.reg_get(slot + 1) {
+                        Value::TInt(val) => val,
+                        _ => return Err(format!("invalid for loop step (must be integer)").into()),
+                    };
+                    let limit = match self.reg_get(slot + 2) {
+                        Value::TInt(val) => val,
+                        _ => return Err(format!("invalid for loop limit (must be integer)").into()),
+                    };
+
+                    if (step >= 0 && loop_var_int > limit) || (step < 0 && loop_var_int < limit) {
+                        self.fwdjump(rel);
+                    }
+                }
                 GETUPVAL(reg, up) => {
                     let val = match self.cur_func().upvalues[up as usize].get() {
                         Upval::Open(slot) => self.stack[slot],
@@ -522,6 +546,42 @@ impl<G: GcStrategy> VM<G> {
                         Upval::Closed(_) => self.cur_func().upvalues[up as usize].set(Upval::Closed(val)),
                     };
                 }
+                //GETIDX
+                //SETIDX
+                ADD(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
+                    (Value::TInt(l), Value::TInt(r)) => {
+                        self.reg_set(a, Value::TInt(l + r))
+                    }
+                    (Value::TInt(l), Value::TFloat(r)) => {
+                        self.reg_set(a, Value::TFloat(HashedFloat(l as f64 + *r)))
+                    }
+                    (Value::TFloat(l), Value::TInt(r)) => {
+                        self.reg_set(a, Value::TFloat(HashedFloat(*l + r as f64)))
+                    }
+                    (Value::TFloat(l), Value::TFloat(r)) => {
+                        self.reg_set(a, Value::TFloat(HashedFloat(*l + *r)))
+                    }
+                    (b, c) => {
+                        return Err(format!("attempt to exponentiate {} and {}", b.get_type_name(), c.get_type_name()).into());
+                    }
+                },
+                POW(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
+                    (Value::TInt(l), Value::TInt(r)) => {
+                        self.reg_set(a, Value::TInt(l.pow(r as u32)))
+                    }
+                    (Value::TInt(l), Value::TFloat(r)) => {
+                        self.reg_set(a, Value::TFloat(HashedFloat((l as f64).powf(*r))))
+                    }
+                    (Value::TFloat(l), Value::TInt(r)) => {
+                        self.reg_set(a, Value::TFloat(HashedFloat(l.powi(r as i32))))
+                    }
+                    (Value::TFloat(l), Value::TFloat(r)) => {
+                        self.reg_set(a, Value::TFloat(HashedFloat(l.powf(*r))))
+                    }
+                    (b, c) => {
+                        return Err(format!("attempt to exponentiate {} and {}", b.get_type_name(), c.get_type_name()).into());
+                    }
+                },
                 //...
                 NOT(target, src) => {
                     let truthy = self.reg_get(src).is_truthy();
