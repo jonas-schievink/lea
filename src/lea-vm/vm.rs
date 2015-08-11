@@ -562,7 +562,7 @@ impl<G: GcStrategy> VM<G> {
                         self.reg_set(a, Value::TFloat(HashedFloat(*l + *r)))
                     }
                     (b, c) => {
-                        return Err(format!("attempt to exponentiate {} and {}", b.get_type_name(), c.get_type_name()).into());
+                        return Err(format!("attempt to add {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
                 POW(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
