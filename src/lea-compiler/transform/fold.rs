@@ -41,11 +41,7 @@ fn fold_unop(op: UnOp, lit: &Const) -> Result<Const, String> {
             Const::Float(f) => Ok(Const::Float(-f)),
             Const::Str(_) | Const::Bool(_) | Const::Nil => Err(unary_err(op, lit)),
         },
-        UnOp::LNot | UnOp::LNotLua => match *lit { // ! / not
-            Const::Int(_) | Const::Float(_) | Const::Str(_) => Ok(Const::Bool(false)),  // all these evaluate to true
-            Const::Bool(b) => Ok(Const::Bool(!b)),
-            Const::Nil => Ok(Const::Bool(true)),
-        },
+        UnOp::LNot | UnOp::LNotLua => Ok(Const::Bool(!fold_truth(lit))),
         UnOp::BNot => match *lit { // ~
             Const::Int(i) => Ok(Const::Int(!i)),
             Const::Float(_) | Const::Str(_) | Const::Bool(_) | Const::Nil => Err(unary_err(op, lit)),

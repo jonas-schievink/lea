@@ -78,7 +78,6 @@ extern crate log;
 
 extern crate rustc_serialize;
 extern crate term;
-extern crate unicode_segmentation;
 
 extern crate lea_core;
 extern crate lea_parser as parser;

@@ -12,7 +12,6 @@ path = "lib.rs"
 rustc-serialize = "0.3"
 lazy_static = "0.1"
 term = "0.2"
-unicode-segmentation = "0.1"
 log = "0.3"
 lea-core = { path = "../lea-core" }
 lea-parser = { path = "../lea-parser" }
