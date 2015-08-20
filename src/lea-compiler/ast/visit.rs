@@ -1,10 +1,20 @@
 //! AST visitor implementation
 
-#![allow(deprecated)]   // TODO don't use map_in_place
-
 use super::*;
 
 use std::mem;
+
+// FIXME Remove this workaround
+trait MapInPlace {
+    type Elem: Sized;
+    fn map_in_place<F>(self, f: F) -> Self where F: FnMut(Self::Elem) -> Self::Elem;
+}
+impl<T> MapInPlace for Vec<T> {
+    type Elem = T;
+    fn map_in_place<F>(self, f: F) -> Self where F: FnMut(Self::Elem) -> Self::Elem {
+        self.into_iter().map(f).collect::<Vec<T>>()
+    }
+}
 
 
 /// A visitor that can transform AST nodes
