@@ -2,6 +2,8 @@
 
 use value::Value;
 
+use std::fmt;
+
 #[derive(Debug)]
 pub struct VmError {
     pub msg: String,
@@ -13,6 +15,12 @@ impl From<String> for VmError {
         VmError {
             msg: msg,
         }
+    }
+}
+
+impl fmt::Display for VmError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(&self.msg)
     }
 }
 

@@ -18,7 +18,7 @@ Lea makes the following changes to plain Lua 5.3:
 * Replace "word" operators with commonly used symbols (`and` -> `&&`, `or` -> `||`, `not` -> `!`; as with `!=`, the keywords are still supported)
 * Tables split into arrays and associative arrays (classical tables)
 * 0 based arrays
-* Larger standard library (including an FFI, extended filesystem functions, networking, ...; these features will be largely wrappers aroung Rust's standard library function)
+* Larger standard library (including an FFI, extended filesystem functions, networking, ...; these features will be largely wrappers aroung Rust's standard library functions)
 
 # Note
 

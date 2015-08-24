@@ -92,7 +92,7 @@ fn run_fndata(main: FnData) {
             }
         }
         Err(e) => {
-            println!("{:?}", e);
+            println!("runtime error: {}", e);
         }
     }
 }
