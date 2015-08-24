@@ -887,6 +887,7 @@ impl Emitter {
 
                 self.dealloc_slots(1);  // cond_slot no longer needed
 
+                let break_indices = mem::replace(&mut self.break_indices, Vec::new());
                 self.visit_block(body);
 
                 // Emit backwards jump
@@ -906,9 +907,11 @@ impl Emitter {
                 }
                 self.replace_op(jump_op, IFNOT(cond_slot, rel as i16));
                 self.finalize_breaks();
+                self.break_indices = break_indices;
             }
             SRepeat { ref body, ref abort_on } => {
                 let head_op = self.get_next_addr() as isize;
+                let break_indices = mem::replace(&mut self.break_indices, Vec::new());
 
                 self.visit_block(body);
 
@@ -926,6 +929,7 @@ impl Emitter {
 
                 self.dealloc_slots(1);  // cond_slot
                 self.finalize_breaks();
+                self.break_indices = break_indices;
             }
             SFor { ref var, ref start, ref step, ref end, ref body } => {
                 // internal loop variable
@@ -949,6 +953,8 @@ impl Emitter {
 
                 let for_check = self.emit_raw(INVALID);
                 self.emit(MOV(var_slot, inner_var_slot));
+
+                let break_indices = mem::replace(&mut self.break_indices, Vec::new());
 
                 self.visit_block(body);
                 self.dealloc_slots(1);  // var_slot
@@ -974,6 +980,7 @@ impl Emitter {
                 self.replace_op(for_check, FORCHECK(inner_var_slot, rel as u16));
 
                 self.finalize_breaks();
+                self.break_indices = break_indices;
             }
             SForIn { ref vars, ref iter, ref body } => {
                 // Initialize invisible loop state:
@@ -1030,6 +1037,7 @@ impl Emitter {
                 let exit_check = self.emit_raw(INVALID); // replaced with `IFNOT(ftemp, ...)`
                 self.emit(MOV(var_slot, ftemp));
 
+                let break_indices = mem::replace(&mut self.break_indices, Vec::new());
                 self.visit_block(body);
 
                 self.dealloc_slots(callslots);  // vars
@@ -1054,6 +1062,7 @@ impl Emitter {
 
                 self.dealloc_slots(3);          // f, s, var
                 self.finalize_breaks();
+                self.break_indices = break_indices;
             }
         }
     }
@@ -1573,6 +1582,15 @@ mod tests {
             JMP(2),
             LOADNIL(0,0),
             IFNOT(0,-4),
+            RETURN(0,1),
+        ]);
+        test!("repeat break repeat break until nil until nil" => [
+            JMP(5),
+            JMP(2),
+            LOADNIL(0,0),
+            IFNOT(0,-3),
+            LOADNIL(0,0),
+            IFNOT(0,-6),
             RETURN(0,1),
         ]);
     }

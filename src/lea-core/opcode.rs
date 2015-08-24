@@ -16,8 +16,6 @@ pub use self::Opcode::*;
 /// * `A`, `B`, `C` are the values of the first, second and third `u8` parameters (resp.)
 /// * `Xu` is the value of the operand of type `u16` (eXtended unsigned)
 /// * `Xs` is the value of the operand of type `i16` (eXtended signed)
-/// * `Lu` = `((A << 16) | Xu) as u32` emulates one 24 bit parameter (eg. for jumps)
-/// * `Ls` = `((A << 16) | Xu) as i32` signed version of `Lu`
 /// * `PC` is the program counter, which holds the number of the next opcode by default
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, RustcEncodable, RustcDecodable)]
 #[repr(u8)]
