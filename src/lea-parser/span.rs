@@ -124,8 +124,8 @@ impl Span {
 
     /// Prints a message followed by a line break
     fn print_msg<W: Write>(msg: &str, t: &mut Terminal<Output=W>) -> io::Result<()> {
+        try!(t.reset());
         try!(t.attr(Attr::Bold));
-        try!(t.fg(color::WHITE));
         try!(write!(t, "{}\n", msg));
         try!(t.reset());
         Ok(())
@@ -172,10 +172,10 @@ impl Span {
     -> io::Result<()> {
         let (start, _end) = self.get_lines(code);
         try!(Span::print_loc(source_name, start, None, t));
-        try!(t.fg(color::RED));
+        try!(t.fg(color::BRIGHT_RED));
         try!(write!(t, "error: "));
         try!(Span::print_msg(err, t));
-        try!(self.format(code, source_name, t, color::RED));
+        try!(self.format(code, source_name, t, color::BRIGHT_RED));
         Ok(())
     }
 
