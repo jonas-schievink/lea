@@ -1,5 +1,7 @@
 //! Parse tree -> AST conversion
 
+// TODO Do resolve and fold, possibly some lints in this pass
+
 use super::*;
 use parser::parsetree;
 use parser::span::Spanned;
@@ -116,14 +118,14 @@ fn conv_vec<'a, T: Conv<'a>>(v: Vec<Spanned<T>>) -> Vec<Spanned<T::Target>> {
     res
 }
 
-fn conv_args<'a>(args: parsetree::CallArgs<'a>) -> Vec<Expr<'a>> {
+fn conv_args(args: parsetree::CallArgs) -> Vec<Expr> {
     let mut v = Vec::new();
     args.conv(|e| v.push(e));
 
     v
 }
 
-fn vec_into<'a, U, T: Into<U>>(v: Vec<Spanned<T>>) -> Vec<Spanned<U>> {
+fn vec_into<U, T: Into<U>>(v: Vec<Spanned<T>>) -> Vec<Spanned<U>> {
     v.into_iter().map(|item| spanned_into(item)).collect()
 }
 
