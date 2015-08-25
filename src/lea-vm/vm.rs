@@ -80,9 +80,6 @@ impl<G: GcStrategy> VM<G> {
     /// Returns when the function returns (or a runtime error occurs).
     pub fn start(&mut self, f: TracedRef<Function>) -> VmResult {
         // FIXME When is a nested call okay?
-        assert!(self.calls.is_empty(), "vm already started");
-        assert!(self.stack.is_empty(), "vm already started");
-
         self.push_call(f, 0, 0, 0);  // `ret_count` and `ret_start` are ignored
         self.main_loop()
     }
@@ -172,7 +169,9 @@ impl<G: GcStrategy> VM<G> {
 
     /// Fetches the current opcode and increments the instruction pointer by 1
     fn fetch(&mut self) -> Opcode {
-        let op = *self.cur_proto().opcodes.get(self.cur_call().ip).expect("ip out of bounds");
+        let op = *self.cur_proto().opcodes.get(self.cur_call().ip).unwrap_or_else(|| {
+            panic!("ip {} out of range ({} opcodes)", self.cur_call().ip, self.cur_proto().opcodes.len())
+        });
         self.cur_call_mut().ip += 1;
         op
     }
@@ -372,7 +371,11 @@ impl<G: GcStrategy> VM<G> {
 
                     if self.calls.len() == 1 {
                         // main function exits
-                        return Ok((start..callee_lim).map(|i| self.reg_get(i)).collect())
+                        let ret: Vec<_> = (start..callee_lim).map(|i| self.reg_get(i)).collect();
+                        let len = self.stack.len();
+                        self.stack.truncate(len - ret.len());
+                        self.calls.pop();
+                        return Ok(ret)
                     } else {
                         let caller_lim = self.cur_call().return_lim;
                         let func_slot = self.cur_call().return_start;
