@@ -47,7 +47,6 @@ pub struct CallInfo {
 /// local and temporary variables, the callstack, etc.
 pub struct VM<G: GcStrategy> {
     gc: G,
-    main: TracedRef<Function>,
     /// Call stack
     calls: Vec<CallInfo>,
     /// "VM stack", "value stack" or just stack. Stores the activation of functions in the form of
@@ -58,30 +57,13 @@ pub struct VM<G: GcStrategy> {
 }
 
 impl<G: GcStrategy> VM<G> {
-    pub fn new(gc: G, main: TracedRef<Function>) -> VM<G> {
+    pub fn new(gc: G) -> VM<G> {
         VM {
             gc: gc,
-            main: main,
             calls: Default::default(),
             stack: Default::default(),
             open_upvals: Default::default(),
         }
-    }
-
-    /// Utility function that takes a main function as a `FunctionProto`, instantiates it and sets
-    /// its first upvalue to `env`.
-    pub fn with_env(mut gc: G, main: TracedRef<FunctionProto>, env: Value) -> VM<G> {
-        // TODO mark this function unsafe?
-        let mut first = true;
-        let func = Function::new(&mut gc, main, |_| if first {
-            first = false;
-            Rc::new(Cell::new(Upval::Closed(env)))
-        } else {
-            Rc::new(Cell::new(Upval::Closed(Value::TNil)))
-        });
-
-        let mainref = gc.register_obj(func);
-        VM::new(gc, mainref)
     }
 
     pub fn gc(&self) -> &G {
@@ -92,17 +74,17 @@ impl<G: GcStrategy> VM<G> {
         &mut self.gc
     }
 
-    /// Starts execution of the program. This may not be called multiple times on the same VM.
+    /// Starts execution of the program. This may not be called while the VM is already executing
+    /// a function.
     ///
-    /// Returns when the main function returns (or a runtime error occurs).
-    pub fn start(&mut self) -> VmResult {
-        // create initial CallInfo and run
-        assert!(self.calls.is_empty());
-        assert!(self.stack.is_empty());
+    /// Returns when the function returns (or a runtime error occurs).
+    pub fn start(&mut self, f: TracedRef<Function>) -> VmResult {
+        // FIXME When is a nested call okay?
+        assert!(self.calls.is_empty(), "vm already started");
+        assert!(self.stack.is_empty(), "vm already started");
 
-        let main = self.main;
-        self.push_call(main, 0, 0, 0);  // `ret_count` and `ret_start` are ignored for main
-        self.run()
+        self.push_call(f, 0, 0, 0);  // `ret_count` and `ret_start` are ignored
+        self.main_loop()
     }
 }
 
@@ -233,7 +215,7 @@ impl<G: GcStrategy> VM<G> {
 
     /// VM main loop. This will start dispatching opcodes of the currently active function (at the
     /// top of the call stack).
-    fn run(&mut self) -> VmResult {
+    fn main_loop(&mut self) -> VmResult {
         loop {
             let op = self.fetch();
 
@@ -605,13 +587,16 @@ mod tests {
     use super::*;
 
     use mem::noop::NoopGc;
-    use function::FunctionProto;
+    use mem::GcStrategy;
+    use function::{FunctionProto, Function, Upval};
     use value::Value;
 
     use lea_core::fndata::{FnData, UpvalDesc};
     use lea_core::opcode::*;
     use lea_core::constant::Const;
 
+    use std::rc::Rc;
+    use std::cell::Cell;
 
     /// Defines a function. Evaluates to an `FnData` object.
     macro_rules! fndef {
@@ -666,8 +651,16 @@ mod tests {
             let main: FnData = fndef!($main);
             let mut gc = NoopGc::default();
             let proto = FunctionProto::from_fndata(main, &mut gc);
-            let mut vm = VM::with_env(gc, proto, $env);
-            let ret = vm.start();
+            let mut first = true;
+            let f = Function::new(&gc, proto, |_| if first {
+                first = false;
+                Rc::new(Cell::new(Upval::Closed($env)))
+            } else {
+                Rc::new(Cell::new(Upval::Closed(Value::TNil)))
+            });
+            let f = gc.register_obj(f);
+            let mut vm = VM::new(gc);
+            let ret = vm.start(f);
 
             (vm, ret)
         }};

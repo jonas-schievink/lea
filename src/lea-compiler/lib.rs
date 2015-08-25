@@ -65,8 +65,8 @@
 //!
 //! ## Emitting
 //!
-//! The byte code emitter for the compiler still needs to be written. It will take an AST and
-//! convert it to machine code for the virtual machine.
+//! The byte code emitter takes a resolved AST and emits byte code for each function that can be
+//! executed by the VM.
 
 #[macro_use]
 extern crate lazy_static;

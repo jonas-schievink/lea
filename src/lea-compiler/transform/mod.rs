@@ -4,13 +4,10 @@
 // TODO Add a proper Lint/Optimizer interface (although we probably don't need an optimizer interface at all)
 // Some thoughts:
 // * Lints are named and may be en-/disabled via cmd line switches
-// * Foreign code can register own Lints and register them to be run just like the builtin Lints
+// * Foreign code can register own Lints and configure them to be run just like the builtin Lints
 // * Pass some object to Lints that allows emitting warnings (less overhead when warnings are
 //   disabled for that lint; no need to store a `Vec<Warning>` inside each Lint)
 // * Lints implement Visitor, not Transform (they should be forced to take a `&Function`)
-// * Lints may be executed in parallel (and even parallel to code emission), but this won't
-//   necessarily make anything faster (it might, when many lints are run and the AST is large -
-//   need a heuristic for this!)
 // * We can only do a few optimizations. Lea is completely dynamic, so constant folding and simple
 //   DCE is probably all we can do (inlining of local function could be done, too, but is probably
 //   not worth it)
