@@ -3,7 +3,7 @@
 //! Since this is considered an internal crate, everything inside here is entirely unstable and
 //! unsafe (because Rust really doesn't like it when I strap a GC on top of it).
 
-#![feature(raw, vec_resize)]
+#![feature(raw)]
 
 extern crate lea_core;
 

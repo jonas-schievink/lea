@@ -12,6 +12,7 @@ use table::Table;
 use value::{HashedFloat, Value};
 use error::VmResult;
 
+use std::iter;
 use std::cmp;
 use std::rc::Rc;
 use std::cell::Cell;
@@ -106,7 +107,7 @@ impl<G: GcStrategy> VM<G> {
         // Ensure we have `proto.stacksize + va_count` slots free after current `dtop` (FIXME)
         // XXX is this optimized right?
         let old_len = self.stack.len();
-        self.stack.resize(old_len + proto.stacksize as usize, Value::TNil);
+        self.stack.extend(iter::repeat(Value::TNil).take(proto.stacksize as usize));
 
         self.calls.push(CallInfo {
             func: func,
@@ -195,7 +196,8 @@ impl<G: GcStrategy> VM<G> {
     fn reg_set_or_extend(&mut self, reg: u8, val: Value) {
         let slot: usize = self.cur_call().bottom + reg as usize;
         if slot >= self.stack.len() {
-            self.stack.resize(slot + 1, Value::TNil);
+            let len = self.stack.len();
+            self.stack.extend(iter::repeat(Value::TNil).take(len - slot + 1));
         }
 
         self.stack[slot] = val;
