@@ -664,6 +664,46 @@ impl<G: GcStrategy> VM<G> {
                         return Err(format!("attempt to compare (>) {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
+                BAND(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
+                    (Value::TNumber(l), Value::TNumber(r)) => {
+                        self.reg_set(a, Value::TNumber(l & r))
+                    }
+                    (b, c) => {
+                        return Err(format!("attempt to calculate the bitwise and of {} and {}", b.get_type_name(), c.get_type_name()).into());
+                    }
+                },
+                BOR(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
+                    (Value::TNumber(l), Value::TNumber(r)) => {
+                        self.reg_set(a, Value::TNumber(l | r))
+                    }
+                    (b, c) => {
+                        return Err(format!("attempt to calculate the bitwise or of {} and {}", b.get_type_name(), c.get_type_name()).into());
+                    }
+                },
+                BXOR(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
+                    (Value::TNumber(l), Value::TNumber(r)) => {
+                        self.reg_set(a, Value::TNumber(l ^ r))
+                    }
+                    (b, c) => {
+                        return Err(format!("attempt to calculate the bitwise xor of {} and {}", b.get_type_name(), c.get_type_name()).into());
+                    }
+                },
+                SHIFTL(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
+                    (Value::TNumber(l), Value::TNumber(r)) => {
+                        self.reg_set(a, Value::TNumber(l << r))
+                    }
+                    (b, c) => {
+                        return Err(format!("attempt to perform a left-shift with {} and {}", b.get_type_name(), c.get_type_name()).into());
+                    }
+                },
+                SHIFTR(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
+                    (Value::TNumber(l), Value::TNumber(r)) => {
+                        self.reg_set(a, Value::TNumber(l >> r))
+                    }
+                    (b, c) => {
+                        return Err(format!("attempt to perform a right-shift with {} and {}", b.get_type_name(), c.get_type_name()).into());
+                    }
+                },
                 //...
                 NOT(target, src) => {
                     let truthy = self.reg_get(src).is_truthy();
