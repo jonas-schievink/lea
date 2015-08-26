@@ -704,7 +704,61 @@ impl<G: GcStrategy> VM<G> {
                         return Err(format!("attempt to perform a right-shift with {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
-                //...
+                CONCAT(a, b, c) => {
+                    let res: String = match (self.reg_get(b), self.reg_get(c)) {
+                        (Value::TNumber(l), Value::TNumber(r)) => {
+                            format!("{}{}", l, r)
+                        }
+                        (Value::TNumber(l), Value::TStr(r)) => {
+                            format!("{}{}", l, unsafe { self.gc.get_ref(r) })
+                        }
+                        (Value::TStr(l), Value::TNumber(r)) => {
+                            format!("{}{}", unsafe { self.gc.get_ref(l) }, r)
+                        }
+                        (Value::TStr(l), Value::TStr(r)) => {
+                            format!("{}{}", unsafe { self.gc.get_ref(l) }, unsafe { self.gc.get_ref(r) })
+                        }
+                        (b, c) => {
+                            return Err(format!("attempt to concatenate {} and {}", b.get_type_name(), c.get_type_name()).into());
+                        }
+                    };
+
+                    let gcref = self.gc.register_obj(res);
+                    self.reg_set(a, Value::TStr(gcref));
+                },
+                NEG(a, b) => match self.reg_get(b) {
+                    Value::TNumber(num) => {
+                        self.reg_set(a, Value::TNumber(-num));
+                    }
+                    b => {
+                        return Err(format!("attempt to negate {}", b.get_type_name()).into());
+                    }
+                },
+                INV(a, b) => match self.reg_get(b) {
+                    Value::TNumber(num) => {
+                        self.reg_set(a, Value::TNumber(!num));
+                    }
+                    b => {
+                        return Err(format!("attempt to invert {}", b.get_type_name()).into());
+                    }
+                },
+                LEN(a, b) => match self.reg_get(b) {
+                    Value::TStr(s) => {
+                        let len: i64 = unsafe { self.gc.get_ref(s).len() } as i64;
+                        self.reg_set(a, Value::TNumber(len.into()));
+                    }
+                    Value::TArray(arr) => {
+                        let len = unsafe { self.gc.get_ref(arr).len() } as i64;
+                        self.reg_set(a, Value::TNumber(len.into()));
+                    }
+                    Value::TTable(t) => {
+                        let len = unsafe { self.gc.get_ref(t).len() } as i64;
+                        self.reg_set(a, Value::TNumber(len.into()));
+                    }
+                    b => {
+                        return Err(format!("attempt to get the length of {}", b.get_type_name()).into());
+                    }
+                },
                 NOT(target, src) => {
                     let truthy = self.reg_get(src).is_truthy();
                     self.reg_set(target, Value::TBool(!truthy));
