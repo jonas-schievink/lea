@@ -73,6 +73,13 @@ impl Table {
             Ok(self.data.insert(k, v))
         }
     }
+
+    pub fn get(&self, k: &Value) -> Value {
+        match self.data.get(k) {
+            None => Value::TNil,
+            Some(&v) => v,
+        }
+    }
 }
 
 impl Traceable for Table {

@@ -532,8 +532,37 @@ impl<G: GcStrategy> VM<G> {
                         Upval::Closed(_) => self.cur_func().upvalues[up as usize].set(Upval::Closed(val)),
                     };
                 }
-                //GETIDX
-                //SETIDX
+                GETIDX(a, b, c) => {
+                    // R[a] := R[b][R[c]]
+                    match (self.reg_get(b), self.reg_get(c)) {
+                        (Value::TTable(tbl), idx) => {
+                            let res: Value = unsafe { self.gc.get_ref(tbl).get(&idx) };
+                            self.reg_set(a, res);
+                        }
+                        // TODO Arrays
+                        (b, c) => {
+                            return Err(format!("attempt to index {} with {}", b.get_type_name(), c.get_type_name()).into());
+                        }
+                    }
+                }
+                SETIDX(a, b, c) => {
+                    let c = self.reg_get(c);
+                    match (self.reg_get(a), self.reg_get(b)) {
+                        (Value::TTable(tbl), idx) => {
+                            let tbl: &mut Table = unsafe { self.gc.get_mut(tbl) };
+                            match tbl.set(idx, c) {
+                                Ok(_) => {}
+                                Err(()) => {
+                                    return Err(format!("attempt to index table with nil").into());
+                                }
+                            }
+                        }
+                        // TODO Arrays
+                        (a, b) => {
+                            return Err(format!("attempt to index {} with {}", a.get_type_name(), b.get_type_name()).into());
+                        }
+                    }
+                },
                 ADD(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
                     (Value::TNumber(l), Value::TNumber(r)) => {
                         self.reg_set(a, Value::TNumber(l + r))
@@ -770,7 +799,6 @@ impl<G: GcStrategy> VM<G> {
                     self.cur_call().bottom + slot as usize,
                     self.reg_get(slot)
                 ),
-                _ => panic!("unimplemented opcode: {:?}", op),
             }
         }
     }
