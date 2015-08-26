@@ -9,7 +9,7 @@ use mem::{TracedRef, GcStrategy};
 use function::{Function, FunctionProto, Upval};
 use array::Array;
 use table::Table;
-use value::{HashedFloat, Value};
+use value::Value;
 use error::VmResult;
 
 use std::iter;
@@ -500,19 +500,18 @@ impl<G: GcStrategy> VM<G> {
                     }
                 }
                 FORCHECK(slot, rel) => {
-                    // TODO Support floats here
                     let loop_var = self.reg_get(slot);
                     let loop_var_int = match loop_var {
-                        Value::TInt(val) => val,
-                        _ => return Err(format!("invalid for loop var (must be integer)").into()),
+                        Value::TNumber(val) => val,
+                        _ => return Err(format!("invalid type of for loop variable").into()),
                     };
                     let step = match self.reg_get(slot + 1) {
-                        Value::TInt(val) => val,
-                        _ => return Err(format!("invalid for loop step (must be integer)").into()),
+                        Value::TNumber(val) => val,
+                        _ => return Err(format!("invalid type of for loop step").into()),
                     };
                     let limit = match self.reg_get(slot + 2) {
-                        Value::TInt(val) => val,
-                        _ => return Err(format!("invalid for loop limit (must be integer)").into()),
+                        Value::TNumber(val) => val,
+                        _ => return Err(format!("invalid type of for loop limit").into()),
                     };
 
                     if (step >= 0 && loop_var_int > limit) || (step < 0 && loop_var_int < limit) {
@@ -536,34 +535,16 @@ impl<G: GcStrategy> VM<G> {
                 //GETIDX
                 //SETIDX
                 ADD(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
-                    (Value::TInt(l), Value::TInt(r)) => {
-                        self.reg_set(a, Value::TInt(l + r))
-                    }
-                    (Value::TInt(l), Value::TFloat(r)) => {
-                        self.reg_set(a, Value::TFloat(HashedFloat(l as f64 + *r)))
-                    }
-                    (Value::TFloat(l), Value::TInt(r)) => {
-                        self.reg_set(a, Value::TFloat(HashedFloat(*l + r as f64)))
-                    }
-                    (Value::TFloat(l), Value::TFloat(r)) => {
-                        self.reg_set(a, Value::TFloat(HashedFloat(*l + *r)))
+                    (Value::TNumber(l), Value::TNumber(r)) => {
+                        self.reg_set(a, Value::TNumber(l + r))
                     }
                     (b, c) => {
                         return Err(format!("attempt to add {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
                 POW(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
-                    (Value::TInt(l), Value::TInt(r)) => {
-                        self.reg_set(a, Value::TInt(l.pow(r as u32)))
-                    }
-                    (Value::TInt(l), Value::TFloat(r)) => {
-                        self.reg_set(a, Value::TFloat(HashedFloat((l as f64).powf(*r))))
-                    }
-                    (Value::TFloat(l), Value::TInt(r)) => {
-                        self.reg_set(a, Value::TFloat(HashedFloat(l.powi(r as i32))))
-                    }
-                    (Value::TFloat(l), Value::TFloat(r)) => {
-                        self.reg_set(a, Value::TFloat(HashedFloat(l.powf(*r))))
+                    (Value::TNumber(l), Value::TNumber(r)) => {
+                        self.reg_set(a, Value::TNumber(l.pow(r)))
                     }
                     (b, c) => {
                         return Err(format!("attempt to exponentiate {} and {}", b.get_type_name(), c.get_type_name()).into());
@@ -595,6 +576,7 @@ mod tests {
     use mem::GcStrategy;
     use function::{FunctionProto, Function, Upval};
     use value::Value;
+    use number::Number;
 
     use lea_core::fndata::{FnData, UpvalDesc};
     use lea_core::opcode::*;
@@ -914,7 +896,7 @@ mod tests {
                 LOADNIL(0,0),
                 RETURN(0,2),
             ]
-        } => return [ Value::TInt(4) ]);
+        } => return [ Value::TNumber(Number::Int(4)) ]);
     }
 
     #[test]
@@ -985,7 +967,7 @@ mod tests {
             ]
         } => [
             0: Value::TNil,
-            1: Value::TInt(7),
+            1: Value::TNumber(Number::Int(7)),
             2: Value::TStr(_),
             3: Value::TTable(_),
             4: Value::TArray(_),

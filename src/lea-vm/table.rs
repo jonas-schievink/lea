@@ -122,21 +122,21 @@ mod tests {
     #[test]
     fn test() {
         let mut t = table! {
-            TFloat(HashedFloat(0.5)) => TInt(42),
-            TBool(true) => TInt(24),
+            TNumber(0.5.into()) => TNumber(42.into()),
+            TBool(true) => TNumber(24.into()),
         };
 
-        assert_eq!(t.set(TBool(false), TFloat(HashedFloat(123f64))), Ok(None));
+        assert_eq!(t.set(TBool(false), TNumber(123.0.into())), Ok(None));
         assert_eq!(t.data, hashmap! {
-            TFloat(HashedFloat(0.5)) => TInt(42),
-            TBool(true) => TInt(24),
-            TBool(false) => TFloat(HashedFloat(123f64)),
+            TNumber(0.5.into()) => TNumber(42.into()),
+            TBool(true) => TNumber(24.into()),
+            TBool(false) => TNumber(123.0.into()),
         });
 
-        assert_eq!(t.set(TBool(true), TNil), Ok(Some(TInt(24))));
+        assert_eq!(t.set(TBool(true), TNil), Ok(Some(TNumber(24.into()))));
         assert_eq!(t.data, hashmap! {
-            TFloat(HashedFloat(0.5)) => TInt(42),
-            TBool(false) => TFloat(HashedFloat(123f64)),
+            TNumber(0.5.into()) => TNumber(42.into()),
+            TBool(false) => TNumber(123.0.into()),
         });
 
         assert_eq!(t.set(TNil, TNil), Err(()));

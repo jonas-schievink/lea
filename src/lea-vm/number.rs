@@ -187,6 +187,19 @@ impl Not for Number {
     }
 }
 
+impl Number {
+    /// Exponentiate two numbers
+    pub fn pow<T: Into<Self> + Copy>(self, exp: T) -> Self {
+        // FIXME Overflow semantics unclear: Rust has no `wrapping_pow`
+        match (self, exp.into()) {
+            (Int(b), Int(e)) => Int(b.pow(e as u32)),
+            (Int(b), Float(e)) => Float((b as LeaFloat).powf(e)),
+            (Float(b), Int(e)) => Float(b.powi(e as i32)),
+            (Float(b), Float(e)) => Float(b.powf(e)),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Number::*;
