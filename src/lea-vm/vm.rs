@@ -542,12 +542,126 @@ impl<G: GcStrategy> VM<G> {
                         return Err(format!("attempt to add {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
+                SUB(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
+                    (Value::TNumber(l), Value::TNumber(r)) => {
+                        self.reg_set(a, Value::TNumber(l - r))
+                    }
+                    (b, c) => {
+                        return Err(format!("attempt to subtract {} and {}", b.get_type_name(), c.get_type_name()).into());
+                    }
+                },
+                MUL(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
+                    (Value::TNumber(l), Value::TNumber(r)) => {
+                        self.reg_set(a, Value::TNumber(l * r))
+                    }
+                    (b, c) => {
+                        return Err(format!("attempt to multiply {} and {}", b.get_type_name(), c.get_type_name()).into());
+                    }
+                },
+                DIV(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
+                    (Value::TNumber(l), Value::TNumber(r)) => {
+                        self.reg_set(a, Value::TNumber(l / r))
+                    }
+                    (b, c) => {
+                        return Err(format!("attempt to divide {} and {}", b.get_type_name(), c.get_type_name()).into());
+                    }
+                },
+                MOD(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
+                    (Value::TNumber(l), Value::TNumber(r)) => {
+                        self.reg_set(a, Value::TNumber(l % r))
+                    }
+                    (b, c) => {
+                        return Err(format!("attempt to take the remainder of {} and {}", b.get_type_name(), c.get_type_name()).into());
+                    }
+                },
                 POW(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
                     (Value::TNumber(l), Value::TNumber(r)) => {
                         self.reg_set(a, Value::TNumber(l.pow(r)))
                     }
                     (b, c) => {
                         return Err(format!("attempt to exponentiate {} and {}", b.get_type_name(), c.get_type_name()).into());
+                    }
+                },
+                EQ(a, b, c) => {
+                    let b = self.reg_get(b);
+                    let c = self.reg_get(c);
+                    self.reg_set(a, Value::TBool(b == c));
+                },
+                NEQ(a, b, c) => {
+                    let b = self.reg_get(b);
+                    let c = self.reg_get(c);
+                    self.reg_set(a, Value::TBool(b != c));
+                },
+                LEQ(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
+                    (Value::TNumber(l), Value::TNumber(r)) => {
+                        self.reg_set(a, Value::TBool(l <= r));
+                    }
+                    (Value::TStr(l), Value::TStr(r)) => {
+                        let res: bool = {
+                            let l: &str = unsafe { &self.gc.get_ref(l) };
+                            let r: &str = unsafe { &self.gc.get_ref(r) };
+
+                            l <= r
+                        };
+
+                        self.reg_set(a, Value::TBool(res));
+                    }
+                    (b, c) => {
+                        return Err(format!("attempt to compare (<=) {} and {}", b.get_type_name(), c.get_type_name()).into());
+                    }
+                },
+                GEQ(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
+                    (Value::TNumber(l), Value::TNumber(r)) => {
+                        self.reg_set(a, Value::TBool(l >= r));
+                    }
+                    (Value::TStr(l), Value::TStr(r)) => {
+                        let res: bool = {
+                            let l: &str = unsafe { &self.gc.get_ref(l) };
+                            let r: &str = unsafe { &self.gc.get_ref(r) };
+
+                            l >= r
+                        };
+
+                        self.reg_set(a, Value::TBool(res));
+                    }
+                    (b, c) => {
+                        return Err(format!("attempt to compare (>=) {} and {}", b.get_type_name(), c.get_type_name()).into());
+                    }
+                },
+                LESS(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
+                    (Value::TNumber(l), Value::TNumber(r)) => {
+                        self.reg_set(a, Value::TBool(l < r));
+                    }
+                    (Value::TStr(l), Value::TStr(r)) => {
+                        let res: bool = {
+                            let l: &str = unsafe { &self.gc.get_ref(l) };
+                            let r: &str = unsafe { &self.gc.get_ref(r) };
+
+                            l < r
+                        };
+
+                        self.reg_set(a, Value::TBool(res));
+                    }
+                    (b, c) => {
+                        return Err(format!("attempt to compare (<) {} and {}", b.get_type_name(), c.get_type_name()).into());
+                    }
+                },
+                GREATER(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
+                    (Value::TNumber(l), Value::TNumber(r)) => {
+                        self.reg_set(a, Value::TBool(l > r));
+                    }
+                    (Value::TStr(l), Value::TStr(r)) => {
+                        let res: bool = {
+                            let l: &str = unsafe { &self.gc.get_ref(l) };
+                            let r: &str = unsafe { &self.gc.get_ref(r) };
+
+                            l > r
+                        };
+
+                        self.reg_set(a, Value::TBool(res));
+                    }
+                    (b, c) => {
+                        return Err(format!("attempt to compare (>) {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
                 //...
