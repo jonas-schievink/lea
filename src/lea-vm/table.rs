@@ -124,28 +124,28 @@ macro_rules! table {
 
 #[cfg(test)]
 mod tests {
-    use value::Value::*;
+    use value::Value;
 
     #[test]
     fn test() {
         let mut t = table! {
-            TNumber(0.5.into()) => TNumber(42.into()),
-            TBool(true) => TNumber(24.into()),
+            Value::TNumber(0.5.into()) => Value::TNumber(42.into()),
+            Value::TBool(true) => Value::TNumber(24.into()),
         };
 
-        assert_eq!(t.set(TBool(false), TNumber(123.0.into())), Ok(None));
+        assert_eq!(t.set(Value::TBool(false), Value::TNumber(123.0.into())), Ok(None));
         assert_eq!(t.data, hashmap! {
-            TNumber(0.5.into()) => TNumber(42.into()),
-            TBool(true) => TNumber(24.into()),
-            TBool(false) => TNumber(123.0.into()),
+            Value::TNumber(0.5.into()) => Value::TNumber(42.into()),
+            Value::TBool(true) => Value::TNumber(24.into()),
+            Value::TBool(false) => Value::TNumber(123.0.into()),
         });
 
-        assert_eq!(t.set(TBool(true), TNil), Ok(Some(TNumber(24.into()))));
+        assert_eq!(t.set(Value::TBool(true), Value::TNil), Ok(Some(Value::TNumber(24.into()))));
         assert_eq!(t.data, hashmap! {
-            TNumber(0.5.into()) => TNumber(42.into()),
-            TBool(false) => TNumber(123.0.into()),
+            Value::TNumber(0.5.into()) => Value::TNumber(42.into()),
+            Value::TBool(false) => Value::TNumber(123.0.into()),
         });
 
-        assert_eq!(t.set(TNil, TNil), Err(()));
+        assert_eq!(t.set(Value::TNil, Value::TNil), Err(()));
     }
 }
