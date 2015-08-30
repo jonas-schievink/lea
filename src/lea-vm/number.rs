@@ -1,7 +1,5 @@
 //! Contains Lea's `Number` type
 
-// TODO allow adding i64 and f64 to numbers
-
 use std::cmp::Ordering;
 use std::hash::*;
 use std::fmt;
@@ -84,11 +82,11 @@ macro_rules! e {
 
 macro_rules! number_impl {
     ( $tr:ident; $f:ident; ( $($wrap:tt)* ) ) => {
-        impl $tr for Number {
+        impl<T: Into<Number>> $tr<T> for Number {
             type Output = Self;
 
-            fn $f(self, rhs: Self) -> Self {
-                match (self, rhs) {
+            fn $f(self, rhs: T) -> Self {
+                match (self, rhs.into()) {
                     (Int(l), Int(r)) => Int(e!($($wrap)* (l).$f($($wrap)* (r))).0),
                     (Int(l), Float(r)) => Float(e!((l as LeaFloat).$f(r))),
                     (Float(l), Int(r)) => Float(e!(l.$f(r as LeaFloat))),
@@ -101,12 +99,12 @@ macro_rules! number_impl {
 
 /// Like `number_impl`, but casts its arguments to floats before performing the operation.
 macro_rules! number_impl_float {
-    ( $tr:ty; $f:ident ) => {
-        impl $tr for Number {
+    ( $tr:ident; $f:ident ) => {
+        impl<T: Into<Number>> $tr<T> for Number {
             type Output = Self;
 
-            fn $f(self, rhs: Number) -> Number {
-                match (self, rhs) {
+            fn $f(self, rhs: T) -> Self {
+                match (self, rhs.into()) {
                     (Int(l), Int(r)) => Float(e!((l as LeaFloat).$f(r as LeaFloat))),
                     (Int(l), Float(r)) => Float(e!((l as LeaFloat).$f(r))),
                     (Float(l), Int(r)) => Float(e!(l.$f(r as LeaFloat))),
@@ -119,12 +117,12 @@ macro_rules! number_impl_float {
 
 /// Like `number_impl`, but always casts its arguments to ints
 macro_rules! number_impl_int {
-    ( $tr:ty; $f:ident; $tf:ident; ( $($wrap:tt)* ) ) => {
-        impl $tr for Number {
+    ( $tr:ident; $f:ident; $tf:ident; ( $($wrap:tt)* ) ) => {
+        impl<T: Into<Number>> $tr<T> for Number {
             type Output = Self;
 
-            fn $f(self, rhs: Self) -> Self {
-                match (self, rhs) {
+            fn $f(self, rhs: T) -> Self {
+                match (self, rhs.into()) {
                     (Int(l), Int(r)) => Int(e!($($wrap)* (l).$tf($($wrap)* (r))).0),
                     (Int(l), Float(r)) => Int(e!(l.$tf(r as LeaInt))),
                     (Float(l), Int(r)) => Int(e!((l as LeaInt).$tf(r))),
@@ -220,5 +218,9 @@ mod tests {
         assert!(l < 10.1);
         assert!(r < 7);
         assert!(r > 6);
+        assert_eq!(l + 4, 9);
+        assert_eq!(l - 6, -1);
+        assert_eq!(l / 1, l);
+        assert_eq!(l & 1, 1);
     }
 }
