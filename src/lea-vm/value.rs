@@ -1,7 +1,5 @@
 //! This module defines the dynamically typed value type used by Lea
 
-pub use self::Value::*;
-
 use table::Table;
 use array::Array;
 use function::Function;
@@ -29,14 +27,14 @@ impl Value {
     /// The equivalent of Lua's `type()` function, returns the type name of a value.
     pub fn get_type_name(&self) -> &'static str {
         match *self {
-            TNil => "nil",
-            TBool(..) => "boolean",
-            TNumber(..) => "number",
-            TStr(..) => "string",
-            TTable(..) => "table",
-            TArray(..) => "array",
-            TFunc(..) => "function",
-            TLibFn(..) => "function",
+            Value::TNil => "nil",
+            Value::TBool(..) => "boolean",
+            Value::TNumber(..) => "number",
+            Value::TStr(..) => "string",
+            Value::TTable(..) => "table",
+            Value::TArray(..) => "array",
+            Value::TFunc(..) => "function",
+            Value::TLibFn(..) => "function",
         }
     }
 
@@ -44,7 +42,7 @@ impl Value {
     /// shortcircuit operators)?
     pub fn is_truthy(&self) -> bool {
         match *self {
-            TNil | TBool(false) => false,
+            Value::TNil | Value::TBool(false) => false,
             _ => true,
         }
     }
@@ -52,21 +50,21 @@ impl Value {
     /// If this `Value` references a GC-object, marks it using the given `Tracer`.
     pub fn trace<T: Tracer>(&self, t: &mut T) {
         match *self {
-            TNil | TBool(_) | TNumber(_) | TLibFn(_) => {},
-            TStr(r) => unsafe { t.mark_untraceable(r) },    // Safe, since T is String
-            TTable(r) => t.mark_traceable(r),
-            TArray(r) => t.mark_traceable(r),
-            TFunc(r) => t.mark_traceable(r),
+            Value::TNil | Value::TBool(_) | Value::TNumber(_) | Value::TLibFn(_) => {},
+            Value::TStr(r) => unsafe { t.mark_untraceable(r) },    // Safe, since T is String
+            Value::TTable(r) => t.mark_traceable(r),
+            Value::TArray(r) => t.mark_traceable(r),
+            Value::TFunc(r) => t.mark_traceable(r),
         }
     }
 
     pub fn from_literal<G: GcStrategy>(c: Const, gc: &mut G) -> Value {
         match c {
-            Const::Int(i) => TNumber(i.into()),
-            Const::Float(f) => TNumber(f.into()),
-            Const::Str(s) => TStr(gc.register_obj(s)),
-            Const::Bool(b) => TBool(b),
-            Const::Nil => TNil,
+            Const::Int(i) => Value::TNumber(i.into()),
+            Const::Float(f) => Value::TNumber(f.into()),
+            Const::Str(s) => Value::TStr(gc.register_obj(s)),
+            Const::Bool(b) => Value::TBool(b),
+            Const::Nil => Value::TNil,
         }
     }
 
@@ -74,14 +72,14 @@ impl Value {
     /// and is unsafe because the `TracedRef`s are dereferenced using the GC.
     pub unsafe fn fmt<G: GcStrategy, W: Write>(&self, mut f: W, gc: &G) -> io::Result<()> {
         match *self {
-            TNil => write!(f, "nil"),
-            TBool(b) => write!(f, "{}", b),
-            TNumber(n) => write!(f, "{}", n),
-            TStr(s) => write!(f, "{}", gc.get_ref(s)),
-            TTable(t) => write!(f, "table:{:p}", t),
-            TArray(a) => write!(f, "array:{:p}", a),
-            TFunc(func) => write!(f, "function:{:p}", func),
-            TLibFn(libfn) => write!(f, "function:{:p}", libfn),
+            Value::TNil => write!(f, "nil"),
+            Value::TBool(b) => write!(f, "{}", b),
+            Value::TNumber(n) => write!(f, "{}", n),
+            Value::TStr(s) => write!(f, "{}", gc.get_ref(s)),
+            Value::TTable(t) => write!(f, "table:{:p}", t),
+            Value::TArray(a) => write!(f, "array:{:p}", a),
+            Value::TFunc(func) => write!(f, "function:{:p}", func),
+            Value::TLibFn(libfn) => write!(f, "function:{:p}", libfn),
         }
     }
 }

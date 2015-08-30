@@ -19,7 +19,7 @@
 
 #![macro_use]
 
-use value::{Value, TNil};
+use value::Value;
 use mem::{TracedRef, Tracer, Traceable};
 
 use std::collections::HashMap;
@@ -65,9 +65,9 @@ impl Table {
     /// the old value stored with the given key or `Err(())` if the key is nil (this is not
     /// supported).
     pub fn set(&mut self, k: Value, v: Value) -> Result<Option<Value>, ()> {
-        if k == TNil { return Err(()); }
+        if k == Value::TNil { return Err(()); }
 
-        if v == TNil {
+        if v == Value::TNil {
             Ok(self.data.remove(&k))
         } else {
             Ok(self.data.insert(k, v))
@@ -124,7 +124,7 @@ macro_rules! table {
 
 #[cfg(test)]
 mod tests {
-    use value::*;
+    use value::Value::*;
 
     #[test]
     fn test() {
