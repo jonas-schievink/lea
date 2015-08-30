@@ -23,5 +23,5 @@ pub fn build_stdlib<G: GcStrategy>(gc: &mut G) -> Value {
     let mut env = Table::default();
     liblang::init(&mut env, gc);
 
-    Value::TTable(gc.register_obj(env))
+    Value::Table(gc.register_obj(env))
 }

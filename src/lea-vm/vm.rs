@@ -107,7 +107,7 @@ impl<G: GcStrategy> VM<G> {
         // Ensure we have `proto.stacksize + va_count` slots free after current `dtop` (FIXME)
         // XXX is this optimized right?
         let old_len = self.stack.len();
-        self.stack.extend(iter::repeat(Value::TNil).take(proto.stacksize as usize));
+        self.stack.extend(iter::repeat(Value::Nil).take(proto.stacksize as usize));
 
         self.calls.push(CallInfo {
             func: func,
@@ -197,7 +197,7 @@ impl<G: GcStrategy> VM<G> {
         let slot: usize = self.cur_call().bottom + reg as usize;
         if slot >= self.stack.len() {
             let len = self.stack.len();
-            self.stack.extend(iter::repeat(Value::TNil).take(len - slot + 1));
+            self.stack.extend(iter::repeat(Value::Nil).take(len - slot + 1));
         }
 
         self.stack[slot] = val;
@@ -232,22 +232,22 @@ impl<G: GcStrategy> VM<G> {
                 LOADNIL(start, cnt) => {
                     // Set R[start] through R[start+count] to `nil`
                     for i in start..start+cnt+1 {
-                        self.reg_set(i, Value::TNil);
+                        self.reg_set(i, Value::Nil);
                     }
                 }
                 LOADBOOL(start, cnt, val) => {
                     // Set R[start] through R[start+count] to `val` (true or false)
                     for i in start..start+cnt+1 {
-                        self.reg_set(i, Value::TBool(val));
+                        self.reg_set(i, Value::Bool(val));
                     }
                 }
                 TABLE(reg) => {
                     let tab = self.gc.register_obj(Table::default());
-                    self.reg_set(reg, Value::TTable(tab));
+                    self.reg_set(reg, Value::Table(tab));
                 }
                 ARRAY(reg) => {
                     let arr = self.gc.register_obj(Array::default());
-                    self.reg_set(reg, Value::TArray(arr));
+                    self.reg_set(reg, Value::Array(arr));
                 }
                 FUNC(reg, id) => {
                     let func = {
@@ -283,13 +283,13 @@ impl<G: GcStrategy> VM<G> {
                     };
 
                     let func_ref = self.gc.register_obj(func);
-                    self.reg_set(reg, Value::TFunc(func_ref));
+                    self.reg_set(reg, Value::Closure(func_ref));
                 }
                 CALL(callee_reg, args, ret_lim) => {
                     let callee: Value = self.reg_get(callee_reg);
 
                     match callee {
-                        Value::TFunc(callee) => {
+                        Value::Closure(callee) => {
                             // number of fixed params the callee can accept
                             let dest_count: u8;
                             let dest_varargs: bool;
@@ -405,7 +405,7 @@ impl<G: GcStrategy> VM<G> {
                             for i in 0..caller_lim - lim {
                                 let dest = caller.bottom + func_slot as usize + lim as usize + i as usize;
                                 debug!("fill {}", func_slot + lim + i);
-                                self.stack[dest] = Value::TNil;
+                                self.stack[dest] = Value::Nil;
                             }
                         }
 
@@ -482,7 +482,7 @@ impl<G: GcStrategy> VM<G> {
 
                         for i in 0..fill_varargs {
                             debug!("va fill slot {}", target + copy_varargs + i);
-                            self.reg_set(target + copy_varargs + i, Value::TNil);
+                            self.reg_set(target + copy_varargs + i, Value::Nil);
                         }
                     }
                 }
@@ -502,15 +502,15 @@ impl<G: GcStrategy> VM<G> {
                 FORCHECK(slot, rel) => {
                     let loop_var = self.reg_get(slot);
                     let loop_var_int = match loop_var {
-                        Value::TNumber(val) => val,
+                        Value::Number(val) => val,
                         _ => return Err(format!("invalid type of for loop variable").into()),
                     };
                     let step = match self.reg_get(slot + 1) {
-                        Value::TNumber(val) => val,
+                        Value::Number(val) => val,
                         _ => return Err(format!("invalid type of for loop step").into()),
                     };
                     let limit = match self.reg_get(slot + 2) {
-                        Value::TNumber(val) => val,
+                        Value::Number(val) => val,
                         _ => return Err(format!("invalid type of for loop limit").into()),
                     };
 
@@ -535,7 +535,7 @@ impl<G: GcStrategy> VM<G> {
                 GETIDX(a, b, c) => {
                     // R[a] := R[b][R[c]]
                     match (self.reg_get(b), self.reg_get(c)) {
-                        (Value::TTable(tbl), idx) => {
+                        (Value::Table(tbl), idx) => {
                             let res: Value = unsafe { self.gc.get_ref(tbl).get(&idx) };
                             self.reg_set(a, res);
                         }
@@ -548,7 +548,7 @@ impl<G: GcStrategy> VM<G> {
                 SETIDX(a, b, c) => {
                     let c = self.reg_get(c);
                     match (self.reg_get(a), self.reg_get(b)) {
-                        (Value::TTable(tbl), idx) => {
+                        (Value::Table(tbl), idx) => {
                             let tbl: &mut Table = unsafe { self.gc.get_mut(tbl) };
                             match tbl.set(idx, c) {
                                 Ok(_) => {}
@@ -564,48 +564,48 @@ impl<G: GcStrategy> VM<G> {
                     }
                 },
                 ADD(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
-                    (Value::TNumber(l), Value::TNumber(r)) => {
-                        self.reg_set(a, Value::TNumber(l + r))
+                    (Value::Number(l), Value::Number(r)) => {
+                        self.reg_set(a, Value::Number(l + r))
                     }
                     (b, c) => {
                         return Err(format!("attempt to add {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
                 SUB(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
-                    (Value::TNumber(l), Value::TNumber(r)) => {
-                        self.reg_set(a, Value::TNumber(l - r))
+                    (Value::Number(l), Value::Number(r)) => {
+                        self.reg_set(a, Value::Number(l - r))
                     }
                     (b, c) => {
                         return Err(format!("attempt to subtract {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
                 MUL(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
-                    (Value::TNumber(l), Value::TNumber(r)) => {
-                        self.reg_set(a, Value::TNumber(l * r))
+                    (Value::Number(l), Value::Number(r)) => {
+                        self.reg_set(a, Value::Number(l * r))
                     }
                     (b, c) => {
                         return Err(format!("attempt to multiply {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
                 DIV(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
-                    (Value::TNumber(l), Value::TNumber(r)) => {
-                        self.reg_set(a, Value::TNumber(l / r))
+                    (Value::Number(l), Value::Number(r)) => {
+                        self.reg_set(a, Value::Number(l / r))
                     }
                     (b, c) => {
                         return Err(format!("attempt to divide {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
                 MOD(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
-                    (Value::TNumber(l), Value::TNumber(r)) => {
-                        self.reg_set(a, Value::TNumber(l % r))
+                    (Value::Number(l), Value::Number(r)) => {
+                        self.reg_set(a, Value::Number(l % r))
                     }
                     (b, c) => {
                         return Err(format!("attempt to take the remainder of {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
                 POW(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
-                    (Value::TNumber(l), Value::TNumber(r)) => {
-                        self.reg_set(a, Value::TNumber(l.pow(r)))
+                    (Value::Number(l), Value::Number(r)) => {
+                        self.reg_set(a, Value::Number(l.pow(r)))
                     }
                     (b, c) => {
                         return Err(format!("attempt to exponentiate {} and {}", b.get_type_name(), c.get_type_name()).into());
@@ -614,18 +614,18 @@ impl<G: GcStrategy> VM<G> {
                 EQ(a, b, c) => {
                     let b = self.reg_get(b);
                     let c = self.reg_get(c);
-                    self.reg_set(a, Value::TBool(b == c));
+                    self.reg_set(a, Value::Bool(b == c));
                 },
                 NEQ(a, b, c) => {
                     let b = self.reg_get(b);
                     let c = self.reg_get(c);
-                    self.reg_set(a, Value::TBool(b != c));
+                    self.reg_set(a, Value::Bool(b != c));
                 },
                 LEQ(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
-                    (Value::TNumber(l), Value::TNumber(r)) => {
-                        self.reg_set(a, Value::TBool(l <= r));
+                    (Value::Number(l), Value::Number(r)) => {
+                        self.reg_set(a, Value::Bool(l <= r));
                     }
-                    (Value::TStr(l), Value::TStr(r)) => {
+                    (Value::String(l), Value::String(r)) => {
                         let res: bool = {
                             let l: &str = unsafe { &self.gc.get_ref(l) };
                             let r: &str = unsafe { &self.gc.get_ref(r) };
@@ -633,17 +633,17 @@ impl<G: GcStrategy> VM<G> {
                             l <= r
                         };
 
-                        self.reg_set(a, Value::TBool(res));
+                        self.reg_set(a, Value::Bool(res));
                     }
                     (b, c) => {
                         return Err(format!("attempt to compare (<=) {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
                 GEQ(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
-                    (Value::TNumber(l), Value::TNumber(r)) => {
-                        self.reg_set(a, Value::TBool(l >= r));
+                    (Value::Number(l), Value::Number(r)) => {
+                        self.reg_set(a, Value::Bool(l >= r));
                     }
-                    (Value::TStr(l), Value::TStr(r)) => {
+                    (Value::String(l), Value::String(r)) => {
                         let res: bool = {
                             let l: &str = unsafe { &self.gc.get_ref(l) };
                             let r: &str = unsafe { &self.gc.get_ref(r) };
@@ -651,17 +651,17 @@ impl<G: GcStrategy> VM<G> {
                             l >= r
                         };
 
-                        self.reg_set(a, Value::TBool(res));
+                        self.reg_set(a, Value::Bool(res));
                     }
                     (b, c) => {
                         return Err(format!("attempt to compare (>=) {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
                 LESS(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
-                    (Value::TNumber(l), Value::TNumber(r)) => {
-                        self.reg_set(a, Value::TBool(l < r));
+                    (Value::Number(l), Value::Number(r)) => {
+                        self.reg_set(a, Value::Bool(l < r));
                     }
-                    (Value::TStr(l), Value::TStr(r)) => {
+                    (Value::String(l), Value::String(r)) => {
                         let res: bool = {
                             let l: &str = unsafe { &self.gc.get_ref(l) };
                             let r: &str = unsafe { &self.gc.get_ref(r) };
@@ -669,17 +669,17 @@ impl<G: GcStrategy> VM<G> {
                             l < r
                         };
 
-                        self.reg_set(a, Value::TBool(res));
+                        self.reg_set(a, Value::Bool(res));
                     }
                     (b, c) => {
                         return Err(format!("attempt to compare (<) {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
                 GREATER(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
-                    (Value::TNumber(l), Value::TNumber(r)) => {
-                        self.reg_set(a, Value::TBool(l > r));
+                    (Value::Number(l), Value::Number(r)) => {
+                        self.reg_set(a, Value::Bool(l > r));
                     }
-                    (Value::TStr(l), Value::TStr(r)) => {
+                    (Value::String(l), Value::String(r)) => {
                         let res: bool = {
                             let l: &str = unsafe { &self.gc.get_ref(l) };
                             let r: &str = unsafe { &self.gc.get_ref(r) };
@@ -687,47 +687,47 @@ impl<G: GcStrategy> VM<G> {
                             l > r
                         };
 
-                        self.reg_set(a, Value::TBool(res));
+                        self.reg_set(a, Value::Bool(res));
                     }
                     (b, c) => {
                         return Err(format!("attempt to compare (>) {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
                 BAND(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
-                    (Value::TNumber(l), Value::TNumber(r)) => {
-                        self.reg_set(a, Value::TNumber(l & r))
+                    (Value::Number(l), Value::Number(r)) => {
+                        self.reg_set(a, Value::Number(l & r))
                     }
                     (b, c) => {
                         return Err(format!("attempt to calculate the bitwise and of {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
                 BOR(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
-                    (Value::TNumber(l), Value::TNumber(r)) => {
-                        self.reg_set(a, Value::TNumber(l | r))
+                    (Value::Number(l), Value::Number(r)) => {
+                        self.reg_set(a, Value::Number(l | r))
                     }
                     (b, c) => {
                         return Err(format!("attempt to calculate the bitwise or of {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
                 BXOR(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
-                    (Value::TNumber(l), Value::TNumber(r)) => {
-                        self.reg_set(a, Value::TNumber(l ^ r))
+                    (Value::Number(l), Value::Number(r)) => {
+                        self.reg_set(a, Value::Number(l ^ r))
                     }
                     (b, c) => {
                         return Err(format!("attempt to calculate the bitwise xor of {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
                 SHIFTL(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
-                    (Value::TNumber(l), Value::TNumber(r)) => {
-                        self.reg_set(a, Value::TNumber(l << r))
+                    (Value::Number(l), Value::Number(r)) => {
+                        self.reg_set(a, Value::Number(l << r))
                     }
                     (b, c) => {
                         return Err(format!("attempt to perform a left-shift with {} and {}", b.get_type_name(), c.get_type_name()).into());
                     }
                 },
                 SHIFTR(a, b, c) => match (self.reg_get(b), self.reg_get(c)) {
-                    (Value::TNumber(l), Value::TNumber(r)) => {
-                        self.reg_set(a, Value::TNumber(l >> r))
+                    (Value::Number(l), Value::Number(r)) => {
+                        self.reg_set(a, Value::Number(l >> r))
                     }
                     (b, c) => {
                         return Err(format!("attempt to perform a right-shift with {} and {}", b.get_type_name(), c.get_type_name()).into());
@@ -735,16 +735,16 @@ impl<G: GcStrategy> VM<G> {
                 },
                 CONCAT(a, b, c) => {
                     let res: String = match (self.reg_get(b), self.reg_get(c)) {
-                        (Value::TNumber(l), Value::TNumber(r)) => {
+                        (Value::Number(l), Value::Number(r)) => {
                             format!("{}{}", l, r)
                         }
-                        (Value::TNumber(l), Value::TStr(r)) => {
+                        (Value::Number(l), Value::String(r)) => {
                             format!("{}{}", l, unsafe { self.gc.get_ref(r) })
                         }
-                        (Value::TStr(l), Value::TNumber(r)) => {
+                        (Value::String(l), Value::Number(r)) => {
                             format!("{}{}", unsafe { self.gc.get_ref(l) }, r)
                         }
-                        (Value::TStr(l), Value::TStr(r)) => {
+                        (Value::String(l), Value::String(r)) => {
                             format!("{}{}", unsafe { self.gc.get_ref(l) }, unsafe { self.gc.get_ref(r) })
                         }
                         (b, c) => {
@@ -753,36 +753,36 @@ impl<G: GcStrategy> VM<G> {
                     };
 
                     let gcref = self.gc.register_obj(res);
-                    self.reg_set(a, Value::TStr(gcref));
+                    self.reg_set(a, Value::String(gcref));
                 },
                 NEG(a, b) => match self.reg_get(b) {
-                    Value::TNumber(num) => {
-                        self.reg_set(a, Value::TNumber(-num));
+                    Value::Number(num) => {
+                        self.reg_set(a, Value::Number(-num));
                     }
                     b => {
                         return Err(format!("attempt to negate {}", b.get_type_name()).into());
                     }
                 },
                 INV(a, b) => match self.reg_get(b) {
-                    Value::TNumber(num) => {
-                        self.reg_set(a, Value::TNumber(!num));
+                    Value::Number(num) => {
+                        self.reg_set(a, Value::Number(!num));
                     }
                     b => {
                         return Err(format!("attempt to invert {}", b.get_type_name()).into());
                     }
                 },
                 LEN(a, b) => match self.reg_get(b) {
-                    Value::TStr(s) => {
+                    Value::String(s) => {
                         let len: i64 = unsafe { self.gc.get_ref(s).len() } as i64;
-                        self.reg_set(a, Value::TNumber(len.into()));
+                        self.reg_set(a, Value::Number(len.into()));
                     }
-                    Value::TArray(arr) => {
+                    Value::Array(arr) => {
                         let len = unsafe { self.gc.get_ref(arr).len() } as i64;
-                        self.reg_set(a, Value::TNumber(len.into()));
+                        self.reg_set(a, Value::Number(len.into()));
                     }
-                    Value::TTable(t) => {
+                    Value::Table(t) => {
                         let len = unsafe { self.gc.get_ref(t).len() } as i64;
-                        self.reg_set(a, Value::TNumber(len.into()));
+                        self.reg_set(a, Value::Number(len.into()));
                     }
                     b => {
                         return Err(format!("attempt to get the length of {}", b.get_type_name()).into());
@@ -790,7 +790,7 @@ impl<G: GcStrategy> VM<G> {
                 },
                 NOT(target, src) => {
                     let truthy = self.reg_get(src).is_truthy();
-                    self.reg_set(target, Value::TBool(!truthy));
+                    self.reg_set(target, Value::Bool(!truthy));
                 }
                 INVALID => panic!("invalid opcode at ip={}", self.cur_call().ip),
                 DEBUG(slot) => println!(
@@ -868,7 +868,7 @@ mod tests {
     /// the `VmResult` returned by `vm.start()` (see `error.rs`).
     macro_rules! run {
         ( $main:tt ) => {{
-            run!($main with Value::TNil)
+            run!($main with Value::Nil)
         }};
         ( $main:tt with $env:expr ) => {{
             let main: FnData = fndef!($main);
@@ -879,7 +879,7 @@ mod tests {
                 first = false;
                 Rc::new(Cell::new(Upval::Closed($env)))
             } else {
-                Rc::new(Cell::new(Upval::Closed(Value::TNil)))
+                Rc::new(Cell::new(Upval::Closed(Value::Nil)))
             });
             let f = gc.register_obj(f);
             let mut vm = VM::new(gc);
@@ -955,7 +955,7 @@ mod tests {
                 RETURN(0,1),
             ]
         } => [
-            0: Value::TBool(true),  // returned from caller
+            0: Value::Bool(true),  // returned from caller
         ]);
     }
 
@@ -984,10 +984,10 @@ mod tests {
                 RETURN(0,1),
             ]
         } => [
-            0: Value::TBool(true),
-            1: Value::TBool(false),
-            2: Value::TNil,
-            3: Value::TNil, // filled on return (only 3 values explicitly returned, but 4 stored)
+            0: Value::Bool(true),
+            1: Value::Bool(false),
+            2: Value::Nil,
+            3: Value::Nil, // filled on return (only 3 values explicitly returned, but 4 stored)
         ]);
     }
 
@@ -1026,9 +1026,9 @@ mod tests {
                 RETURN(0,1),
             ]
         } => [
-            0: Value::TBool(true),
-            1: Value::TBool(false),
-            2: Value::TBool(true),  // left over from before call
+            0: Value::Bool(true),
+            1: Value::Bool(false),
+            2: Value::Bool(true),  // left over from before call
         ]);
     }
 
@@ -1070,9 +1070,9 @@ mod tests {
                 RETURN(0,0),
             ]
         } => return [
-            Value::TBool(true),
-            Value::TBool(false),
-            Value::TBool(false)
+            Value::Bool(true),
+            Value::Bool(false),
+            Value::Bool(false)
         ]);
     }
 
@@ -1089,7 +1089,7 @@ mod tests {
                 RETURN(0,1),
             ]
         } => [
-            0: Value::TBool(true),
+            0: Value::Bool(true),
         ]);
     }
 
@@ -1117,7 +1117,7 @@ mod tests {
                 RETURN(0,1),
             ]
         } => [
-            0: Value::TNil,
+            0: Value::Nil,
         ]);
     }
 
@@ -1132,7 +1132,7 @@ mod tests {
                 LOADNIL(0,0),
                 RETURN(0,2),
             ]
-        } => return [ Value::TNumber(Number::Int(4)) ]);
+        } => return [ Value::Number(Number::Int(4)) ]);
     }
 
     #[test]
@@ -1154,7 +1154,7 @@ mod tests {
                 LOADNIL(0,0),
                 RETURN(0,2),
             ]
-        } => return [ Value::TNil ]);
+        } => return [ Value::Nil ]);
         test!({
             stack: 4,
             fns: [],
@@ -1165,7 +1165,7 @@ mod tests {
                 LOADBOOL(3,0,false),
                 RETURN(0,5),
             ]
-        } => return [ Value::TNil, Value::TNil, Value::TBool(true), Value::TBool(false) ]);
+        } => return [ Value::Nil, Value::Nil, Value::Bool(true), Value::Bool(false) ]);
     }
 
     #[test]
@@ -1202,14 +1202,14 @@ mod tests {
                 RETURN(0,1),
             ]
         } => [
-            0: Value::TNil,
-            1: Value::TNumber(Number::Int(7)),
-            2: Value::TStr(_),
-            3: Value::TTable(_),
-            4: Value::TArray(_),
-            5: Value::TBool(true),
-            6: Value::TBool(false),
-            7: Value::TBool(true),
+            0: Value::Nil,
+            1: Value::Number(Number::Int(7)),
+            2: Value::String(_),
+            3: Value::Table(_),
+            4: Value::Array(_),
+            5: Value::Bool(true),
+            6: Value::Bool(false),
+            7: Value::Bool(true),
         ]);
     }
 
@@ -1259,8 +1259,8 @@ mod tests {
                 RETURN(0,1),
             ]
         } => [
-            0: Value::TBool(true),  // changed by inner function
-            1: Value::TBool(false),
+            0: Value::Bool(true),  // changed by inner function
+            1: Value::Bool(false),
         ]);
     }
 
@@ -1298,8 +1298,8 @@ mod tests {
                 RETURN(0,1),
             ]
         } => [
-            2: Value::TBool(true),  // changed by inner function
-            3: Value::TBool(true),  // not changed, since upvalue is closed
+            2: Value::Bool(true),  // changed by inner function
+            3: Value::Bool(true),  // not changed, since upvalue is closed
         ]);
     }
 }

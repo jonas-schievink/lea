@@ -91,7 +91,7 @@ fn run_fndata(main: FnData, vm: &mut VM<DefaultGc>, env: Value) -> bool {
         first = false;
         Rc::new(Cell::new(Upval::Closed(env)))
     } else {
-        Rc::new(Cell::new(Upval::Closed(Value::TNil)))
+        Rc::new(Cell::new(Upval::Closed(Value::Nil)))
     });
     let f = vm.gc_mut().register_obj(f);
 

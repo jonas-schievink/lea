@@ -18,7 +18,7 @@ impl From<String> for LibFnError {
 
 impl From<TracedRef<String>> for LibFnError {
     fn from(s: TracedRef<String>) -> Self {
-        LibFnError::Val(Value::TStr(s))
+        LibFnError::Val(Value::String(s))
     }
 }
 
@@ -153,11 +153,11 @@ macro_rules! p {
 #[doc(hidden)]
 macro_rules! build_ty_pat {
     ( [$($p:tt)*] , $($rest:tt)* ) => ( build_ty_pat!([$($p)* ,] $($rest)*) );
-    ( [$($p:tt)*] $name:ident : number $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::value::Value::TNumber($name)] $($rest)*) );
-    ( [$($p:tt)*] $name:ident : string $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::value::Value::TStr($name)] $($rest)*) );
-    ( [$($p:tt)*] $name:ident : bool $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::value::Value::TBool($name)] $($rest)*) );
-    ( [$($p:tt)*] $name:ident : array $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::value::Value::TArray($name)] $($rest)*) );
-    ( [$($p:tt)*] $name:ident : table $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::value::Value::TTable($name)] $($rest)*) );
+    ( [$($p:tt)*] $name:ident : number $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::value::Value::Number($name)] $($rest)*) );
+    ( [$($p:tt)*] $name:ident : string $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::value::Value::String($name)] $($rest)*) );
+    ( [$($p:tt)*] $name:ident : bool $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::value::Value::Bool($name)] $($rest)*) );
+    ( [$($p:tt)*] $name:ident : array $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::value::Value::Array($name)] $($rest)*) );
+    ( [$($p:tt)*] $name:ident : table $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::value::Value::Table($name)] $($rest)*) );
     ( [$($p:tt)*] $name:ident : * $($rest:tt)* ) => ( build_ty_pat!([$($p)* $name] $($rest)*) );
     ( [$($p:tt)*] $name:ident : ... $($rest:tt)* ) => ( build_ty_pat!([$($p)* $name ..] $($rest)*) );
     ( [$($p:tt)*] ) => ( p!([$($p)*]) );
@@ -260,7 +260,7 @@ macro_rules! lea_libfn {
 macro_rules! setenv {
     ( $env:ident; $gc:ident; $key:ident; $val:expr ) => {
         assert_eq!($env.set(
-            Value::TStr($gc.register_obj(stringify!($key).to_string())),
+            Value::String($gc.register_obj(stringify!($key).to_string())),
             $val
         ).unwrap(), None);
     };
@@ -270,11 +270,11 @@ macro_rules! setenv {
 #[doc(hidden)]
 macro_rules! lea_lib_inner {
     ( $env:ident; $gc:ident; $key:ident = fn $f:expr, $($rest:tt)* ) => {
-        setenv!($env; $gc; $key; Value::TLibFn($f.get_fn()));
+        setenv!($env; $gc; $key; Value::LibFn($f.get_fn()));
         lea_lib_inner!($env; $gc; $($rest)*);
     };
     ( $env:ident; $gc:ident; $key:ident = str $v:expr, $($rest:tt)* ) => {
-        setenv!($env; $gc; $key; Value::TStr($gc.register_obj($v.to_string())));
+        setenv!($env; $gc; $key; Value::String($gc.register_obj($v.to_string())));
         lea_lib_inner!($env; $gc; $($rest)*);
     };
     ( $env:ident; $gc:ident; ) => {};
@@ -307,11 +307,11 @@ mod dummyfn {
             if let Some(next) = rest.first() {
                 let rest: &[Value] = &rest[1..];
                 match *next {
-                    super::vm::value::Value::TNumber(_a) => {
+                    super::vm::value::Value::Number(_a) => {
                         if let Some(next) = rest.first() {
                             let rest: &[Value] = &rest[1..];
                             match *next {
-                                super::vm::value::Value::TBool(_b) => {
+                                super::vm::value::Value::Bool(_b) => {
                                     let _c = rest;
                                     {
                                         // First arm body here

@@ -65,9 +65,9 @@ impl Table {
     /// the old value stored with the given key or `Err(())` if the key is nil (this is not
     /// supported).
     pub fn set(&mut self, k: Value, v: Value) -> Result<Option<Value>, ()> {
-        if k == Value::TNil { return Err(()); }
+        if k == Value::Nil { return Err(()); }
 
-        if v == Value::TNil {
+        if v == Value::Nil {
             Ok(self.data.remove(&k))
         } else {
             Ok(self.data.insert(k, v))
@@ -76,7 +76,7 @@ impl Table {
 
     pub fn get(&self, k: &Value) -> Value {
         match self.data.get(k) {
-            None => Value::TNil,
+            None => Value::Nil,
             Some(&v) => v,
         }
     }
@@ -129,23 +129,23 @@ mod tests {
     #[test]
     fn test() {
         let mut t = table! {
-            Value::TNumber(0.5.into()) => Value::TNumber(42.into()),
-            Value::TBool(true) => Value::TNumber(24.into()),
+            Value::Number(0.5.into()) => Value::Number(42.into()),
+            Value::Bool(true) => Value::Number(24.into()),
         };
 
-        assert_eq!(t.set(Value::TBool(false), Value::TNumber(123.0.into())), Ok(None));
+        assert_eq!(t.set(Value::Bool(false), Value::Number(123.0.into())), Ok(None));
         assert_eq!(t.data, hashmap! {
-            Value::TNumber(0.5.into()) => Value::TNumber(42.into()),
-            Value::TBool(true) => Value::TNumber(24.into()),
-            Value::TBool(false) => Value::TNumber(123.0.into()),
+            Value::Number(0.5.into()) => Value::Number(42.into()),
+            Value::Bool(true) => Value::Number(24.into()),
+            Value::Bool(false) => Value::Number(123.0.into()),
         });
 
-        assert_eq!(t.set(Value::TBool(true), Value::TNil), Ok(Some(Value::TNumber(24.into()))));
+        assert_eq!(t.set(Value::Bool(true), Value::Nil), Ok(Some(Value::Number(24.into()))));
         assert_eq!(t.data, hashmap! {
-            Value::TNumber(0.5.into()) => Value::TNumber(42.into()),
-            Value::TBool(false) => Value::TNumber(123.0.into()),
+            Value::Number(0.5.into()) => Value::Number(42.into()),
+            Value::Bool(false) => Value::Number(123.0.into()),
         });
 
-        assert_eq!(t.set(Value::TNil, Value::TNil), Err(()));
+        assert_eq!(t.set(Value::Nil, Value::Nil), Err(()));
     }
 }
