@@ -1,5 +1,7 @@
 //! Contains Lea's `Number` type
 
+// TODO allow adding i64 and f64 to numbers
+
 use std::cmp::Ordering;
 use std::hash::*;
 use std::fmt;

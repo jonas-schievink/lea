@@ -7,6 +7,7 @@ use array::Array;
 use function::Function;
 use mem::{TracedRef, Tracer, GcStrategy};
 use number::Number;
+use libfn::LibFn;
 
 use lea_core::constant::Const;
 
@@ -21,6 +22,7 @@ pub enum Value {
     TFunc(TracedRef<Function>),
     TArray(TracedRef<Array>),
     TTable(TracedRef<Table>),
+    TLibFn(LibFn),
 }
 
 impl Value {
@@ -34,6 +36,7 @@ impl Value {
             TTable(..) => "table",
             TArray(..) => "array",
             TFunc(..) => "function",
+            TLibFn(..) => "function",
         }
     }
 
@@ -49,11 +52,11 @@ impl Value {
     /// If this `Value` references a GC-object, marks it using the given `Tracer`.
     pub fn trace<T: Tracer>(&self, t: &mut T) {
         match *self {
-            TNil | TBool(_) | TNumber(_) => {},
+            TNil | TBool(_) | TNumber(_) | TLibFn(_) => {},
             TStr(r) => unsafe { t.mark_untraceable(r) },    // Safe, since T is String
-            TFunc(r) => t.mark_traceable(r),
-            TArray(r) => t.mark_traceable(r),
             TTable(r) => t.mark_traceable(r),
+            TArray(r) => t.mark_traceable(r),
+            TFunc(r) => t.mark_traceable(r),
         }
     }
 
@@ -75,9 +78,10 @@ impl Value {
             TBool(b) => write!(f, "{}", b),
             TNumber(n) => write!(f, "{}", n),
             TStr(s) => write!(f, "{}", gc.get_ref(s)),
-            TFunc(func) => write!(f, "function:{:p}", func),
-            TArray(a) => write!(f, "array:{:p}", a),
             TTable(t) => write!(f, "table:{:p}", t),
+            TArray(a) => write!(f, "array:{:p}", a),
+            TFunc(func) => write!(f, "function:{:p}", func),
+            TLibFn(libfn) => write!(f, "function:{:p}", libfn),
         }
     }
 }

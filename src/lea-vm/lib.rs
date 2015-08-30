@@ -10,6 +10,7 @@ extern crate lea_core;
 #[macro_use]
 extern crate log;
 
+pub mod libfn;
 pub mod value;
 pub mod array;
 pub mod table;

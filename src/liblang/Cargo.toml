@@ -1,0 +1,12 @@
+[package]
+
+name = "lea-liblang"
+version = "0.0.1"
+authors = ["Jonas Schievink <jonas@schievink.net>"]
+
+[lib]
+name = "lea_liblang"
+path = "lib.rs"
+
+[dependencies]
+lea-vm = { path = "../lea-vm" }
