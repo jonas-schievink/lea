@@ -19,3 +19,4 @@ pub mod vm;
 pub mod error;
 pub mod mem;
 pub mod number;
+pub mod string;

@@ -4,6 +4,8 @@
 
 use super::*;
 
+use string::Str;
+
 use std::any::Any;
 use std::mem::{replace, transmute};
 use std::raw::TraitObject;
@@ -108,6 +110,8 @@ impl GcStrategy for Stw {
             ptr: ptr as *const T,
         }
     }
+
+    fn intern_str(&mut self, _: Str) -> TracedRef<Str> { unimplemented!() }
 
     unsafe fn get_ref<'a, T: Any>(&'a self, t: TracedRef<T>) -> &'a T {
         let ptr = t.ptr as *const Wrapped;

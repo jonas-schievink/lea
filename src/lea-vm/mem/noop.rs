@@ -8,6 +8,9 @@
 
 use std::any::Any;
 use std::mem::replace;
+use std::collections::HashMap;
+
+use string::Str;
 
 use super::*;
 
@@ -20,6 +23,7 @@ struct Boxed {
 #[derive(Default)]
 pub struct NoopGc {
     first: Option<Box<Boxed>>,
+    strings: HashMap<Box<Str>, TracedRef<Str>>,
 }
 
 impl GcStrategy for NoopGc {
@@ -47,6 +51,18 @@ impl GcStrategy for NoopGc {
         TracedRef {
             ptr: ptr,
         }
+    }
+
+    fn intern_str(&mut self, s: Str) -> TracedRef<Str> {
+        if let Some(&r) = self.strings.get(&s) {
+            return r
+        }
+
+        let b = Box::new(s);
+        let r = TracedRef { ptr: &*b };
+        self.strings.insert(b, r);
+
+        r
     }
 }
 

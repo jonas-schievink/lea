@@ -11,6 +11,8 @@ use array::Array;
 use table::Table;
 use value::Value;
 use error::VmResult;
+use string::Str;
+use libfn::LibFnError;
 
 use std::iter;
 use std::cmp;
@@ -354,6 +356,52 @@ impl<G: GcStrategy> VM<G> {
 
                                     let arg = self.stack[fixed_start_abs + i as usize];
                                     self.reg_set(i, arg);
+                                }
+                            }
+                        }
+                        Value::LibFn(libfn) => {
+                            let arg_count: u8 = if args == 0 {
+                                self.cur_call().dtop - callee_reg
+                            } else {
+                                args - 1
+                            };
+
+                            let args_start: usize = self.cur_call().bottom + callee_reg as usize + 1;
+                            let args_end: usize = args_start + arg_count as usize;
+
+                            let mut ret = Vec::new();
+
+                            let result = libfn.0(&self.stack[args_start..args_end], &mut |val| {
+                                ret.push(val);
+                            });
+
+                            match result {
+                                Ok(()) => {
+                                    // Write return values to `callee_reg..`
+                                    let ret_count: u8 = if ret_lim == 0 {
+                                        ret.len() as u8
+                                    } else {
+                                        cmp::min(ret_lim - 1, ret.len() as u8)
+                                    };
+
+                                    for i in 0..ret_count {
+                                        self.reg_set(callee_reg + i as u8, ret[i as usize]);
+                                    }
+
+                                    if ret_lim == 0 {
+                                        self.cur_call_mut().dtop = callee_reg + ret_count;
+                                    }
+                                }
+                                Err(LibFnError::Val(v)) => {
+                                    // FIXME Returning any value as an error is possible, the VM
+                                    // should support that
+                                    let mut buf = Vec::new();
+                                    unsafe { v.fmt(&mut buf, &self.gc).unwrap() }
+
+                                    return Err(format!("{}", String::from_utf8(buf).unwrap()).into())
+                                }
+                                Err(LibFnError::String(s)) => {
+                                    return Err(s.into())
                                 }
                             }
                         }
@@ -752,7 +800,7 @@ impl<G: GcStrategy> VM<G> {
                         }
                     };
 
-                    let gcref = self.gc.register_obj(res);
+                    let gcref = self.gc.intern_str(Str::new(res));
                     self.reg_set(a, Value::String(gcref));
                 },
                 NEG(a, b) => match self.reg_get(b) {

@@ -6,6 +6,7 @@ use function::Function;
 use mem::{TracedRef, Tracer, GcStrategy};
 use number::Number;
 use libfn::LibFn;
+use string::Str;
 
 use lea_core::constant::Const;
 
@@ -16,7 +17,7 @@ pub enum Value {
     Nil,
     Bool(bool),
     Number(Number),
-    String(TracedRef<String>),
+    String(TracedRef<Str>),
     Closure(TracedRef<Function>),
     Array(TracedRef<Array>),
     Table(TracedRef<Table>),
@@ -51,7 +52,7 @@ impl Value {
     pub fn trace<T: Tracer>(&self, t: &mut T) {
         match *self {
             Value::Nil | Value::Bool(_) | Value::Number(_) | Value::LibFn(_) => {},
-            Value::String(r) => unsafe { t.mark_untraceable(r) },    // Safe, since T is String
+            Value::String(r) => unsafe { t.mark_untraceable(r) },    // Safe, since T is Str
             Value::Table(r) => t.mark_traceable(r),
             Value::Array(r) => t.mark_traceable(r),
             Value::Closure(r) => t.mark_traceable(r),
@@ -62,7 +63,7 @@ impl Value {
         match c {
             Const::Int(i) => Value::Number(i.into()),
             Const::Float(f) => Value::Number(f.into()),
-            Const::Str(s) => Value::String(gc.register_obj(s)),
+            Const::Str(s) => Value::String(gc.intern_str(Str::new(s))),
             Const::Bool(b) => Value::Bool(b),
             Const::Nil => Value::Nil,
         }

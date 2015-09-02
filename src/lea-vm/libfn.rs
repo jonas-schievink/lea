@@ -1,5 +1,6 @@
 use value::Value;
 use mem::TracedRef;
+use string::Str;
 
 use std::hash::*;
 use std::fmt;
@@ -16,8 +17,8 @@ impl From<String> for LibFnError {
     }
 }
 
-impl From<TracedRef<String>> for LibFnError {
-    fn from(s: TracedRef<String>) -> Self {
+impl From<TracedRef<Str>> for LibFnError {
+    fn from(s: TracedRef<Str>) -> Self {
         LibFnError::Val(Value::String(s))
     }
 }
@@ -165,8 +166,8 @@ macro_rules! build_ty_pat {
 
 #[macro_export]
 #[doc(hidden)]
-macro_rules! s {
-    ( $($s:stmt)* ) => ($($s)*);
+macro_rules! b {
+    ( $b:block ) => ($b);
 }
 
 // FIXME Doesn't handle nested return
@@ -174,7 +175,7 @@ macro_rules! s {
 #[doc(hidden)]
 macro_rules! process_body {
     ( [$push_ret:ident] [ $($t:tt)* ] return [ $($e:expr),* ] $($rest:tt)* ) => {
-        s!($($t)*)
+        b!({ $($t)* })
         {
             $(
                 ($e).to_values(|val| $push_ret(val));
@@ -190,7 +191,7 @@ macro_rules! process_body {
         process_body!([$push_ret] [$($t)* $next] $($rest)*);
     };
     ( [$push_ret:ident] [$($t:tt)*] ) => {
-        s!($($t)*)
+        b!({ $($t)* })
     };
 }
 
@@ -260,7 +261,7 @@ macro_rules! lea_libfn {
 macro_rules! setenv {
     ( $env:ident; $gc:ident; $key:ident; $val:expr ) => {
         assert_eq!($env.set(
-            Value::String($gc.register_obj(stringify!($key).to_string())),
+            Value::String($gc.intern_str($crate::string::Str::new(stringify!($key).to_owned()))),
             $val
         ).unwrap(), None);
     };
@@ -274,7 +275,7 @@ macro_rules! lea_lib_inner {
         lea_lib_inner!($env; $gc; $($rest)*);
     };
     ( $env:ident; $gc:ident; $key:ident = str $v:expr, $($rest:tt)* ) => {
-        setenv!($env; $gc; $key; Value::String($gc.register_obj($v.to_string())));
+        setenv!($env; $gc; $key; Value::String($gc.intern_str($crate::string::Str::new($v.to_owned()))));
         lea_lib_inner!($env; $gc; $($rest)*);
     };
     ( $env:ident; $gc:ident; ) => {};

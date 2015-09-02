@@ -23,6 +23,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::mem::transmute;
 
+use string::Str;
 
 pub mod noop;
 pub mod stw;
@@ -121,6 +122,9 @@ pub trait GcStrategy {
     ///
     /// Callees must ensure that this isn't called when unrooted references to objects exist.
     fn register_obj<T: Any>(&mut self, T) -> TracedRef<T>;
+
+    /// Interns a string and returns a `TracedRef` to the shared instance.
+    fn intern_str(&mut self, Str) -> TracedRef<Str>;
 
     /// Given a `TracedRef` of an object owned by this GC, this method unsafely returns a reference
     /// to the object.
