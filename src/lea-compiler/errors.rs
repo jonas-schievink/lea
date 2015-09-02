@@ -64,7 +64,7 @@ impl CompileError {
             },
             ErrEmit(ref errs) => {
                 for err in errs {
-                    let mut msg = err.msg.to_string();
+                    let mut msg = err.msg.to_owned();
                     if let Some(ref d) = err.detail {
                         msg.push_str(format!(" ({})", d).as_ref());
                     }

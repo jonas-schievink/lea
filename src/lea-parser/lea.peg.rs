@@ -83,7 +83,7 @@ kvpair -> (Expr<'input>, Expr<'input>)
     = __* kv:(
         "[" key:expression "]" __* "=" __* val:expression { (key, val) }
         / id:ident __* "=" __* val:expression {
-            (Spanned::new(id.span, ELit(Const::Str(id.value.to_string()))), val)
+            (Spanned::new(id.span, ELit(Const::Str(id.value.to_owned()))), val)
         }
     ) __* { kv }
 
@@ -322,7 +322,7 @@ _single_quote_content -> char
 string -> String
     = '"' chars:_double_quote_content* blank_esc? '"'   { chars.into_iter().collect() }
     / '\'' chars:_single_quote_content* blank_esc? '\'' { chars.into_iter().collect() }
-    / content:longbracket                               { content.to_string() }
+    / content:longbracket                               { content.to_owned() }
 
 boolean -> bool
     = "true" { true } / "false" { false }

@@ -118,27 +118,27 @@ mod tests {
         assert_eq!(literal("false").unwrap().value, Const::Bool(false));
         assert_eq!(literal("true").unwrap().value, Const::Bool(true));
 
-        assert_eq!(literal("\"\"").unwrap().value, Const::Str("".to_string()));
-        assert_eq!(literal("\" test_string \"").unwrap().value, Const::Str(" test_string ".to_string()));
-        assert_eq!(literal("\"hi\\n\\r\\t\\\\ \\\"\"").unwrap().value, Const::Str("hi\n\r\t\\ \"".to_string()));
-        assert_eq!(literal("\"\\127\\0\\1\\255\\xff\"").unwrap().value, Const::Str("\x7f\0\x01\u{ff}\u{ff}".to_string()));
+        assert_eq!(literal("\"\"").unwrap().value, Const::Str("".to_owned()));
+        assert_eq!(literal("\" test_string \"").unwrap().value, Const::Str(" test_string ".to_owned()));
+        assert_eq!(literal("\"hi\\n\\r\\t\\\\ \\\"\"").unwrap().value, Const::Str("hi\n\r\t\\ \"".to_owned()));
+        assert_eq!(literal("\"\\127\\0\\1\\255\\xff\"").unwrap().value, Const::Str("\x7f\0\x01\u{ff}\u{ff}".to_owned()));
 
-        assert_eq!(literal("''").unwrap().value, Const::Str("".to_string()));
-        assert_eq!(literal("'\\n\\r'").unwrap().value, Const::Str("\n\r".to_string()));
-        assert_eq!(literal("'\\z   \n\"'").unwrap().value, Const::Str("\"".to_string()));
+        assert_eq!(literal("''").unwrap().value, Const::Str("".to_owned()));
+        assert_eq!(literal("'\\n\\r'").unwrap().value, Const::Str("\n\r".to_owned()));
+        assert_eq!(literal("'\\z   \n\"'").unwrap().value, Const::Str("\"".to_owned()));
 
         assert!(literal("\"\n\"").is_err());
         assert!(literal("\"\\q\"").is_err());       // invalid escape seq
 
-        assert_eq!(literal("[[test]]").unwrap().value, Const::Str("test".to_string()));
-        assert_eq!(literal("[=[test]=]").unwrap().value, Const::Str("test".to_string()));
-        assert_eq!(literal("[======[test]======]").unwrap().value, Const::Str("test".to_string()));
+        assert_eq!(literal("[[test]]").unwrap().value, Const::Str("test".to_owned()));
+        assert_eq!(literal("[=[test]=]").unwrap().value, Const::Str("test".to_owned()));
+        assert_eq!(literal("[======[test]======]").unwrap().value, Const::Str("test".to_owned()));
 
-        assert_eq!(literal("[=[test]]]=]").unwrap().value, Const::Str("test]]".to_string()));
+        assert_eq!(literal("[=[test]]]=]").unwrap().value, Const::Str("test]]".to_owned()));
         assert_eq!(expression("[=[test]=] + [=[bla]=]").unwrap().value, EBinOp(
-            Box::new(Spanned::default(ELit(Const::Str("test".to_string())))),
+            Box::new(Spanned::default(ELit(Const::Str("test".to_owned())))),
             BinOp::Add,
-            Box::new(Spanned::default(ELit(Const::Str("bla".to_string())))),
+            Box::new(Spanned::default(ELit(Const::Str("bla".to_owned())))),
         ));
     }
 
@@ -304,7 +304,7 @@ mod tests {
         assert_eq!(expression("[{k=[1,2,],}]").unwrap().value, EArray(vec![
             Spanned::default(ETable(vec![
                 TableEntry::Pair(
-                    Spanned::default(ELit(Const::Str("k".to_string()))),
+                    Spanned::default(ELit(Const::Str("k".to_owned()))),
                     Spanned::default(EArray(vec![
                         Spanned::default(ELit(Const::Int(1))),
                         Spanned::default(ELit(Const::Int(2))),
@@ -369,7 +369,7 @@ mod tests {
 
         assert_eq!(expression("f ''").unwrap().value, ECall(SimpleCall(
             Box::new(Spanned::default(EVar(Spanned::default(VNamed("f"))))),
-            CallArgs::String("".to_string()),
+            CallArgs::String("".to_owned()),
         )));
 
         assert_eq!(expression("(function()end)()").unwrap().value, ECall(SimpleCall(

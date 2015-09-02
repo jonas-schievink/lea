@@ -170,7 +170,7 @@ impl<'a> Resolver<'a> {
                 let envvar = Box::new(Spanned::new(span,
                     self.resolve_var("_ENV", span)));
 
-                VIndex(envvar, Box::new(Spanned::new(span, ELit(Const::Str(name.to_string())))))
+                VIndex(envvar, Box::new(Spanned::new(span, ELit(Const::Str(name.to_owned())))))
             }
         }
     }
@@ -286,7 +286,7 @@ j = i
 
         assert_eq!(f.body, Block::with_locals(vec![
             Spanned::default(SAssign(
-                vec![Spanned::default(VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(Const::Str("i".to_string()))))))],
+                vec![Spanned::default(VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(Const::Str("i".to_owned()))))))],
                 vec![Spanned::default(ELit(Const::Int(0)))],
             )),
             Spanned::default(SDecl(vec![Spanned::default("a")], vec![])),
@@ -305,10 +305,10 @@ j = i
             ], Default::default(), localmap!{ i: 1, j: 2 }))),
             Spanned::default(SAssign(
                 vec![Spanned::default(
-                    VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(Const::Str("j".to_string())))))
+                    VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(Const::Str("j".to_owned())))))
                 )],
                 vec![Spanned::default(EVar(Spanned::default(
-                    VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(Const::Str("i".to_string())))))
+                    VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(Const::Str("i".to_owned())))))
                 )))],
             )),
         ], Default::default(), localmap!{ a: 0 }));
@@ -422,7 +422,7 @@ local function h() local function h1() r = nil end end
                         Spanned::default(SDecl(vec![Spanned::default("_ENV")], vec![])),
                         Spanned::default(SAssign(vec![
                             Spanned::default(VIndex(
-                                Box::new(Spanned::default(VLocal(0))), Box::new(Spanned::default(ELit(Const::Str("i".to_string()))))
+                                Box::new(Spanned::default(VLocal(0))), Box::new(Spanned::default(ELit(Const::Str("i".to_owned()))))
                             )),
                         ], vec![Spanned::default(ELit(Const::Nil))])),
                     ], Default::default(), localmap!{ _ENV: 0 }),
@@ -463,7 +463,7 @@ local function h() local function h1() r = nil end end
                             body: Block::new(vec![
                                 Spanned::default(SAssign(vec![
                                     Spanned::default(VIndex(
-                                        Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(Const::Str("r".to_string()))))
+                                        Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(Const::Str("r".to_owned()))))
                                     ))
                                 ], vec![
                                     Spanned::default(ELit(Const::Nil)),

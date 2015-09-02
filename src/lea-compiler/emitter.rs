@@ -31,7 +31,7 @@ impl EmitError {
     pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<Output=W>) -> io::Result<()> {
         let msg = match self.detail {
             Some(ref detail) => format!("{} ({})", self.msg, detail),
-            None => self.msg.to_string(),
+            None => self.msg.to_owned(),
         };
 
         match self.span {
@@ -87,7 +87,7 @@ struct Emitter {
 impl Emitter {
     fn new(source_name: &str) -> Emitter {
         Emitter {
-            source_name: source_name.to_string(),
+            source_name: source_name.to_owned(),
             errs: Vec::new(),
             funcs: Vec::new(),
             alloc: HashMap::new(),
@@ -460,7 +460,7 @@ impl Emitter {
                 let obj_slot = self.alloc_slots(1);
                 self.emit_expr_into(obj, obj_slot);
 
-                let const_id = self.add_const(&Const::Str(name.to_string()));
+                let const_id = self.add_const(&Const::Str(name.value.to_owned()));
 
                 self.emit(LOADK(method_slot, const_id));
                 self.emit(GETIDX(method_slot, obj_slot, method_slot));

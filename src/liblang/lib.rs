@@ -19,7 +19,7 @@ lea_libfn! {
             return [val]
         }
         (val: *) -> (val: *) => {
-            if !val.is_truthy() { return Err("assertion failed".to_string().into()) }
+            if !val.is_truthy() { return Err("assertion failed".to_owned().into()) }
             return [val]
         }
     }

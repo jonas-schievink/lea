@@ -187,7 +187,7 @@ impl<'a> Conv<'a> for parsetree::_Stmt<'a> {
                 push(_Stmt::SAssign(
                     vec![Spanned::new(var.span, VIndex(
                         Box::new(spanned_into(var)),
-                        Box::new(Spanned::new(name.span, ELit(Const::Str(name.to_string()))))
+                        Box::new(Spanned::new(name.span, ELit(Const::Str(name.value.to_owned()))))
                     ))],
                     vec![Spanned::new(func.body.span, EFunc(func))]
                 ));
