@@ -15,6 +15,23 @@ A Lua-based language written in Rust
 name = "lea"
 path = "src/lea/lib.rs"
 
+# FIXME Is there a way to tell cargo to just not document bins?
+# (I don't like explicitly listing all bins here...)
+[[bin]]
+name = "lea"
+path = "src/bin/lea.rs"
+doc = false
+
+[[bin]]
+name = "leac"
+path = "src/bin/leac.rs"
+doc = false
+
+[[bin]]
+name = "leafmt"
+path = "src/bin/leafmt.rs"
+doc = false
+
 [dependencies]
 lea-parser = { path = "src/lea-parser" }
 lea-compiler = { path = "src/lea-compiler" }
