@@ -7,8 +7,7 @@ addons:
       - libcurl4-openssl-dev
       - libelf-dev
       - libdw-dev
-script: time travis/test.sh
-after_success: travis/coverage.sh && travis/docs.sh
+script: time travis/test.sh && travis/docs.sh
 env:
   global:
     # GH_SECRET for pushing the docs to the gh-pages branch automatically
