@@ -8,7 +8,7 @@ use mem::{TracedRef, Tracer, GcStrategy};
 use number::Number;
 use libfn::LibFn;
 
-use lea_core::constant::Const;
+use lea_core::Const;
 
 use std::io::{self, Write};
 

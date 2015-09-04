@@ -4,7 +4,7 @@ use super::parser;
 
 use parsetree::*;
 
-use lea_core::constant::Const;
+use lea_core::Const;
 
 use std::io::{self, Write};
 

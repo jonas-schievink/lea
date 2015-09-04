@@ -14,7 +14,7 @@ pub use self::Call::*;
 use parser::span::{Span, Spanned};
 use parser::op::*;
 
-use lea_core::constant::Const;
+use lea_core::Const;
 use lea_core::fndata::UpvalDesc;
 
 use std::collections::HashMap;

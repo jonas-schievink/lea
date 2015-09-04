@@ -8,7 +8,7 @@ use parser::span::{Span, Spanned};
 use lea_core::limits;
 use lea_core::fndata::{UpvalDesc, FnData};
 use lea_core::opcode::*;
-use lea_core::constant::Const;
+use lea_core::Const;
 
 use term::{color, Terminal, Attr};
 

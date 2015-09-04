@@ -329,7 +329,7 @@ mod tests {
     use ast::*;
     use parser::span::{Span, Spanned};
 
-    use lea_core::constant::Const;
+    use lea_core::Const;
 
     #[test]
     fn visit_count() {

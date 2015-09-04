@@ -883,7 +883,7 @@ mod tests {
 
     use lea_core::fndata::{FnData, UpvalDesc};
     use lea_core::opcode::*;
-    use lea_core::constant::Const;
+    use lea_core::Const;
 
     use std::rc::Rc;
     use std::cell::Cell;

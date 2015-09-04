@@ -11,7 +11,7 @@ use ast::visit::*;
 use parser::span::{Span, Spanned};
 
 use lea_core::fndata::UpvalDesc;
-use lea_core::constant::Const;
+use lea_core::Const;
 
 use std::collections::HashMap;
 
@@ -254,7 +254,7 @@ mod tests {
     use ast::*;
 
     use lea_core::fndata::UpvalDesc;
-    use lea_core::constant::Const;
+    use lea_core::Const;
 
     use std::default::Default;
 

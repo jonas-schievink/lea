@@ -84,7 +84,7 @@ mod tests {
     use span::Spanned;
     use op::*;
 
-    use lea_core::constant::Const;
+    use lea_core::Const;
 
     use std::default::Default;
 

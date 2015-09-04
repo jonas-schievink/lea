@@ -2,7 +2,7 @@
 //! passed to the VM for execution.
 
 use opcode::Opcodes;
-use constant::Const;
+use Const;
 
 
 /// Describes how an Upvalue is referenced

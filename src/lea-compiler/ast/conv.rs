@@ -6,7 +6,7 @@ use super::*;
 use parser::parsetree;
 use parser::span::Spanned;
 
-use lea_core::constant::Const;
+use lea_core::Const;
 
 impl<'a> From<parsetree::Function<'a>> for Function<'a> {
     fn from(func: parsetree::Function<'a>) -> Self {

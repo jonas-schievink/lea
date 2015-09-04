@@ -7,7 +7,7 @@ use ast::visit::*;
 use parser::span::Spanned;
 use parser::op::*;
 
-use lea_core::constant::Const;
+use lea_core::Const;
 
 
 struct Folder {

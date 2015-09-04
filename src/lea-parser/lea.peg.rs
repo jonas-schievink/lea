@@ -9,7 +9,7 @@ use span::{Span, Spanned, mkspanned};
 use op::*;
 use parsetree::*;
 
-use lea_core::constant::Const;
+use lea_core::Const;
 
 
 index -> VarIndex<'input>

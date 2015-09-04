@@ -10,7 +10,7 @@ pub use self::Call::*;
 use span::{Span, Spanned};
 use op::*;
 
-use lea_core::constant::Const;
+use lea_core::Const;
 
 
 /// A block containing any number of statements. All blocks define a scope in which local variables

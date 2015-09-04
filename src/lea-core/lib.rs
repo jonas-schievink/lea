@@ -5,4 +5,7 @@ extern crate rustc_serialize;
 pub mod opcode;
 pub mod fndata;
 pub mod limits;
-pub mod constant;
+mod constant;
+
+#[doc(inline)]
+pub use constant::Const;
