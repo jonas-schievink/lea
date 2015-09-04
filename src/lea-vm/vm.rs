@@ -20,7 +20,7 @@ use std::rc::Rc;
 use std::cell::Cell;
 
 /// Contains information about a called Lea function.
-pub struct CallInfo {
+struct CallInfo {
     /// The function active at this call level
     func: TracedRef<Function>,
     /// The instruction pointer (index into opcode vector)
