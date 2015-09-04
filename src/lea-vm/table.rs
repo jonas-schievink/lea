@@ -19,7 +19,7 @@
 
 #![macro_use]
 
-use value::Value;
+use Value;
 use mem::{TracedRef, Tracer, Traceable};
 
 use std::collections::HashMap;

@@ -176,11 +176,11 @@ macro_rules! p {
 #[doc(hidden)]
 macro_rules! build_ty_pat {
     ( [$($p:tt)*] , $($rest:tt)* ) => ( build_ty_pat!([$($p)* ,] $($rest)*) );
-    ( [$($p:tt)*] $name:ident : number $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::value::Value::Number($name)] $($rest)*) );
-    ( [$($p:tt)*] $name:ident : string $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::value::Value::String($name)] $($rest)*) );
-    ( [$($p:tt)*] $name:ident : bool $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::value::Value::Bool($name)] $($rest)*) );
-    ( [$($p:tt)*] $name:ident : array $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::value::Value::Array($name)] $($rest)*) );
-    ( [$($p:tt)*] $name:ident : table $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::value::Value::Table($name)] $($rest)*) );
+    ( [$($p:tt)*] $name:ident : number $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::Value::Number($name)] $($rest)*) );
+    ( [$($p:tt)*] $name:ident : string $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::Value::String($name)] $($rest)*) );
+    ( [$($p:tt)*] $name:ident : bool $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::Value::Bool($name)] $($rest)*) );
+    ( [$($p:tt)*] $name:ident : array $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::Value::Array($name)] $($rest)*) );
+    ( [$($p:tt)*] $name:ident : table $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::Value::Table($name)] $($rest)*) );
     ( [$($p:tt)*] $name:ident : * $($rest:tt)* ) => ( build_ty_pat!([$($p)* $name] $($rest)*) );
     ( [$($p:tt)*] $name:ident : ... $($rest:tt)* ) => ( build_ty_pat!([$($p)* $name ..] $($rest)*) );
     ( [$($p:tt)*] ) => ( p!([$($p)*]) );
@@ -226,7 +226,7 @@ macro_rules! lea_libfn_single {
         )+
     } ) => {
         mod $name {
-            use $crate::value::Value;
+            use $crate::Value;
             use $crate::libfn::LibFnError;
 
             // Might not be used if the function doesn't return anything
@@ -280,7 +280,7 @@ macro_rules! lea_libfn {
 macro_rules! setenv {
     ( $env:ident; $gc:ident; $key:ident; $val:expr ) => {
         assert_eq!($env.set(
-            Value::String($gc.intern_str($crate::string::Str::new(stringify!($key).to_owned()))),
+            Value::String($gc.intern_str($crate::Str::new(stringify!($key).to_owned()))),
             $val
         ).unwrap(), None);
     };
@@ -290,11 +290,11 @@ macro_rules! setenv {
 #[doc(hidden)]
 macro_rules! lea_lib_inner {
     ( $env:ident; $gc:ident; $gcty:ident; $key:ident = fn $f:ident, $($rest:tt)* ) => {
-        setenv!($env; $gc; $key; $crate::value::Value::LibFn($crate::libfn::LibFn($f::$f::<$gcty>)));
+        setenv!($env; $gc; $key; $crate::Value::LibFn($crate::libfn::LibFn($f::$f::<$gcty>)));
         lea_lib_inner!($env; $gc; $gcty; $($rest)*);
     };
     ( $env:ident; $gc:ident; $gcty:ident; $key:ident = str $v:expr, $($rest:tt)* ) => {
-        setenv!($env; $gc; $key; $crate::value::Value::String($gc.intern_str($crate::string::Str::new($v.to_owned()))));
+        setenv!($env; $gc; $key; $crate::Value::String($gc.intern_str($crate::Str::new($v.to_owned()))));
         lea_lib_inner!($env; $gc; $gcty; $($rest)*);
     };
     ( $env:ident; $gc:ident; $gcty:ident; ) => {};
@@ -303,8 +303,8 @@ macro_rules! lea_lib_inner {
 #[macro_export]
 macro_rules! lea_lib {
     ( $($t:tt)* ) => {
-        pub fn init<G: $crate::mem::GcStrategy>(env: &mut $crate::table::Table, gc: &mut G) {
-            use $crate::value::Value;
+        pub fn init<G: $crate::mem::GcStrategy>(env: &mut $crate::Table, gc: &mut G) {
+            use $crate::Value;
 
             lea_lib_inner!(env; gc; G; $($t)*);
         }

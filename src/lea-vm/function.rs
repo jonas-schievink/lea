@@ -5,7 +5,7 @@ use lea_core::fndata::{UpvalDesc, FnData};
 use lea_core::opcode::*;
 
 use mem::*;
-use value::Value;
+use Value;
 
 use std::rc::Rc;
 use std::cell::Cell;

@@ -1,12 +1,12 @@
 //! This module defines the dynamically typed value type used by Lea
 
-use table::Table;
-use array::Array;
+use Table;
+use Array;
+use Str;
 use function::Function;
 use mem::{TracedRef, Tracer, GcStrategy};
 use number::Number;
 use libfn::LibFn;
-use string::Str;
 
 use lea_core::constant::Const;
 

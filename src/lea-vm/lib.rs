@@ -11,12 +11,27 @@ extern crate lea_core;
 extern crate log;
 
 pub mod libfn;
-pub mod value;
-pub mod array;
-pub mod table;
 pub mod function;
-pub mod vm;
 pub mod error;
 pub mod mem;
 pub mod number;
-pub mod string;
+mod array;
+mod string;
+mod table;
+mod value;
+mod vm;
+
+#[doc(inline)]
+pub use array::Array;
+
+#[doc(inline)]
+pub use string::Str;
+
+#[doc(inline)]
+pub use table::Table;
+
+#[doc(inline)]
+pub use value::Value;
+
+#[doc(inline)]
+pub use vm::VM;

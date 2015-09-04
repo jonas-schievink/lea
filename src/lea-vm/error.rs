@@ -1,6 +1,6 @@
 //! Runtime errors
 
-use value::Value;
+use Value;
 
 use std::fmt;
 

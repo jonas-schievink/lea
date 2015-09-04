@@ -1,7 +1,7 @@
 //! Contains the `Array` type that's used for arrays in Lea code
 
 use mem::{Tracer, Traceable};
-use value::Value;
+use Value;
 
 use std::ops::{Deref, DerefMut};
 

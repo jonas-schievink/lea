@@ -15,8 +15,8 @@ use parser::span::DummyTerm;
 use compiler::{CompileConfig, FnData};
 use vm::mem::DefaultGc;
 use vm::function::FunctionProto;
-use vm::value::Value;
-use vm::vm::VM;
+use vm::Value;
+use vm::VM;
 
 use std::io::{self, stdin, stderr, Write, BufRead};
 

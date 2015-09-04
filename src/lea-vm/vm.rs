@@ -7,11 +7,11 @@ use lea_core::fndata::UpvalDesc;
 
 use mem::{TracedRef, GcStrategy};
 use function::{Function, FunctionProto, Upval};
-use array::Array;
-use table::Table;
-use value::Value;
+use Array;
+use Table;
+use Value;
+use Str;
 use error::{VmResult, VmError};
-use string::Str;
 use libfn::LibFnError;
 
 use std::iter;
