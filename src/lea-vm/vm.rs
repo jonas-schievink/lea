@@ -10,7 +10,7 @@ use function::{Function, FunctionProto, Upval};
 use array::Array;
 use table::Table;
 use value::Value;
-use error::VmResult;
+use error::{VmResult, VmError};
 use string::Str;
 use libfn::LibFnError;
 
@@ -81,10 +81,25 @@ impl<G: GcStrategy> VM<G> {
     /// a function.
     ///
     /// Returns when the function returns (or a runtime error occurs).
-    pub fn start(&mut self, f: TracedRef<Function>) -> VmResult {
+    pub fn start<F>(&mut self, f: TracedRef<Function>, e: F) -> Option<Vec<Value>>
+    where F: FnOnce(&mut VmError) {
         // FIXME When is a nested call okay?
+        let stacksz = self.stack.len();
+        let calls = self.calls.len();
+
         self.push_call(f, 0, 0, 0);  // `ret_count` and `ret_start` are ignored
-        self.main_loop()
+
+        match self.main_loop() {
+            Ok(vals) => Some(vals),
+            Err(mut error) => {
+                e(&mut error);
+
+                self.stack.truncate(stacksz);
+                self.calls.truncate(calls);
+
+                None
+            }
+        }
     }
 }
 
@@ -218,6 +233,9 @@ impl<G: GcStrategy> VM<G> {
 
     /// VM main loop. This will start dispatching opcodes of the currently active function (at the
     /// top of the call stack).
+    ///
+    /// If an error occurs, the main loop is aborted immediately and the error is returned. This
+    /// means that no active function is exited. The caller is responsible for handling that case.
     fn main_loop(&mut self) -> VmResult {
         loop {
             let op = self.fetch();
@@ -782,6 +800,7 @@ impl<G: GcStrategy> VM<G> {
                     }
                 },
                 CONCAT(a, b, c) => {
+                    // FIXME This is wrong!
                     let res: String = match (self.reg_get(b), self.reg_get(c)) {
                         (Value::Number(l), Value::Number(r)) => {
                             format!("{}{}", l, r)
@@ -931,15 +950,13 @@ mod tests {
             });
             let f = gc.register_obj(f);
             let mut vm = VM::new(gc);
-            let ret = vm.start(f);
+            let ret = vm.start(f, |e| panic!("{}", e));
 
             (vm, ret)
         }};
     }
 
-    /// FIXME Due to a bug in Rust, `tt` metavariables behave weird when used in an expression
-    /// context. This macro fixes this: It can be invoked with a `tt` variable (or any number of
-    /// them), parses it as an expression, and expands to that.
+    /// Converts its argument to an expression
     macro_rules! mkexpr {
         ( $e:expr ) => ( $e );
     }

@@ -14,7 +14,6 @@ extern crate lea;
 use parser::span::DummyTerm;
 use compiler::{CompileConfig, FnData};
 use vm::mem::DefaultGc;
-use vm::error::VmResult;
 use vm::function::FunctionProto;
 use vm::value::Value;
 use vm::vm::VM;
@@ -95,9 +94,11 @@ fn run_fndata(main: FnData, vm: &mut VM<DefaultGc>, env: Value) -> bool {
     });
     let f = vm.gc_mut().register_obj(f);
 
-    let ret: VmResult = vm.start(f);
-    match ret {
-        Ok(vals) => {
+    match vm.start(f, |error| {
+        println!("runtime error: {}", error);
+    }) {
+        None => false,
+        Some(vals) => {
             if !vals.is_empty() {
                 for (i, val) in vals.into_iter().enumerate() {
                     if i != 0 {
@@ -110,11 +111,6 @@ fn run_fndata(main: FnData, vm: &mut VM<DefaultGc>, env: Value) -> bool {
             }
 
             true
-        }
-        Err(e) => {
-            println!("runtime error: {}", e);
-
-            false
         }
     }
 }

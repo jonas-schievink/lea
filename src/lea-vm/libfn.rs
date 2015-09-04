@@ -82,6 +82,16 @@ fn size() {
 // want to suffer for eternity, please continue and take a look at *it*.
 //===============================================================================================
 
+// If *it* has finally consumed you, here are a few todos:
+// * Match arguments without slice patterns
+//   This is useful since slice patterns are unstable. See the example at the bottom for how this
+//   could look without slice patterns (it's not pretty). This could even be made its own crate,
+//   since it's not entirely useless. Let's hope LLVM optimizes this right...
+// * Autoderef values
+//   Currently, if a function matches an argument with `name: string`, the type of name is
+//   TracedRef<Str>. Autoderef could use the VMs GC to get a `&Str` instead. Smart use of traits
+//   makes this easier. If the autoderef'd value is returned, it must be converted back to a Value.
+
 pub enum TyMarker {
     Number,
     String,
@@ -96,21 +106,6 @@ pub type LibFnTyInfo = &'static [(
     &'static [(&'static str, TyMarker)],
     &'static [(&'static str, TyMarker)]
 )];
-
-pub struct LibFnData {
-    pub f: LibFn,
-    pub ty_info: LibFnTyInfo,
-}
-
-impl LibFnData {
-    pub fn get_fn(&self) -> LibFn {
-        self.f
-    }
-
-    pub fn get_ty_info(&self) -> LibFnTyInfo {
-        &self.ty_info
-    }
-}
 
 pub trait ToValues {
     fn to_values<F>(self, mut push: F) where F: FnMut(Value);
@@ -131,6 +126,33 @@ impl<'a> ToValues for &'a [Value] {
         }
     }
 }
+
+/*pub trait ToValues {
+    fn to_values<F, G: GcStrategy>(self, mut push: F, gc: &mut G) where F: FnMut(Value);
+}
+
+impl ToValues for Value {
+    #[inline]
+    fn to_values<F, G: GcStrategy>(self, mut push: F, _: &mut G) where F: FnMut(Value) {
+        push(self)
+    }
+}
+
+impl<'a> ToValues for &'a [Value] {
+    #[inline]
+    fn to_values<F, G: GcStrategy>(self, mut push: F, _: &mut G) where F: FnMut(Value) {
+        for value in self {
+            push(*value)
+        }
+    }
+}
+
+impl ToValues for Str {
+    #[inline]
+    fn to_values<F, G: GcStrategy>(self, mut push: F, gc: &mut G) where F: FnMut(Value) {
+        push(Value::String(gc.intern_str(self)))
+    }
+}*/
 
 #[macro_export]
 #[doc(hidden)]
@@ -212,7 +234,7 @@ macro_rules! lea_libfn_single {
             use $crate::libfn::ToValues;
 
             #[allow(unreachable_code)]  // Don't warn when our inserted return isn't reachable
-            pub fn $name(args: &[Value], _push_ret: &mut FnMut(Value))
+            pub fn $name<G: $crate::mem::GcStrategy>(args: &[Value], _push_ret: &mut FnMut(Value))
             -> Result<(), LibFnError> {
                 // TODO Figure out a way of matching param types without slice patterns
                 match args {
@@ -235,17 +257,14 @@ macro_rules! lea_libfn_single {
         }
 
         #[allow(non_upper_case_globals)]
-        static $name: $crate::libfn::LibFnData = $crate::libfn::LibFnData {
-            f: $crate::libfn::LibFn($name :: $name),
-            ty_info: &[
-                $(
-                    (
-                        &[ $( (stringify!($pname), ident2tym!($pty)) ),* ],
-                        &[ $( (stringify!($rname), ident2tym!($rty)) ),* ]
-                    )
-                ),+
-            ],
-        };
+        pub static $name: $crate::libfn::LibFnTyInfo = &[
+            $(
+                (
+                    &[ $( (stringify!($pname), ident2tym!($pty)) ),* ],
+                    &[ $( (stringify!($rname), ident2tym!($rty)) ),* ]
+                )
+            ),+
+        ];
     };
 }
 
@@ -270,15 +289,15 @@ macro_rules! setenv {
 #[macro_export]
 #[doc(hidden)]
 macro_rules! lea_lib_inner {
-    ( $env:ident; $gc:ident; $key:ident = fn $f:expr, $($rest:tt)* ) => {
-        setenv!($env; $gc; $key; Value::LibFn($f.get_fn()));
-        lea_lib_inner!($env; $gc; $($rest)*);
+    ( $env:ident; $gc:ident; $gcty:ident; $key:ident = fn $f:ident, $($rest:tt)* ) => {
+        setenv!($env; $gc; $key; $crate::value::Value::LibFn($crate::libfn::LibFn($f::$f::<$gcty>)));
+        lea_lib_inner!($env; $gc; $gcty; $($rest)*);
     };
-    ( $env:ident; $gc:ident; $key:ident = str $v:expr, $($rest:tt)* ) => {
-        setenv!($env; $gc; $key; Value::String($gc.intern_str($crate::string::Str::new($v.to_owned()))));
-        lea_lib_inner!($env; $gc; $($rest)*);
+    ( $env:ident; $gc:ident; $gcty:ident; $key:ident = str $v:expr, $($rest:tt)* ) => {
+        setenv!($env; $gc; $key; $crate::value::Value::String($gc.intern_str($crate::string::Str::new($v.to_owned()))));
+        lea_lib_inner!($env; $gc; $gcty; $($rest)*);
     };
-    ( $env:ident; $gc:ident; ) => {};
+    ( $env:ident; $gc:ident; $gcty:ident; ) => {};
 }
 
 #[macro_export]
@@ -287,7 +306,7 @@ macro_rules! lea_lib {
         pub fn init<G: $crate::mem::GcStrategy>(env: &mut $crate::table::Table, gc: &mut G) {
             use $crate::value::Value;
 
-            lea_lib_inner!(env; gc; $($t)*);
+            lea_lib_inner!(env; gc; G; $($t)*);
         }
     }
 }

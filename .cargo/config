@@ -1,3 +1,0 @@
-[build]
-# Share one target dir for all subcrates. Prevents recompiling everything.
-target-dir = "target"
