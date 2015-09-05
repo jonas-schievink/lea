@@ -630,11 +630,7 @@ impl Emitter {
                             BinOp::ShiftL => self.emit(SHIFTL(hint_slot, lslot, rslot)),
                             BinOp::ShiftR => self.emit(SHIFTR(hint_slot, lslot, rslot)),
 
-                            BinOp::Concat => {
-                                assert_eq!(lslot + 1, rslot);    // TODO ensure this is always true
-                                // TODO make use of CONCAT's special behaviour (concat a range of regs)
-                                self.emit(CONCAT(hint_slot, lslot, 0));
-                            },
+                            BinOp::Concat => self.emit(CONCAT(hint_slot, lslot, rslot)),
 
                             BinOp::LAnd | BinOp::LAndLua | BinOp::LOr | BinOp::LOrLua => unreachable!(),
                         };

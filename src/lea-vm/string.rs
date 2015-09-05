@@ -3,19 +3,13 @@
 use std::ops::Deref;
 use std::fmt;
 
-/// `Str` is an immutable `String`. All strings are 0-terminated, but can contain '0' bytes. This
-/// allows them to be passed to C code without an extra conversion.
+/// `Str` is an immutable `String`.
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub struct Str(String);
 
 impl Str {
-    pub fn new(mut s: String) -> Str {
-        s.push('\0');
+    pub fn new(s: String) -> Str {
         Str(s)
-    }
-
-    pub fn len(&self) -> usize {
-        self.0.len() - 1
     }
 }
 

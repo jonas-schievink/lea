@@ -162,10 +162,9 @@ pub enum Opcode {
     /// > R[A] := R[B] >> R[C]
     SHIFTR(u8, u8, u8),
 
-    /// > R[A] := R[B] .. R[B+1] .. ... .. R[B+C+1]
+    /// > R[A] := R[B] .. R[C]
     ///
-    /// Concatenates the values in `R[B]` through `R[B+C+1]`: If C is 0, concatenates `R[B]` and
-    /// `R[B+1]`.
+    /// Concatenates the value in `R[B]` with the value in `R[C]`. Numbers are coerced to strings.
     CONCAT(u8, u8, u8),
 
     /// > R[A] := -R[B]
