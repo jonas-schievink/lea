@@ -23,5 +23,11 @@ pub fn build_stdlib<G: GcStrategy>(gc: &mut G) -> Value {
     let mut env = Table::default();
     liblang::init(&mut env, gc);
 
-    Value::Table(gc.register_obj(env))
+    let gcref = gc.register_obj(env);
+    {
+        let s = gc.intern_str("_G");
+        let env = unsafe { gc.get_mut(gcref) };
+        env.set(Value::String(s), Value::Table(gcref)).unwrap();
+    }
+    Value::Table(gcref)
 }

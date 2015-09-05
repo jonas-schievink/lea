@@ -32,3 +32,9 @@ impl From<String> for Str {
         Str::new(s)
     }
 }
+
+impl<'a> From<&'a str> for Str {
+    fn from(s: &'a str) -> Str {
+        Str::new(String::from(s))
+    }
+}

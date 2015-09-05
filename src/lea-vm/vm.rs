@@ -10,7 +10,6 @@ use function::{Function, FunctionProto, Upval};
 use Array;
 use Table;
 use Value;
-use Str;
 use error::{VmResult, VmError};
 use libfn::LibFnError;
 
@@ -819,7 +818,7 @@ impl<G: GcStrategy> VM<G> {
                         }
                     };
 
-                    let gcref = self.gc.intern_str(Str::new(res));
+                    let gcref = self.gc.intern_str(res);
                     self.reg_set(a, Value::String(gcref));
                 },
                 NEG(a, b) => match self.reg_get(b) {

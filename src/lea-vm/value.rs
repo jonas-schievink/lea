@@ -63,7 +63,7 @@ impl Value {
         match c {
             Const::Int(i) => Value::Number(i.into()),
             Const::Float(f) => Value::Number(f.into()),
-            Const::Str(s) => Value::String(gc.intern_str(Str::new(s))),
+            Const::Str(s) => Value::String(gc.intern_str(s)),
             Const::Bool(b) => Value::Bool(b),
             Const::Nil => Value::Nil,
         }

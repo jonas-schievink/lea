@@ -280,7 +280,7 @@ macro_rules! lea_libfn {
 macro_rules! setenv {
     ( $env:ident; $gc:ident; $key:ident; $val:expr ) => {
         assert_eq!($env.set(
-            Value::String($gc.intern_str($crate::Str::new(stringify!($key).to_owned()))),
+            Value::String($gc.intern_str(stringify!($key))),
             $val
         ).unwrap(), None);
     };
@@ -294,7 +294,7 @@ macro_rules! lea_lib_inner {
         lea_lib_inner!($env; $gc; $gcty; $($rest)*);
     };
     ( $env:ident; $gc:ident; $gcty:ident; $key:ident = str $v:expr, $($rest:tt)* ) => {
-        setenv!($env; $gc; $key; $crate::Value::String($gc.intern_str($crate::Str::new($v.to_owned()))));
+        setenv!($env; $gc; $key; $crate::Value::String($gc.intern_str($v)));
         lea_lib_inner!($env; $gc; $gcty; $($rest)*);
     };
     ( $env:ident; $gc:ident; $gcty:ident; ) => {};

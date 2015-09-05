@@ -111,7 +111,7 @@ impl GcStrategy for Stw {
         }
     }
 
-    fn intern_str(&mut self, _: Str) -> TracedRef<Str> { unimplemented!() }
+    fn intern_str<T: Into<Str>>(&mut self, _: T) -> TracedRef<Str> { unimplemented!() }
 
     unsafe fn get_ref<'a, T: Any>(&'a self, t: TracedRef<T>) -> &'a T {
         let ptr = t.ptr as *const Wrapped;

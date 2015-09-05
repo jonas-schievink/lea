@@ -53,7 +53,8 @@ impl GcStrategy for NoopGc {
         }
     }
 
-    fn intern_str(&mut self, s: Str) -> TracedRef<Str> {
+    fn intern_str<T: Into<Str>>(&mut self, s: T) -> TracedRef<Str> {
+        let s = s.into();
         if let Some(&r) = self.strings.get(&s) {
             return r
         }

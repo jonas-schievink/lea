@@ -28,8 +28,12 @@ lea_libfn! {
     }
 
     fn error {
-        (val: *) -> () => {
-            return Err(val.into())
+        (msg: *) -> () => {
+            return Err(msg.into())
+        }
+        (msg: *, _level: number) -> () => {
+            // TODO add error position info according to `level`
+            return Err(msg.into())
         }
     }
 

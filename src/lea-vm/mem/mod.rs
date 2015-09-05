@@ -124,7 +124,7 @@ pub trait GcStrategy {
     fn register_obj<T: Any>(&mut self, T) -> TracedRef<T>;
 
     /// Interns a string and returns a `TracedRef` to the shared instance.
-    fn intern_str(&mut self, Str) -> TracedRef<Str>;
+    fn intern_str<T: Into<Str>>(&mut self, T) -> TracedRef<Str>;
 
     /// Given a `TracedRef` of an object owned by this GC, this method unsafely returns a reference
     /// to the object.
