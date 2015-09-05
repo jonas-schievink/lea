@@ -61,12 +61,10 @@ The Lea compiler
 Usage:
     leac ( --help | --version )
     leac [-o <out>] [-e <enc>] [--] <file>
-    leac ( -p | --pretty ) [--] <file>
 
 Options:
     -h, --help                  Show this help.
     -v, --version               Show the version of the Lea package.
-    -p, --pretty                Pretty print the source code instead of compiling it.
     -o <out>, --out <out>       Write output to <out> (`-` to write to stdout).
     -e <enc>, --encoding <enc>  The encoding to use for writing the compiled code.
 
