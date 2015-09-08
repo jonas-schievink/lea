@@ -221,13 +221,17 @@ impl<'a> _Expr<'a> {
     /// effects.
     pub fn has_side_effects(&self) -> bool {
         match *self {
-            ELit(_) | EVarArgs => false,
-            EBinOp(ref lhs, _, ref rhs) => lhs.has_side_effects() || rhs.has_side_effects(),
-            EUnOp(_, ref e) => e.has_side_effects(),
+            ELit(_) | EVarArgs | EFunc(_) => false,
             EVar(ref var) => match **var {
                 VLocal(_) | VUpval(_) => false,
                 _ => true,  // might cause a table index, which can error
             },
+            EArray(ref elems) => {
+                elems.iter().any(|elem| elem.has_side_effects())
+            }
+            ETable(ref cons) => {
+                cons.iter().any(|&(ref k, ref v)| k.has_side_effects() || v.has_side_effects())
+            }
             _ => true,
         }
     }
