@@ -1,7 +1,5 @@
 //! Parse tree pretty printer
 
-use super::parser;
-
 use parsetree::*;
 
 use lea_core::Const;
@@ -64,28 +62,23 @@ impl<'a, W: Write> PrettyPrinter<'a, W> {
             try!(self.print_indent());
 
             match *entry {
+                TableEntry::IdentPair(ref key, ref val) => {
+                    try!(write!(self.writer, "{} = ", key.value));
+                    try!(self.print_expr(val));
+                }
                 TableEntry::Pair(ref key, ref val) => {
-                    match key.value {
-                        ELit(Const::Str(ref s)) if parser::ident(s.as_ref()).is_ok() => {
-                            // If it's an identifier, don't use "[expr] = " syntax
-                            try!(write!(self.writer, "{}", s));
-                        }
-                        _ => {
-                            try!(write!(self.writer, "["));
-                            try!(self.print_expr(key));
-                            try!(write!(self.writer, "]"));
-                        }
-                    }
-
+                    try!(write!(self.writer, "["));
+                    try!(self.print_expr(key));
+                    try!(write!(self.writer, "]"));
                     try!(write!(self.writer, " = "));
                     try!(self.print_expr(val));
-                    try!(write!(self.writer, ",{}", self.lineend));
                 }
                 TableEntry::Elem(ref elem) => {
                     try!(self.print_expr(elem));
-                    try!(write!(self.writer, ",{}", self.lineend));
                 }
             }
+
+            try!(write!(self.writer, ",{}", self.lineend));
         }
 
         self.unindent();

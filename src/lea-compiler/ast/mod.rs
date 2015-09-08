@@ -99,7 +99,7 @@ pub enum _Variable<'a> {
 
     /// References the local variable with the given ID.
     ///
-    /// Note that the resolver has to ensure that the usize is valid, since not all locals can be
+    /// Note that the resolver has to ensure that the ID is valid, since not all locals can be
     /// reached from all blocks.
     VLocal(usize),
 
@@ -109,6 +109,8 @@ pub enum _Variable<'a> {
     /// References an indexed variable (a field)
     VIndex(Box<Variable<'a>>, Box<Expr<'a>>),
 }
+
+pub type Variable<'a> = Spanned<_Variable<'a>>;
 
 /// Statement nodes
 #[derive(Clone, Debug, PartialEq)]
@@ -179,6 +181,8 @@ pub enum _Stmt<'a> {
     },
 }
 
+pub type Stmt<'a> = Spanned<_Stmt<'a>>;
+
 /// Expression nodes
 #[derive(Clone, PartialEq, Debug)]
 pub enum _Expr<'a> {
@@ -230,5 +234,3 @@ impl<'a> _Expr<'a> {
 }
 
 pub type Expr<'a> = Spanned<_Expr<'a>>;
-pub type Stmt<'a> = Spanned<_Stmt<'a>>;
-pub type Variable<'a> = Spanned<_Variable<'a>>;

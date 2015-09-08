@@ -79,17 +79,10 @@ atom_inner -> Expr<'input>
 atom -> Expr<'input>
     = __* a:atom_inner __* { a }
 
-kvpair -> (Expr<'input>, Expr<'input>)
-    = __* kv:(
-        "[" key:expression "]" __* "=" __* val:expression { (key, val) }
-        / id:ident __* "=" __* val:expression {
-            (Spanned::new(id.span, ELit(Const::Str(id.value.to_owned()))), val)
-        }
-    ) __* { kv }
-
 tableentry -> TableEntry<'input>
-    = pair:kvpair   { TableEntry::Pair(pair.0, pair.1) }
-    / e:expression  { TableEntry::Elem(e) }
+    = __* k:ident __* "=" v:expression              { TableEntry::IdentPair(k, v) }
+    / __* "[" k:expression "]" __* "=" v:expression { TableEntry::Pair(k, v) }
+    / e:expression                                  { TableEntry::Elem(e) }
 
 tablecons -> TableCons<'input>
     = "{" pairs:tableentry ++ listsep listsep? "}"  { pairs }

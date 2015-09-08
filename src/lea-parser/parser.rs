@@ -303,8 +303,8 @@ mod tests {
         assert_eq!(expression("{}").unwrap().value, ETable(vec![]));
         assert_eq!(expression("[{k=[1,2,],}]").unwrap().value, EArray(vec![
             Spanned::default(ETable(vec![
-                TableEntry::Pair(
-                    Spanned::default(ELit(Const::Str("k".to_owned()))),
+                TableEntry::IdentPair(
+                    Spanned::default("k"),
                     Spanned::default(EArray(vec![
                         Spanned::default(ELit(Const::Int(1))),
                         Spanned::default(ELit(Const::Int(2))),

@@ -94,6 +94,9 @@ fn conv_table<'a>(cons: parsetree::TableCons<'a>) -> Vec<(Expr<'a>, Expr<'a>)> {
     let mut i = 0;  // XXX 1?
     for entry in cons {
         entries.push(match entry {
+            parsetree::TableEntry::IdentPair(key, value) => {
+                (Spanned::new(key.span, ELit(Const::Str(key.value.into()))), spanned_into(value))
+            }
             parsetree::TableEntry::Pair(key, value) => {
                 (spanned_into(key), spanned_into(value))
             }

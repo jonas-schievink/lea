@@ -79,6 +79,8 @@ pub enum _Variable<'a> {
     VIndex(Box<Variable<'a>>, VarIndex<'a>),
 }
 
+pub type Variable<'a> = Spanned<_Variable<'a>>;
+
 /// Statement nodes
 #[derive(Clone, Debug, PartialEq)]
 pub enum _Stmt<'a> {
@@ -191,10 +193,14 @@ pub enum _Stmt<'a> {
     },
 }
 
+pub type Stmt<'a> = Spanned<_Stmt<'a>>;
+
 #[derive(Clone, PartialEq, Debug)]
 pub enum TableEntry<'a> {
-    /// A key-value-pair
+    /// A key-value-pair where the key is an expression is square brackets (`[key] = value`)
     Pair(Expr<'a>, Expr<'a>),
+    /// A key-value-pair where the key is specified as an identifier (`key = value`)
+    IdentPair(Spanned<&'a str>, Expr<'a>),
     /// An element of the table's array part
     Elem(Expr<'a>),
 }
@@ -226,5 +232,3 @@ pub enum _Expr<'a> {
 }
 
 pub type Expr<'a> = Spanned<_Expr<'a>>;
-pub type Stmt<'a> = Spanned<_Stmt<'a>>;
-pub type Variable<'a> = Spanned<_Variable<'a>>;
