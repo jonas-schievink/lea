@@ -93,7 +93,7 @@ fn compile(code: &str, filename: &str) -> io::Result<Option<FnData>> {
         },
         Ok(output) => {
             let warns = output.warns;
-            if warns.len() > 0 {
+            if !warns.is_empty() {
                 for w in warns {
                     try!(w.format(code, filename, fmt_target));
                 }
@@ -165,12 +165,9 @@ fn main() {
                     match compile(&code, &source_name).unwrap() {
                         Some(fndata) => {
                             // serialize to `out`, except if `out` is a terminal and we defaulted to `-` (TODO)
-                            match enc.encode(&fndata, &mut out) {
-                                Err(e) => {
-                                    writeln!(stderr(), "{}", e).unwrap();
-                                    return;
-                                }
-                                _ => {}
+                            if let Err(e) = enc.encode(&fndata, &mut out) {
+                                writeln!(stderr(), "{}", e).unwrap();
+                                return;
                             }
                         }
                         None => {}

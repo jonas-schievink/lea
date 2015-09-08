@@ -217,7 +217,7 @@ impl<'a> Transform<'a> for Resolver<'a> {
 
     fn visit_func(&mut self, mut f: Function<'a>) -> Function<'a> {
         let mut data = FuncData::new(f.params.clone());
-        if self.funcs.len() == 0 {
+        if self.funcs.is_empty() {
             // add implicit _ENV upvalue to main function.
             // (the UpvalDesc is ignored)
             data.add_upval("_ENV", UpvalDesc::Upval(0));

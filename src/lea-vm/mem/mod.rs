@@ -128,7 +128,7 @@ pub trait GcStrategy {
 
     /// Given a `TracedRef` of an object owned by this GC, this method unsafely returns a reference
     /// to the object.
-    unsafe fn get_ref<'a, T: Any>(&'a self, t: TracedRef<T>) -> &'a T {
+    unsafe fn get_ref<T: Any>(&self, t: TracedRef<T>) -> &T {
         &*t.ptr
     }
 
@@ -136,7 +136,7 @@ pub trait GcStrategy {
     ///
     /// This will mutably borrow the GC and thus prevent collections and aliasing references (from
     /// `get_ref`).
-    unsafe fn get_mut<'a, T: Any>(&'a mut self, t: TracedRef<T>) -> &'a mut T {
+    unsafe fn get_mut<T: Any>(&mut self, t: TracedRef<T>) -> &mut T {
         transmute(t.ptr)
     }
 

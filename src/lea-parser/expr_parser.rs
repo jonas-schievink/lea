@@ -41,7 +41,7 @@ pub fn build_tree<'a>(left: Expr<'a>, rest: Vec<(BinOp, Expr<'a>)>) -> Expr<'a> 
     }
 
     // Pop all operators and build nodes
-    while operators.len() > 0 {
+    while !operators.is_empty() {
         let op = operators.pop().unwrap();
         let rhs = operands.pop().unwrap();
         let lhs = operands.pop().unwrap();

@@ -62,7 +62,7 @@ fn compile(code: &str, filename: &str) -> io::Result<Option<FnData>> {
         },
         Ok(output) => {
             let warns = output.warns;
-            if warns.len() > 0 {
+            if !warns.is_empty() {
                 for w in warns {
                     try!(w.format(code, filename, fmt_target));
                 }
@@ -172,7 +172,7 @@ fn main() {
                 println!("Lea {}", lea::version_str());
             }
             Args { flag_exec, flag_interactive, arg_file, /*arg_arg,*/ .. } => {
-                let enter_repl = flag_interactive || (flag_exec.len() == 0 && arg_file.is_none());
+                let enter_repl = flag_interactive || (flag_exec.is_empty() && arg_file.is_none());
                 let mut vm = build_vm();
                 let env = lea::build_stdlib(vm.gc_mut());
 

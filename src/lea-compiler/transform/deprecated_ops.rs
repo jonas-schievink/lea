@@ -49,27 +49,21 @@ impl<'a> Visitor<'a> for DeprOps {
                 self.visit_expr(&**lhs);
                 self.visit_expr(&**rhs);
 
-                match DEPR_BINOPS.get(&op) {
-                    Some(newop) => {
-                        self.push(Warning::with_info(e.span,
-                            format!("use of deprecated operator `{}`", op),
-                            vec![format!("use `{}` instead", newop)]
-                        ));
-                    }
-                    _ => {},
+                if let Some(newop) = DEPR_BINOPS.get(&op) {
+                    self.push(Warning::with_info(e.span,
+                        format!("use of deprecated operator `{}`", op),
+                        vec![format!("use `{}` instead", newop)]
+                    ));
                 }
             },
             EUnOp(op, ref p) => {
                 self.visit_expr(&**p);
 
-                match DEPR_UNOPS.get(&op) {
-                    Some(newop) => {
-                        self.push(Warning::with_info(e.span,
-                            format!("use of deprecated operator `{}`", op),
-                            vec![format!("use `{}` instead", newop)]
-                        ));
-                    },
-                    _ => {},
+                if let Some(newop) = DEPR_UNOPS.get(&op) {
+                    self.push(Warning::with_info(e.span,
+                        format!("use of deprecated operator `{}`", op),
+                        vec![format!("use `{}` instead", newop)]
+                    ));
                 }
             },
             _ => { walk_expr_ref(e, self); },

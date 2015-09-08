@@ -192,7 +192,7 @@ impl Emitter {
     }
 
     fn get_result(mut self) -> EmitResult {
-        if self.errs.len() > 0 {
+        if !self.errs.is_empty() {
             Err(self.errs)
         } else {
             assert_eq!(self.funcs.len(), 1);
@@ -1124,7 +1124,7 @@ impl Emitter {
         if self.funcs.is_empty() {
             // just emitted the main function, put it back, we are done
             self.funcs.push(func);
-            return 0
+            0
         } else {
             let id;
             {

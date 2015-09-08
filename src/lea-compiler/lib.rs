@@ -156,7 +156,7 @@ pub struct CompileOutput<'a> {
 ///
 /// If this succeeds, this means that the program described by the source code is valid and can be
 /// compiled.
-pub fn parse_and_check<'a>(code: &'a str) -> CompileResult<Function<'a>> {
+pub fn parse_and_check(code: &str) -> CompileResult<Function> {
     match parser::parse_main(code) {
         Err(e) => Err(ErrParse(e)),
         Ok(main) => {
@@ -174,7 +174,7 @@ pub fn parse_and_check<'a>(code: &'a str) -> CompileResult<Function<'a>> {
 
 /// Parses, checks and resolves the given source code (stops after compilation step 3). Returns the
 /// resolved main function on success.
-pub fn parse_and_resolve<'a>(code: &'a str) -> CompileResult<Function<'a>> {
+pub fn parse_and_resolve(code: &str) -> CompileResult<Function> {
     let mut main = try!(parse_and_check(code));
     main = resolve::resolve_func(main);
 
@@ -193,7 +193,7 @@ pub fn apply_transforms<'a>(mut main: Function<'a>, conf: &CompileConfig) -> (Fu
         let (newmain, new_warns) = tr(main);
         main = newmain;
 
-        if mode == LintMode::Error && new_warns.len() > 0 {
+        if mode == LintMode::Error && !new_warns.is_empty() {
             errwarns.extend(new_warns);
         } else {
             warnings.extend(new_warns);

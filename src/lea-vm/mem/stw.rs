@@ -113,7 +113,7 @@ impl GcStrategy for Stw {
 
     fn intern_str<T: Into<Str>>(&mut self, _: T) -> TracedRef<Str> { unimplemented!() }
 
-    unsafe fn get_ref<'a, T: Any>(&'a self, t: TracedRef<T>) -> &'a T {
+    unsafe fn get_ref<T: Any>(&self, t: TracedRef<T>) -> &T {
         let ptr = t.ptr as *const Wrapped;
         let gcref: &Any = &*(*ptr).obj;
         let traitobj: TraitObject = transmute(gcref);
@@ -121,7 +121,7 @@ impl GcStrategy for Stw {
         transmute(traitobj.data)
     }
 
-    unsafe fn get_mut<'a, T: Any>(&'a mut self, t: TracedRef<T>) -> &'a mut T {
+    unsafe fn get_mut<T: Any>(&mut self, t: TracedRef<T>) -> &mut T {
         let ptr = t.ptr as *mut Wrapped;
         let gcref: &mut Any = &mut *(*ptr).obj;
         let traitobj: TraitObject = transmute(gcref);

@@ -93,7 +93,7 @@ pub fn check_func(func: &Function) -> Result<(), Vec<CheckError>> {
 
     ch.visit_block(&func.body);
 
-    if ch.errs.len() == 0 {
+    if ch.errs.is_empty() {
         Ok(())
     } else {
         Err(ch.errs)

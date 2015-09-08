@@ -281,7 +281,7 @@ impl<'a> Transform<'a> for Folder {
     }
 }
 
-pub fn run<'a>(mut main: Function<'a>) -> (Function<'a>, Vec<Warning>) {
+pub fn run(mut main: Function) -> (Function, Vec<Warning>) {
     let mut v = Folder {
         warns: vec![],
     };

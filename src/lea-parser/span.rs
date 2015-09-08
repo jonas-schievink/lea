@@ -51,11 +51,11 @@ impl<W: Write> Terminal for DummyTerm<W> {
         Ok(false)
     }
 
-    fn get_ref<'b>(&'b self) -> &'b W {
+    fn get_ref(&self) -> &W {
         &self.0
     }
 
-    fn get_mut<'b>(&'b mut self) -> &'b mut W {
+    fn get_mut(&mut self) -> &mut W {
         &mut self.0
     }
 
@@ -242,13 +242,13 @@ impl<T> Spanned<T> {
 impl<T> Deref for Spanned<T> {
     type Target = T;
 
-    fn deref<'a>(&'a self) -> &'a T {
+    fn deref(&self) -> &T {
         &self.value
     }
 }
 
 impl<T> DerefMut for Spanned<T> {
-    fn deref_mut<'a>(&'a mut self) -> &'a mut T {
+    fn deref_mut(&mut self) -> &mut T {
         &mut self.value
     }
 }

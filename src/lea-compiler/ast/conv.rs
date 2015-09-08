@@ -89,8 +89,8 @@ trait Conv<'a> {
     fn conv<F>(self, push: F) where F: FnMut(Self::Target);
 }
 
-fn conv_table<'a>(cons: parsetree::TableCons<'a>) -> Vec<(Expr<'a>, Expr<'a>)> {
-    let mut entries: Vec<(Expr<'a>, Expr<'a>)> = Vec::new();
+fn conv_table(cons: parsetree::TableCons) -> Vec<(Expr, Expr)> {
+    let mut entries: Vec<(Expr, Expr)> = Vec::new();
     let mut i = 0;  // XXX 1?
     for entry in cons {
         entries.push(match entry {
@@ -129,7 +129,7 @@ fn conv_args(args: parsetree::CallArgs) -> Vec<Expr> {
 }
 
 fn vec_into<U, T: Into<U>>(v: Vec<Spanned<T>>) -> Vec<Spanned<U>> {
-    v.into_iter().map(|item| spanned_into(item)).collect()
+    v.into_iter().map(spanned_into).collect()
 }
 
 // Needed because Spanned<T> cannot impl Into. Not even specialization can help there.
@@ -250,7 +250,7 @@ impl<'a> Conv<'a> for parsetree::_Stmt<'a> {
                 push(_Stmt::SFor {
                     var: var,
                     start: spanned_into(start),
-                    step: step.map(|e| spanned_into(e)),
+                    step: step.map(spanned_into),
                     end: spanned_into(end),
                     body: body.into(),
                 });

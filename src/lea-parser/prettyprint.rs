@@ -99,7 +99,7 @@ impl<'a, W: Write> PrettyPrinter<'a, W> {
         }
 
         if f.varargs {
-            if f.params.len() == 0 {
+            if f.params.is_empty() {
                 try!(write!(self.writer, "..."));
             } else {
                 try!(write!(self.writer, ", ..."));
@@ -176,7 +176,7 @@ impl<'a, W: Write> PrettyPrinter<'a, W> {
                     try!(write!(self.writer, "{}", name.value));
                 }
 
-                if vals.len() > 0 {
+                if !vals.is_empty() {
                     try!(write!(self.writer, " = "));
 
                     for (i, val) in vals.iter().enumerate() {
@@ -213,7 +213,7 @@ impl<'a, W: Write> PrettyPrinter<'a, W> {
             }
             SReturn(ref vals) => {
                 try!(write!(self.writer, "return"));
-                if vals.len() > 0 {
+                if !vals.is_empty() {
                     try!(write!(self.writer, " "));
                 }
 
