@@ -4,210 +4,170 @@
 
 use super::*;
 use parser::parsetree;
-use parser::span::Spanned;
+use parser::span::{Span, Spanned};
 
 use lea_core::Const;
 
-impl<'a> From<parsetree::Function<'a>> for Function<'a> {
-    fn from(func: parsetree::Function<'a>) -> Self {
+use std::vec;
+use std::mem;
+
+
+enum ConvResult<T> {
+    Zero,
+    One(T),
+    Two(T, T),
+
+    #[allow(dead_code)] // for future expansion
+    Many(Vec<T>),
+}
+
+impl<T> ConvResult<T> {
+    /// Spans all values with `span` and returns a new result that yields spanned values.
+    fn spanned(self, span: Span) -> ConvResult<Spanned<T>> {
+        match self {
+            ConvResult::Zero => ConvResult::Zero,
+            ConvResult::One(t) => ConvResult::One(Spanned::new(span, t)),
+            ConvResult::Two(t, t2) => ConvResult::Two(Spanned::new(span, t), Spanned::new(span, t2)),
+            ConvResult::Many(v) => ConvResult::Many(
+                v.into_iter().map(|elem| Spanned::new(span, elem)).collect()
+            ),
+        }
+    }
+}
+
+impl<T> IntoIterator for ConvResult<T> {
+    type Item = T;
+    type IntoIter = ConvResultIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            ConvResult::Zero => ConvResultIter::Zero,
+            ConvResult::One(t) => ConvResultIter::One(t),
+            ConvResult::Two(t, t2) => ConvResultIter::Two(t, t2),
+            ConvResult::Many(v) => ConvResultIter::Many(v.into_iter()),
+        }
+    }
+}
+
+enum ConvResultIter<T> {
+    Zero,
+    One(T),
+    Two(T, T),
+    Many(vec::IntoIter<T>),
+}
+
+impl<T> Iterator for ConvResultIter<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = mem::replace(self, ConvResultIter::Zero);
+
+        let (new, result) = match current {
+            ConvResultIter::Zero => (ConvResultIter::Zero, None),
+            ConvResultIter::One(t) => (ConvResultIter::Zero, Some(t)),
+            ConvResultIter::Two(t, t2) => (ConvResultIter::One(t2), Some(t)),
+            ConvResultIter::Many(mut v) => {
+                let next = v.next();
+                (ConvResultIter::Many(v), next)
+            }
+        };
+
+        mem::replace(self, new);
+
+        result
+    }
+}
+
+struct AstConv;
+
+impl AstConv {
+    fn conv_func<'a>(&mut self, func: parsetree::Function<'a>) -> Function<'a> {
         Function {
             params: func.params,
             varargs: func.varargs,
-            body: func.body.into(),
+            body: self.conv_block(func.body),
             locals: Default::default(),
             upvalues: Default::default(),
         }
     }
-}
 
-impl<'a> From<parsetree::Block<'a>> for Block<'a> {
-    fn from(block: parsetree::Block<'a>) -> Self {
+    fn conv_block<'a>(&mut self, block: parsetree::Block<'a>) -> Block<'a> {
         Block {
             span: block.span,
-            stmts: conv_vec(block.stmts),
+            stmts: block.stmts.into_iter().flat_map(|s| self.conv_stmt(s)).collect(),
             localmap: Default::default(),
         }
     }
-}
 
-impl<'a> From<parsetree::_Variable<'a>> for _Variable<'a> {
-    fn from(var: parsetree::_Variable<'a>) -> Self {
-        match var {
-            parsetree::VNamed(name) => {
-                VNamed(name)
-            }
-            parsetree::VIndex(var, index) => {
-                VIndex(Box::new(spanned_into(*var)), match index {
-                    parsetree::VarIndex::DotIndex(name) => {
-                        Box::new(Spanned::new(name.span,
-                            ELit(Const::Str(name.value.to_owned()))))
-                    }
-                    parsetree::VarIndex::ExprIndex(expr) => {
-                        Box::new(spanned_into(*expr))
-                    }
-                })
-            }
-        }
-    }
-}
-
-impl<'a> From<parsetree::_Expr<'a>> for _Expr<'a> {
-    fn from(expr: parsetree::_Expr<'a>) -> Self {
-        match expr {
-            parsetree::ELit(lit) => ELit(lit),
-            parsetree::EBinOp(lhs, op, rhs) =>
-                EBinOp(Box::new(spanned_into(*lhs)), op, Box::new(spanned_into(*rhs))),
-            parsetree::EUnOp(op, expr) => EUnOp(op, Box::new(spanned_into(*expr))),
-            parsetree::EBraced(expr) => expr.value.into(),
-
-            parsetree::EVar(var) => EVar(spanned_into(var)),
-
-            parsetree::ECall(call) => ECall(match call {
-                parsetree::SimpleCall(callee, args) => {
-                    SimpleCall(Box::new(spanned_into(*callee)), conv_args(args))
-                }
-                parsetree::MethodCall(obj, name, args) => {
-                    MethodCall(Box::new(spanned_into(*obj)), name, conv_args(args))
-                }
-            }),
-
-            parsetree::ETable(cons) => {
-                ETable(conv_table(cons))
-            }
-
-            parsetree::EFunc(func) => EFunc(func.into()),
-            parsetree::EArray(elems) => EArray(vec_into(elems)),
-            parsetree::EVarArgs => EVarArgs,
-        }
-    }
-}
-
-/// Implemented for parse tree nodes. Converts them into `n` instances of `Target`.
-trait Conv<'a> {
-    type Target;
-
-    fn conv<F>(self, push: F) where F: FnMut(Self::Target);
-}
-
-fn conv_table(cons: parsetree::TableCons) -> Vec<(Expr, Expr)> {
-    let mut entries: Vec<(Expr, Expr)> = Vec::new();
-    let mut i = 0;  // XXX 1?
-    for entry in cons {
-        entries.push(match entry {
-            parsetree::TableEntry::IdentPair(key, value) => {
-                (Spanned::new(key.span, ELit(Const::Str(key.value.into()))), spanned_into(value))
-            }
-            parsetree::TableEntry::Pair(key, value) => {
-                (spanned_into(key), spanned_into(value))
-            }
-            parsetree::TableEntry::Elem(value) => {
-                let idx = i;
-                i += 1;
-                (Spanned::new(value.span, ELit(Const::Int(idx))), spanned_into(value))
-            }
-        });
-    }
-
-    entries
-}
-
-fn conv_vec<'a, T: Conv<'a>>(v: Vec<Spanned<T>>) -> Vec<Spanned<T::Target>> {
-    let mut res = Vec::new();
-    for item in v.into_iter() {
-        let span = item.span;
-        item.value.conv(|i| res.push(Spanned::new(span, i)));
-    }
-
-    res
-}
-
-fn conv_args(args: parsetree::CallArgs) -> Vec<Expr> {
-    let mut v = Vec::new();
-    args.conv(|e| v.push(e));
-
-    v
-}
-
-fn vec_into<U, T: Into<U>>(v: Vec<Spanned<T>>) -> Vec<Spanned<U>> {
-    v.into_iter().map(spanned_into).collect()
-}
-
-// Needed because Spanned<T> cannot impl Into. Not even specialization can help there.
-fn spanned_into<U, T: Into<U>>(item: Spanned<T>) -> Spanned<U> {
-    Spanned::new(item.span, item.value.into())
-}
-
-impl<'a> Conv<'a> for parsetree::_Stmt<'a> {
-    type Target = _Stmt<'a>;
-
-    fn conv<F>(self, mut push: F) where F: FnMut(Self::Target) {
-        match self {
+    fn conv_stmt<'a>(&mut self, stmt: parsetree::Stmt<'a>) -> ConvResult<Stmt<'a>> {
+        match stmt.value {
             parsetree::SDecl(names, exprs) => {
-                push(_Stmt::SDecl(names, vec_into(exprs)));
+                ConvResult::One(_Stmt::SDecl(
+                    names,
+                    exprs.into_iter().map(|e| self.conv_expr(e)).collect()
+                ))
             }
-
             parsetree::SAssign(vars, exprs) => {
-                push(_Stmt::SAssign(vec_into(vars), vec_into(exprs)));
+                ConvResult::One(_Stmt::SAssign(
+                    vars.into_iter().map(|var| self.conv_var(var)).collect(),
+                    exprs.into_iter().map(|e| self.conv_expr(e)).collect()
+                ))
             }
-
             parsetree::SDo(block) => {
-                push(_Stmt::SDo(block.into()));
+                ConvResult::One(_Stmt::SDo(self.conv_block(block)))
             }
-
             parsetree::SBreak => {
-                push(_Stmt::SBreak);
+                ConvResult::One(_Stmt::SBreak)
             }
-
-            parsetree::SSemi => {}
-
+            parsetree::SSemi => {
+                ConvResult::Zero
+            }
             parsetree::SReturn(exprs) => {
-                push(_Stmt::SReturn(vec_into(exprs)));
+                ConvResult::One(_Stmt::SReturn(
+                    exprs.into_iter().map(|e| self.conv_expr(e)).collect()
+                ))
             }
-
             parsetree::SCall(call) => {
-                push(_Stmt::SCall(match call {
+                ConvResult::One(_Stmt::SCall(match call {
                     parsetree::SimpleCall(callee, args) => {
-                        SimpleCall(Box::new(spanned_into(*callee)), conv_args(args))
+                        SimpleCall(Box::new(self.conv_expr(*callee)), self.conv_args(args))
                     }
                     parsetree::MethodCall(obj, name, args) => {
-                        MethodCall(Box::new(spanned_into(*obj)), name, conv_args(args))
+                        MethodCall(Box::new(self.conv_expr(*obj)), name, self.conv_args(args))
                     }
-                }));
+                }))
             }
-
             parsetree::SFunc(var, func) => {
-                push(_Stmt::SAssign(
-                    vec![spanned_into(var)],
-                    vec![Spanned::new(func.body.span, EFunc(func.into()))]
-                ));
+                ConvResult::One(_Stmt::SAssign(
+                    vec![self.conv_var(var)],
+                    vec![Spanned::new(func.body.span, EFunc(self.conv_func(func)))]
+                ))
             }
-
             parsetree::SMethod(var, name, func) => {
                 // var:name(args...)   =>   var.name = function(self, args...)
-                let mut func: Function<'a> = func.into();
+                let mut func: Function<'a> = self.conv_func(func);
                 func.params.insert(0, Spanned::new(name.span, "self"));
 
-                push(_Stmt::SAssign(
+                ConvResult::One(_Stmt::SAssign(
                     vec![Spanned::new(var.span, VIndex(
-                        Box::new(spanned_into(var)),
+                        Box::new(self.conv_var(var)),
                         Box::new(Spanned::new(name.span, ELit(Const::Str(name.value.to_owned()))))
                     ))],
                     vec![Spanned::new(func.body.span, EFunc(func))]
-                ));
+                ))
             }
-
             parsetree::SLFunc(local, func) => {
-                push(_Stmt::SDecl(vec![local], vec![]));
-                push(_Stmt::SAssign(
-                    vec![Spanned::new(local.span, VNamed(local.value))],
-                    vec![Spanned::new(func.body.span, EFunc(func.into()))]
-                ));
+                ConvResult::Two(
+                    _Stmt::SDecl(vec![local], vec![]),
+                    _Stmt::SAssign(
+                        vec![Spanned::new(local.span, VNamed(local.value))],
+                        vec![Spanned::new(func.body.span, EFunc(self.conv_func(func)))]
+                    )
+                )
             }
-
             parsetree::SIf { cond, body, elifs, el } => {
                 // Build else block for this if statement
                 // Start with "pure" else at the end
-                let mut myelse: Option<Block> = el.map(|el| el.into());
+                let mut myelse: Option<Block> = el.map(|el| self.conv_block(el));
 
                 for elif in elifs {
                     let (cond, body) = elif.value;
@@ -217,73 +177,138 @@ impl<'a> Conv<'a> for parsetree::_Stmt<'a> {
                         span: elif.span,
                         stmts: vec![
                             Spanned::new(elif.span, SIf {
-                                cond: spanned_into(cond),
-                                body: body.into(),
+                                cond: self.conv_expr(cond),
+                                body: self.conv_block(body),
                                 el: myelse, // Old else block here
                             }),
                         ],
                     });
                 }
 
-                push(_Stmt::SIf {
-                    cond: spanned_into(cond),
-                    body: body.into(),
+                ConvResult::One(_Stmt::SIf {
+                    cond: self.conv_expr(cond),
+                    body: self.conv_block(body),
                     el: myelse,
-                });
+                })
             }
-
             parsetree::SWhile { cond, body } => {
-                push(_Stmt::SWhile {
-                    cond: spanned_into(cond),
-                    body: body.into(),
-                });
+                ConvResult::One(_Stmt::SWhile {
+                    cond: self.conv_expr(cond),
+                    body: self.conv_block(body),
+                })
             }
-
             parsetree::SRepeat { abort_on, body } => {
-                push(_Stmt::SRepeat {
-                    abort_on: spanned_into(abort_on),
-                    body: body.into(),
-                });
+                ConvResult::One(_Stmt::SRepeat {
+                    abort_on: self.conv_expr(abort_on),
+                    body: self.conv_block(body),
+                })
             }
-
             parsetree::SFor { var, start, step, end, body } => {
-                push(_Stmt::SFor {
+                ConvResult::One(_Stmt::SFor {
                     var: var,
-                    start: spanned_into(start),
-                    step: step.map(spanned_into),
-                    end: spanned_into(end),
-                    body: body.into(),
-                });
+                    start: self.conv_expr(start),
+                    step: step.map(|e| self.conv_expr(e)),
+                    end: self.conv_expr(end),
+                    body: self.conv_block(body),
+                })
             }
-
             parsetree::SForIn { vars, iter, body } => {
-                push(_Stmt::SForIn {
+                ConvResult::One(_Stmt::SForIn {
                     vars: vars,
-                    iter: vec_into(iter),
-                    body: body.into(),
-                });
+                    iter: iter.into_iter().map(|e| self.conv_expr(e)).collect(),
+                    body: self.conv_block(body),
+                })
+            }
+        }.spanned(stmt.span)
+    }
+
+    fn conv_var<'a>(&mut self, var: parsetree::Variable<'a>) -> Variable<'a> {
+        Spanned::new(var.span, match var.value {
+            parsetree::VNamed(name) => {
+                VNamed(name)
+            }
+            parsetree::VIndex(var, index) => {
+                VIndex(Box::new(self.conv_var(*var)), match index {
+                    parsetree::VarIndex::DotIndex(name) => {
+                        Box::new(Spanned::new(name.span,
+                            ELit(Const::Str(name.value.to_owned()))))
+                    }
+                    parsetree::VarIndex::ExprIndex(expr) => {
+                        Box::new(self.conv_expr(*expr))
+                    }
+                })
+            }
+        })
+    }
+
+    fn conv_expr<'a>(&mut self, expr: parsetree::Expr<'a>) -> Expr<'a> {
+        Spanned::new(expr.span, match expr.value {
+            parsetree::ELit(lit) => ELit(lit),
+            parsetree::EBinOp(lhs, op, rhs) =>
+                EBinOp(Box::new(self.conv_expr(*lhs)), op, Box::new(self.conv_expr(*rhs))),
+            parsetree::EUnOp(op, expr) => EUnOp(op, Box::new(self.conv_expr(*expr))),
+            parsetree::EBraced(expr) => self.conv_expr(*expr).value,
+            parsetree::EVar(var) => EVar(self.conv_var(var)),
+            parsetree::ECall(call) => ECall(match call {
+                parsetree::SimpleCall(callee, args) => {
+                    SimpleCall(Box::new(self.conv_expr(*callee)), self.conv_args(args))
+                }
+                parsetree::MethodCall(obj, name, args) => {
+                    MethodCall(Box::new(self.conv_expr(*obj)), name, self.conv_args(args))
+                }
+            }),
+            parsetree::ETable(cons) => {
+                ETable(self.conv_table(cons))
+            }
+            parsetree::EFunc(func) => EFunc(self.conv_func(func)),
+            parsetree::EArray(elems) =>
+                EArray(elems.into_iter().map(|e| self.conv_expr(e)).collect()),
+            parsetree::EVarArgs => EVarArgs,
+        })
+    }
+
+    fn conv_table<'a>(&mut self, cons: parsetree::TableCons<'a>) -> Vec<(Expr<'a>, Expr<'a>)> {
+        let mut entries: Vec<(Expr, Expr)> = Vec::new();
+        let mut i = 0;  // XXX 1?
+        for entry in cons {
+            entries.push(match entry {
+                parsetree::TableEntry::IdentPair(key, value) => {
+                    (Spanned::new(key.span, ELit(Const::Str(key.value.into()))), self.conv_expr(value))
+                }
+                parsetree::TableEntry::Pair(key, value) => {
+                    (self.conv_expr(key), self.conv_expr(value))
+                }
+                parsetree::TableEntry::Elem(value) => {
+                    let idx = i;
+                    i += 1;
+                    (Spanned::new(value.span, ELit(Const::Int(idx))), self.conv_expr(value))
+                }
+            });
+        }
+
+        entries
+    }
+
+    fn conv_args<'a>(&mut self, args: parsetree::CallArgs<'a>) -> Vec<Expr<'a>> {
+        match args {
+            parsetree::CallArgs::Normal(exprs) => {
+                exprs.into_iter().map(|e| self.conv_expr(e)).collect()
+            }
+            parsetree::CallArgs::String(s) => {
+                // TODO use real span
+                vec![Spanned::default(ELit(Const::Str(s)))]
+            }
+            parsetree::CallArgs::Table(cons) => {
+                vec![Spanned::default(ETable(self.conv_table(cons)))]
             }
         }
     }
 }
 
-impl<'a> Conv<'a> for parsetree::CallArgs<'a> {
-    type Target = Expr<'a>;
+impl<'a> From<parsetree::Function<'a>> for Function<'a> {
+    fn from(func: parsetree::Function<'a>) -> Self {
+        let mut conv = AstConv;
 
-    fn conv<F>(self, mut push: F) where F: FnMut(Self::Target) {
-        match self {
-            parsetree::CallArgs::Normal(exprs) => {
-                for expr in exprs {
-                    push(spanned_into(expr))
-                }
-            }
-            parsetree::CallArgs::String(s) => {
-                // TODO use real span
-                push(Spanned::default(ELit(Const::Str(s))))
-            }
-            parsetree::CallArgs::Table(cons) => {
-                push(Spanned::default(ETable(conv_table(cons))))
-            }
-        }
+        conv.conv_func(func)
     }
 }
