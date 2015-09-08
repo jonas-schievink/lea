@@ -84,15 +84,15 @@ fn run_fndata(main: FnData, vm: &mut VM<DefaultGc>, env: Value) -> bool {
     use vm::function::{Function, Upval};
     use vm::mem::GcStrategy;
 
-    let proto = FunctionProto::from_fndata(main, vm.gc_mut());
+    let proto = FunctionProto::from_fndata(main, &mut vm.gc);
     let mut first = true;
-    let f = Function::new(vm.gc(), proto, |_| if first {
+    let f = Function::new(&vm.gc, proto, |_| if first {
         first = false;
         Rc::new(Cell::new(Upval::Closed(env)))
     } else {
         Rc::new(Cell::new(Upval::Closed(Value::Nil)))
     });
-    let f = vm.gc_mut().register_obj(f);
+    let f = vm.gc.register_obj(f);
 
     match vm.start(f, |error| {
         println!("runtime error: {}", error);
@@ -105,7 +105,7 @@ fn run_fndata(main: FnData, vm: &mut VM<DefaultGc>, env: Value) -> bool {
                         print!("\t");
                     }
 
-                    unsafe { val.fmt(io::stdout(), vm.gc()) }.unwrap();
+                    unsafe { val.fmt(io::stdout(), &vm.gc) }.unwrap();
                 }
                 println!("");
             }
@@ -174,7 +174,7 @@ fn main() {
             Args { flag_exec, flag_interactive, arg_file, /*arg_arg,*/ .. } => {
                 let enter_repl = flag_interactive || (flag_exec.is_empty() && arg_file.is_none());
                 let mut vm = build_vm();
-                let env = lea::build_stdlib(vm.gc_mut());
+                let env = lea::build_stdlib(&mut vm.gc);
 
                 for code in flag_exec {
                     match run_code(&code, "<cmdline>", &mut vm, env) {

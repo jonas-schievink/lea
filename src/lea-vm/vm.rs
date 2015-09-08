@@ -48,7 +48,7 @@ struct CallInfo {
 /// A VM context. Holds a garbage collector that manages the program's memory, the stack used for
 /// local and temporary variables, the callstack, etc.
 pub struct VM<G: GcStrategy> {
-    gc: G,
+    pub gc: G,
     /// Call stack
     calls: Vec<CallInfo>,
     /// "VM stack", "value stack" or just stack. Stores the activation of functions in the form of
@@ -66,14 +66,6 @@ impl<G: GcStrategy> VM<G> {
             stack: Default::default(),
             open_upvals: Default::default(),
         }
-    }
-
-    pub fn gc(&self) -> &G {
-        &self.gc
-    }
-
-    pub fn gc_mut(&mut self) -> &mut G {
-        &mut self.gc
     }
 
     /// Starts execution of the program. This may not be called while the VM is already executing
@@ -173,15 +165,15 @@ impl<G: GcStrategy> VM<G> {
     }
 
     fn cur_func(&self) -> &Function {
-        unsafe { self.gc().get_ref(self.cur_call().func) }
+        unsafe { self.gc.get_ref(self.cur_call().func) }
     }
 
     /// Gets a reference to the prototype of the currently executing function.
     fn cur_proto(&self) -> &FunctionProto {
         let call = self.cur_call();
-        let func = unsafe { self.gc().get_ref(call.func) };
+        let func = unsafe { self.gc.get_ref(call.func) };
 
-        unsafe { self.gc().get_ref(func.proto) }
+        unsafe { self.gc.get_ref(func.proto) }
     }
 
     /// Fetches the current opcode and increments the instruction pointer by 1
