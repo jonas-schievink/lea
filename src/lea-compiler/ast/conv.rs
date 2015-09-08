@@ -169,21 +169,21 @@ impl AstConv {
                 // Start with "pure" else at the end
                 let mut myelse: Option<Block> = el.map(|el| self.conv_block(el));
 
-                for elif in elifs {
+                myelse = elifs.into_iter().fold(myelse, |old, elif| {
                     let (cond, body) = elif.value;
 
-                    myelse = Some(Block {
+                    Some(Block {
                         localmap: Default::default(),
                         span: elif.span,
                         stmts: vec![
                             Spanned::new(elif.span, SIf {
                                 cond: self.conv_expr(cond),
                                 body: self.conv_block(body),
-                                el: myelse, // Old else block here
+                                el: old,
                             }),
                         ],
-                    });
-                }
+                    })
+                });
 
                 ConvResult::One(_Stmt::SIf {
                     cond: self.conv_expr(cond),
