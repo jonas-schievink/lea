@@ -112,14 +112,12 @@ pub trait ToValues {
 }
 
 impl ToValues for Value {
-    #[inline]
     fn to_values<F>(self, mut push: F) where F: FnMut(Value) {
         push(self)
     }
 }
 
 impl<'a> ToValues for &'a [Value] {
-    #[inline]
     fn to_values<F>(self, mut push: F) where F: FnMut(Value) {
         for value in self {
             push(*value)

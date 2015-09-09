@@ -5,7 +5,7 @@
 use lea_core::opcode::*;
 use lea_core::fndata::UpvalDesc;
 
-use mem::{TracedRef, GcStrategy};
+use mem::{TracedRef, GcStrategy, DefaultGc};
 use function::{Function, FunctionProto, Upval};
 use Array;
 use Table;
@@ -47,8 +47,9 @@ struct CallInfo {
 
 /// A VM context. Holds a garbage collector that manages the program's memory, the stack used for
 /// local and temporary variables, the callstack, etc.
-pub struct VM<G: GcStrategy> {
-    pub gc: G,
+#[derive(Default)]
+pub struct VM {
+    pub gc: DefaultGc,
     /// Call stack
     calls: Vec<CallInfo>,
     /// "VM stack", "value stack" or just stack. Stores the activation of functions in the form of
@@ -58,14 +59,9 @@ pub struct VM<G: GcStrategy> {
     open_upvals: Vec<(usize, Rc<Cell<Upval>>)>,
 }
 
-impl<G: GcStrategy> VM<G> {
-    pub fn new(gc: G) -> VM<G> {
-        VM {
-            gc: gc,
-            calls: Default::default(),
-            stack: Default::default(),
-            open_upvals: Default::default(),
-        }
+impl VM {
+    pub fn new() -> VM {
+        VM::default()
     }
 
     /// Starts execution of the program. This may not be called while the VM is already executing
@@ -96,7 +92,7 @@ impl<G: GcStrategy> VM<G> {
 
 // Private methods
 
-impl<G: GcStrategy> VM<G> {
+impl VM {
     /// Creates a `CallInfo` object that describes an activation of the given function and pushes
     /// it onto the callstack.
     ///
@@ -866,7 +862,6 @@ impl<G: GcStrategy> VM<G> {
 mod tests {
     use super::*;
 
-    use mem::noop::NoopGc;
     use mem::GcStrategy;
     use function::{FunctionProto, Function, Upval};
     use value::Value;
@@ -930,17 +925,16 @@ mod tests {
         }};
         ( $main:tt with $env:expr ) => {{
             let main: FnData = fndef!($main);
-            let mut gc = NoopGc::default();
-            let proto = FunctionProto::from_fndata(main, &mut gc);
+            let mut vm = VM::new();
+            let proto = FunctionProto::from_fndata(main, &mut vm.gc);
             let mut first = true;
-            let f = Function::new(&gc, proto, |_| if first {
+            let f = Function::new(&vm.gc, proto, |_| if first {
                 first = false;
                 Rc::new(Cell::new(Upval::Closed($env)))
             } else {
                 Rc::new(Cell::new(Upval::Closed(Value::Nil)))
             });
-            let f = gc.register_obj(f);
-            let mut vm = VM::new(gc);
+            let f = vm.gc.register_obj(f);
             let ret = vm.start(f, |e| panic!("{}", e));
 
             (vm, ret)

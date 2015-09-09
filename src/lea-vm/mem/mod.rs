@@ -117,10 +117,7 @@ pub trait GcStrategy {
     fn collect_atomic<C: GcCallback>(&mut self, &mut C);
 
     /// Called when a garbage-collected object is created. The GC should take ownership of the
-    /// object and can dispose of it when collecting. The GC may also use this to trigger a
-    /// collection according to some internal heuristic.
-    ///
-    /// Callees must ensure that this isn't called when unrooted references to objects exist.
+    /// object and can dispose of it when collecting.
     fn register_obj<T: Any>(&mut self, T) -> TracedRef<T>;
 
     /// Interns a string and returns a `TracedRef` to the shared instance.

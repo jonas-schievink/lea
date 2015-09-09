@@ -13,10 +13,8 @@ extern crate lea;
 
 use parser::span::DummyTerm;
 use compiler::{CompileConfig, FnData};
-use vm::mem::DefaultGc;
 use vm::function::FunctionProto;
-use vm::Value;
-use vm::VM;
+use vm::{Value, VM};
 
 use std::io::{self, stdin, stderr, Write, BufRead};
 
@@ -32,7 +30,7 @@ Usage:
 Options:
     -h, --help          Show this help
     -v, --version       Show the version of the Lea package
-    -e, --exec <code>   Execute <code> as a piece of Lea script
+    -e, --exec <code>   Execute <code>
     -i, --interactive   Enter interactive mode after processing all arguments
 ", arg_file: Option<String>);
 
@@ -77,7 +75,7 @@ fn compile(code: &str, filename: &str) -> io::Result<Option<FnData>> {
 /// thrown.
 ///
 /// Returns `true` if the code executed successfully and `false` if the VM returned with an error.
-fn run_fndata(main: FnData, vm: &mut VM<DefaultGc>, env: Value) -> bool {
+fn run_fndata(main: FnData, vm: &mut VM, env: Value) -> bool {
     // XXX This really needs to be easier
     use std::rc::Rc;
     use std::cell::Cell;
@@ -115,7 +113,7 @@ fn run_fndata(main: FnData, vm: &mut VM<DefaultGc>, env: Value) -> bool {
     }
 }
 
-fn run_code(code: &str, file: &str, vm: &mut VM<DefaultGc>, env: Value) -> io::Result<bool> {
+fn run_code(code: &str, file: &str, vm: &mut VM, env: Value) -> io::Result<bool> {
     if let Some(fndata) = try!(compile(code, file)) {
         Ok(run_fndata(fndata, vm, env))
     } else {
@@ -123,7 +121,7 @@ fn run_code(code: &str, file: &str, vm: &mut VM<DefaultGc>, env: Value) -> io::R
     }
 }
 
-fn run_file(filename: &str, vm: &mut VM<DefaultGc>, env: Value) -> io::Result<bool> {
+fn run_file(filename: &str, vm: &mut VM, env: Value) -> io::Result<bool> {
     use std::fs::File;
     use std::io::Read;
 
@@ -142,7 +140,7 @@ fn print_prompt() -> io::Result<()> {
     Ok(())
 }
 
-fn repl(vm: &mut VM<DefaultGc>, env: Value) -> io::Result<()> {
+fn repl(vm: &mut VM, env: Value) -> io::Result<()> {
     let stdin = io::stdin();
     let stdin = io::BufReader::new(stdin);
 
@@ -157,10 +155,6 @@ fn repl(vm: &mut VM<DefaultGc>, env: Value) -> io::Result<()> {
     Ok(())
 }
 
-fn build_vm() -> VM<DefaultGc> {
-    VM::new(DefaultGc::default())
-}
-
 #[allow(dead_code)]     // TODO write tests
 fn main() {
     match Args::docopt().decode::<Args>() {
@@ -171,9 +165,9 @@ fn main() {
             Args { flag_version: true, .. } => {
                 println!("Lea {}", lea::version_str());
             }
-            Args { flag_exec, flag_interactive, arg_file, /*arg_arg,*/ .. } => {
+            Args { flag_exec, flag_interactive, arg_file, .. } => {
                 let enter_repl = flag_interactive || (flag_exec.is_empty() && arg_file.is_none());
-                let mut vm = build_vm();
+                let mut vm = VM::new();
                 let env = lea::build_stdlib(&mut vm.gc);
 
                 for code in flag_exec {
