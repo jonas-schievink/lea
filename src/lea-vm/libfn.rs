@@ -271,6 +271,27 @@ macro_rules! lea_libfn_single {
     };
 }
 
+/// Declare a list of library functions callable from Lea code.
+///
+/// ```rust
+/// #![feature(slice_patterns)] // Needed by the macro
+///
+/// # #[macro_use]
+/// # extern crate lea_vm;
+///
+/// lea_libfn! {
+///     fn tostring(vm) {
+///         (val: string) -> (s: string) => {
+///             return [Value::String(val)]
+///         }
+///         (val: number) -> (s: string) => {
+///             return [format!("{}", val)]
+///         }
+///     }
+/// }
+///
+/// # fn main() {}
+/// ```
 #[macro_export]
 macro_rules! lea_libfn {
     ( $( fn $name:ident ($vm:ident) { $($b:tt)* } )+ ) => {
@@ -303,6 +324,19 @@ macro_rules! lea_lib_inner {
     ( $env:ident; $gc:ident; $gcty:ident; ) => {};
 }
 
+/// Generate a `pub fn init` which will populate a `Table`. This can be used to declare loadable
+/// libraries.
+///
+/// ```rust
+/// # #[macro_use]
+/// # extern crate lea_vm;
+///
+/// lea_lib! {
+///     some_string = str "I am a string!".to_owned(),
+/// }
+///
+/// # fn main() {}
+/// ```
 #[macro_export]
 macro_rules! lea_lib {
     ( $($t:tt)* ) => {
@@ -355,13 +389,4 @@ mod dummyfn {
         return Ok(())
     }
 }
-
-#[allow(non_upper_case_globals)]
-pub static dummyfn: LibFnData = LibFnData {
-    f: vm::libfn::LibFn(dummyfn::dummyfn),
-    ty_info: &[
-        (&[("a", TyMarker::Number), ("b", TyMarker::Bool), ("c", TyMarker::Varargs)], &[("mynum", TyMarker::Number)]),
-        (&[("a", TyMarker::String)], &[("mynum2", TyMarker::Number), ("str", TyMarker::String)]),
-    ],
-};
 */
