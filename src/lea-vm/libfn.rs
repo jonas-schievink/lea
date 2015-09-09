@@ -139,7 +139,7 @@ impl<T: Into<Str>> ToValues for T {
 
 #[macro_export]
 #[doc(hidden)]
-macro_rules! ident2tym {
+macro_rules! lea_ident_to_ty_marker {
     ( number ) => ( $crate::libfn::TyMarker::Number );
     ( string ) => ( $crate::libfn::TyMarker::String );
     ( bool ) => ( $crate::libfn::TyMarker::Bool );
@@ -151,36 +151,45 @@ macro_rules! ident2tym {
 
 #[macro_export]
 #[doc(hidden)]
-macro_rules! p {
+macro_rules! lea_to_pat {
     ( $p:pat ) => ( $p );
 }
 
 #[macro_export]
 #[doc(hidden)]
-macro_rules! build_ty_pat {
-    ( [$($p:tt)*] , $($rest:tt)* ) => ( build_ty_pat!([$($p)* ,] $($rest)*) );
-    ( [$($p:tt)*] $name:ident : number $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::Value::Number($name)] $($rest)*) );
-    ( [$($p:tt)*] $name:ident : string $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::Value::String($name)] $($rest)*) );
-    ( [$($p:tt)*] $name:ident : bool $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::Value::Bool($name)] $($rest)*) );
-    ( [$($p:tt)*] $name:ident : array $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::Value::Array($name)] $($rest)*) );
-    ( [$($p:tt)*] $name:ident : table $($rest:tt)* ) => ( build_ty_pat!([$($p)* $crate::Value::Table($name)] $($rest)*) );
-    ( [$($p:tt)*] $name:ident : * $($rest:tt)* ) => ( build_ty_pat!([$($p)* $name] $($rest)*) );
-    ( [$($p:tt)*] $name:ident : ... $($rest:tt)* ) => ( build_ty_pat!([$($p)* $name ..] $($rest)*) );
-    ( [$($p:tt)*] ) => ( p!([$($p)*]) );
+macro_rules! lea_build_ty_pat {
+    ( [$($p:tt)*] , $($rest:tt)* ) =>
+        { lea_build_ty_pat!([$($p)* ,] $($rest)*) };
+    ( [$($p:tt)*] $name:ident : number $($rest:tt)* ) =>
+        { lea_build_ty_pat!([$($p)* $crate::Value::Number($name)] $($rest)*) };
+    ( [$($p:tt)*] $name:ident : string $($rest:tt)* ) =>
+        { lea_build_ty_pat!([$($p)* $crate::Value::String($name)] $($rest)*) };
+    ( [$($p:tt)*] $name:ident : bool $($rest:tt)* ) =>
+        { lea_build_ty_pat!([$($p)* $crate::Value::Bool($name)] $($rest)*) };
+    ( [$($p:tt)*] $name:ident : array $($rest:tt)* ) =>
+        { lea_build_ty_pat!([$($p)* $crate::Value::Array($name)] $($rest)*) };
+    ( [$($p:tt)*] $name:ident : table $($rest:tt)* ) =>
+        { lea_build_ty_pat!([$($p)* $crate::Value::Table($name)] $($rest)*) };
+    ( [$($p:tt)*] $name:ident : * $($rest:tt)* ) =>
+        { lea_build_ty_pat!([$($p)* $name] $($rest)*) };
+    ( [$($p:tt)*] $name:ident : ... $($rest:tt)* ) =>
+        { lea_build_ty_pat!([$($p)* $name ..] $($rest)*) };
+    ( [$($p:tt)*] ) =>
+        { lea_to_pat!([$($p)*]) };
 }
 
 #[macro_export]
 #[doc(hidden)]
-macro_rules! b {
+macro_rules! lea_to_block {
     ( $b:block ) => ($b);
 }
 
 // FIXME Doesn't handle nested return
 #[macro_export]
 #[doc(hidden)]
-macro_rules! process_body {
+macro_rules! lea_process_body {
     ( [$push_ret:ident; $vm:ident] [ $($t:tt)* ] return [ $($e:expr),* ] $($rest:tt)* ) => {
-        process_body!([$push_ret; $vm] [
+        lea_process_body!([$push_ret; $vm] [
             $($t)*
             {
                 $(
@@ -191,13 +200,15 @@ macro_rules! process_body {
         ] $($rest)*);
     };
     /*( [$push_ret:ident; $vm:ident] [ $($t:tt)* ] { $($c:tt)* } $($rest:tt)* ) => {
-        process_body!([$push_ret] [ $($t)* {process_body!([$push_ret] [] $($c)*)} ] $($rest)* );
+        lea_process_body!([$push_ret] [ $($t)* {
+            process_body!([$push_ret] [] $($c)*)
+        } ] $($rest)* );
     };*/
     ( [$push_ret:ident; $vm:ident] [ $($t:tt)* ] $next:tt $($rest:tt)*) => {
-        process_body!([$push_ret; $vm] [$($t)* $next] $($rest)*);
+        lea_process_body!([$push_ret; $vm] [$($t)* $next] $($rest)*);
     };
     ( [$push_ret:ident; $vm:ident] [$($t:tt)*] ) => {
-        b!({ $($t)* })
+        lea_to_block!({ $($t)* })
     };
 }
 
@@ -206,7 +217,9 @@ macro_rules! process_body {
 macro_rules! lea_libfn_single {
     (fn $name:ident ($vm:ident) {
         $(
-            ( $( $pname:ident : $pty:tt ),* ) -> ( $( $rname:ident : $rty:tt ),* ) => { $($body:tt)* }
+            ( $( $pname:ident : $pty:tt ),* ) ->
+            ( $( $rname:ident : $rty:tt ),* ) =>
+            { $($body:tt)* }
         )+
     } ) => {
         mod $name {
@@ -220,19 +233,23 @@ macro_rules! lea_libfn_single {
             use $crate::mem::GcStrategy;
 
             #[allow(unreachable_code)]  // Don't warn when our inserted return isn't reachable
-            pub fn $name($vm: &mut VM, arg_start: usize, arg_count: u8, _push_ret: &mut FnMut(Value))
-            -> Result<(), LibFnError> {
+            pub fn $name($vm: &mut VM,
+                         arg_start: usize,
+                         arg_count: u8,
+                         _push_ret: &mut FnMut(Value))
+                         -> Result<(), LibFnError> {
                 // TODO Figure out a way of matching param types without slice patterns
                 match &$vm.stack[arg_start..arg_start+arg_count as usize] {
                     $(
                         // The `if true` at the end disables "unreachable pattern" errors
-                        build_ty_pat!([] $( $pname : $pty ),*) if true => {
-                            process_body!([_push_ret; $vm] [] $($body)*);
+                        lea_build_ty_pat!([] $( $pname : $pty ),*) if true => {
+                            lea_process_body!([_push_ret; $vm] [] $($body)*);
                             return Ok(());
                         }
                     )+
 
                     _ => {
+                        // FIXME This could be a better message
                         return Err(format!(
                             "invalid arguments for call to {}",
                             stringify!($name)
@@ -246,8 +263,8 @@ macro_rules! lea_libfn_single {
         pub static $name: $crate::libfn::LibFnTyInfo = &[
             $(
                 (
-                    &[ $( (stringify!($pname), ident2tym!($pty)) ),* ],
-                    &[ $( (stringify!($rname), ident2tym!($rty)) ),* ]
+                    &[ $( (stringify!($pname), lea_ident_to_ty_marker!($pty)) ),* ],
+                    &[ $( (stringify!($rname), lea_ident_to_ty_marker!($rty)) ),* ]
                 )
             ),+
         ];
@@ -263,7 +280,7 @@ macro_rules! lea_libfn {
 
 #[macro_export]
 #[doc(hidden)]
-macro_rules! setenv {
+macro_rules! lea_setenv {
     ( $env:ident; $gc:ident; $key:ident; $val:expr ) => {
         assert_eq!($env.set(
             Value::String($gc.intern_str(stringify!($key))),
@@ -276,11 +293,11 @@ macro_rules! setenv {
 #[doc(hidden)]
 macro_rules! lea_lib_inner {
     ( $env:ident; $gc:ident; $gcty:ident; $key:ident = fn $f:ident, $($rest:tt)* ) => {
-        setenv!($env; $gc; $key; $crate::Value::LibFn($crate::libfn::LibFn($f::$f)));
+        lea_setenv!($env; $gc; $key; $crate::Value::LibFn($crate::libfn::LibFn($f::$f)));
         lea_lib_inner!($env; $gc; $gcty; $($rest)*);
     };
     ( $env:ident; $gc:ident; $gcty:ident; $key:ident = str $v:expr, $($rest:tt)* ) => {
-        setenv!($env; $gc; $key; $crate::Value::String($gc.intern_str($v)));
+        lea_setenv!($env; $gc; $key; $crate::Value::String($gc.intern_str($v)));
         lea_lib_inner!($env; $gc; $gcty; $($rest)*);
     };
     ( $env:ident; $gc:ident; $gcty:ident; ) => {};
