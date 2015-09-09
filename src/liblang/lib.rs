@@ -45,10 +45,7 @@ lea_libfn! {
             return [Value::String(val)]
         }
         (val: number) -> (s: string) => {
-            use vm::Str;
-
-            let s = Str::new(format!("{}", val));
-            return [Value::String(vm.gc.register_obj(s))]
+            return [format!("{}", val)]
         }
     }
 }

@@ -1,5 +1,5 @@
 use value::Value;
-use mem::TracedRef;
+use mem::{GcStrategy, TracedRef};
 use string::Str;
 use VM;
 
@@ -112,37 +112,18 @@ pub type LibFnTyInfo = &'static [(
     &'static [(&'static str, TyMarker)]
 )];
 
+/// Trait for all types that can be used in the `return [...]` of lib functions.
 pub trait ToValues {
-    fn to_values<F>(self, mut push: F) where F: FnMut(Value);
-}
-
-impl ToValues for Value {
-    fn to_values<F>(self, mut push: F) where F: FnMut(Value) {
-        push(self)
-    }
-}
-
-impl<'a> ToValues for &'a [Value] {
-    fn to_values<F>(self, mut push: F) where F: FnMut(Value) {
-        for value in self {
-            push(*value)
-        }
-    }
-}
-
-/*pub trait ToValues {
     fn to_values<F, G: GcStrategy>(self, mut push: F, gc: &mut G) where F: FnMut(Value);
 }
 
 impl ToValues for Value {
-    #[inline]
     fn to_values<F, G: GcStrategy>(self, mut push: F, _: &mut G) where F: FnMut(Value) {
         push(self)
     }
 }
 
 impl<'a> ToValues for &'a [Value] {
-    #[inline]
     fn to_values<F, G: GcStrategy>(self, mut push: F, _: &mut G) where F: FnMut(Value) {
         for value in self {
             push(*value)
@@ -150,12 +131,11 @@ impl<'a> ToValues for &'a [Value] {
     }
 }
 
-impl ToValues for Str {
-    #[inline]
+impl<T: Into<Str>> ToValues for T {
     fn to_values<F, G: GcStrategy>(self, mut push: F, gc: &mut G) where F: FnMut(Value) {
         push(Value::String(gc.intern_str(self)))
     }
-}*/
+}
 
 #[macro_export]
 #[doc(hidden)]
@@ -199,24 +179,24 @@ macro_rules! b {
 #[macro_export]
 #[doc(hidden)]
 macro_rules! process_body {
-    ( [$push_ret:ident] [ $($t:tt)* ] return [ $($e:expr),* ] $($rest:tt)* ) => {
-        process_body!([$push_ret] [
+    ( [$push_ret:ident; $vm:ident] [ $($t:tt)* ] return [ $($e:expr),* ] $($rest:tt)* ) => {
+        process_body!([$push_ret; $vm] [
             $($t)*
             {
                 $(
-                    ($e).to_values(|val| $push_ret(val));
+                    ($e).to_values(|val| $push_ret(val), &mut $vm.gc);
                 )*
                 return Ok(());
             }
-        ] $($rest)*)
+        ] $($rest)*);
     };
-    /*( [$push_ret:ident] [ $($t:tt)* ] { $($c:tt)* } $($rest:tt)* ) => {
+    /*( [$push_ret:ident; $vm:ident] [ $($t:tt)* ] { $($c:tt)* } $($rest:tt)* ) => {
         process_body!([$push_ret] [ $($t)* {process_body!([$push_ret] [] $($c)*)} ] $($rest)* );
     };*/
-    ( [$push_ret:ident] [ $($t:tt)* ] $next:tt $($rest:tt)*) => {
-        process_body!([$push_ret] [$($t)* $next] $($rest)*);
+    ( [$push_ret:ident; $vm:ident] [ $($t:tt)* ] $next:tt $($rest:tt)*) => {
+        process_body!([$push_ret; $vm] [$($t)* $next] $($rest)*);
     };
-    ( [$push_ret:ident] [$($t:tt)*] ) => {
+    ( [$push_ret:ident; $vm:ident] [$($t:tt)*] ) => {
         b!({ $($t)* })
     };
 }
@@ -247,7 +227,7 @@ macro_rules! lea_libfn_single {
                     $(
                         // The `if true` at the end disables "unreachable pattern" errors
                         build_ty_pat!([] $( $pname : $pty ),*) if true => {
-                            process_body!([_push_ret] [] $($body)*);
+                            process_body!([_push_ret; $vm] [] $($body)*);
                             return Ok(());
                         }
                     )+
