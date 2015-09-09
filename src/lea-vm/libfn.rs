@@ -200,14 +200,15 @@ macro_rules! b {
 #[doc(hidden)]
 macro_rules! process_body {
     ( [$push_ret:ident] [ $($t:tt)* ] return [ $($e:expr),* ] $($rest:tt)* ) => {
-        b!({ $($t)* })
-        {
-            $(
-                ($e).to_values(|val| $push_ret(val));
-            )*
-            return Ok(());
-        }
-        process_body!([$push_ret] [] $($rest)*)
+        process_body!([$push_ret] [
+            $($t)*
+            {
+                $(
+                    ($e).to_values(|val| $push_ret(val));
+                )*
+                return Ok(());
+            }
+        ] $($rest)*)
     };
     /*( [$push_ret:ident] [ $($t:tt)* ] { $($c:tt)* } $($rest:tt)* ) => {
         process_body!([$push_ret] [ $($t)* {process_body!([$push_ret] [] $($c)*)} ] $($rest)* );
@@ -223,7 +224,7 @@ macro_rules! process_body {
 #[macro_export]
 #[doc(hidden)]
 macro_rules! lea_libfn_single {
-    (fn $name:ident {
+    (fn $name:ident ($vm:ident) {
         $(
             ( $( $pname:ident : $pty:tt ),* ) -> ( $( $rname:ident : $rty:tt ),* ) => { $($body:tt)* }
         )+
@@ -235,12 +236,14 @@ macro_rules! lea_libfn_single {
             // Might not be used if the function doesn't return anything
             #[allow(unused_imports)]
             use $crate::libfn::ToValues;
+            #[allow(unused_imports)]
+            use $crate::mem::GcStrategy;
 
             #[allow(unreachable_code)]  // Don't warn when our inserted return isn't reachable
-            pub fn $name(vm: &mut VM, arg_start: usize, arg_count: u8, _push_ret: &mut FnMut(Value))
+            pub fn $name($vm: &mut VM, arg_start: usize, arg_count: u8, _push_ret: &mut FnMut(Value))
             -> Result<(), LibFnError> {
                 // TODO Figure out a way of matching param types without slice patterns
-                match &vm.stack[arg_start..arg_start+arg_count as usize] {
+                match &$vm.stack[arg_start..arg_start+arg_count as usize] {
                     $(
                         // The `if true` at the end disables "unreachable pattern" errors
                         build_ty_pat!([] $( $pname : $pty ),*) if true => {
@@ -273,8 +276,8 @@ macro_rules! lea_libfn_single {
 
 #[macro_export]
 macro_rules! lea_libfn {
-    ( $( fn $name:ident { $($b:tt)* } )+ ) => {
-        $( lea_libfn_single!(fn $name { $($b)* } ); )+
+    ( $( fn $name:ident ($vm:ident) { $($b:tt)* } )+ ) => {
+        $( lea_libfn_single!(fn $name ($vm) { $($b)* } ); )+
     };
 }
 

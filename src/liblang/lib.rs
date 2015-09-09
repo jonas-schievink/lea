@@ -13,10 +13,10 @@
 #![feature(slice_patterns)] // required by the abomination macros
 
 #[macro_use]
-extern crate lea_vm;
+extern crate lea_vm as vm;
 
 lea_libfn! {
-    fn assert {
+    fn assert(vm) {
         (val: *, msg: *, rest: ...) -> (vals: ...) => {
             if !val.is_truthy() { return Err(msg.into()) }
             return [val, msg, rest]
@@ -27,7 +27,10 @@ lea_libfn! {
         }
     }
 
-    fn error {
+    fn error(vm) {
+        () -> () => {
+            return Err("explicit error".to_owned().into())
+        }
         (msg: *) -> () => {
             return Err(msg.into())
         }
@@ -37,9 +40,15 @@ lea_libfn! {
         }
     }
 
-    fn tostring {
+    fn tostring(vm) {
         (val: string) -> (s: string) => {
             return [Value::String(val)]
+        }
+        (val: number) -> (s: string) => {
+            use vm::Str;
+
+            let s = Str::new(format!("{}", val));
+            return [Value::String(vm.gc.register_obj(s))]
         }
     }
 }
