@@ -69,6 +69,19 @@ lea_libfn! {
             return [of.get_type_name()]
         }
     }
+
+    fn print(vm) {
+        (values: ...) -> () => {
+            for (i, val) in values.into_iter().enumerate() {
+                if i != 0 {
+                    print!("\t");
+                }
+
+                unsafe { val.fmt(::std::io::stdout(), &vm.gc) }.unwrap();
+            }
+            println!("");
+        }
+    }
 }
 
 lea_lib! {
@@ -78,4 +91,5 @@ lea_lib! {
     tostring = fn tostring,
     tonumber = fn tonumber,
     type = fn type_name,
+    print = fn print,
 }
