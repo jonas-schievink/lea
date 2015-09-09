@@ -1,6 +1,7 @@
 use value::Value;
 use mem::TracedRef;
 use string::Str;
+use VM;
 
 use std::hash::*;
 use std::fmt;
@@ -30,7 +31,11 @@ impl From<Value> for LibFnError {
 }
 
 #[derive(Copy)]
-pub struct LibFn(pub for<'a, 'b> fn(&'a [Value], &'b mut FnMut(Value)) -> Result<(), LibFnError>);
+pub struct LibFn(pub for<'a, 'b> fn(&'a mut VM,
+                                    arg_start: usize,
+                                    arg_count: u8,
+                                    &'b mut FnMut(Value))
+                                    -> Result<(), LibFnError>);
 
 // Need to implement all of this stuff manually for now (I hope rustc will do that automatically)
 
@@ -224,7 +229,7 @@ macro_rules! lea_libfn_single {
         )+
     } ) => {
         mod $name {
-            use $crate::Value;
+            use $crate::{VM, Value};
             use $crate::libfn::LibFnError;
 
             // Might not be used if the function doesn't return anything
@@ -232,10 +237,10 @@ macro_rules! lea_libfn_single {
             use $crate::libfn::ToValues;
 
             #[allow(unreachable_code)]  // Don't warn when our inserted return isn't reachable
-            pub fn $name<G: $crate::mem::GcStrategy>(args: &[Value], _push_ret: &mut FnMut(Value))
+            pub fn $name(vm: &mut VM, arg_start: usize, arg_count: u8, _push_ret: &mut FnMut(Value))
             -> Result<(), LibFnError> {
                 // TODO Figure out a way of matching param types without slice patterns
-                match args {
+                match &vm.stack[arg_start..arg_start+arg_count as usize] {
                     $(
                         // The `if true` at the end disables "unreachable pattern" errors
                         build_ty_pat!([] $( $pname : $pty ),*) if true => {
@@ -288,7 +293,7 @@ macro_rules! setenv {
 #[doc(hidden)]
 macro_rules! lea_lib_inner {
     ( $env:ident; $gc:ident; $gcty:ident; $key:ident = fn $f:ident, $($rest:tt)* ) => {
-        setenv!($env; $gc; $key; $crate::Value::LibFn($crate::libfn::LibFn($f::$f::<$gcty>)));
+        setenv!($env; $gc; $key; $crate::Value::LibFn($crate::libfn::LibFn($f::$f)));
         lea_lib_inner!($env; $gc; $gcty; $($rest)*);
     };
     ( $env:ident; $gc:ident; $gcty:ident; $key:ident = str $v:expr, $($rest:tt)* ) => {

@@ -50,12 +50,12 @@ struct CallInfo {
 #[derive(Default)]
 pub struct VM {
     pub gc: DefaultGc,
-    /// Call stack
-    calls: Vec<CallInfo>,
     /// "VM stack", "value stack" or just stack. Stores the activation of functions in the form of
     /// variables (registers) used by the function.
-    stack: Vec<Value>,
-
+    pub stack: Vec<Value>,
+    /// Call stack
+    calls: Vec<CallInfo>,
+    /// List of open upvalues, sorted by id (`usize`)
     open_upvals: Vec<(usize, Rc<Cell<Upval>>)>,
 }
 
@@ -372,11 +372,8 @@ impl VM {
                             };
 
                             let args_start: usize = self.cur_call().bottom + callee_reg as usize + 1;
-                            let args_end: usize = args_start + arg_count as usize;
-
                             let mut ret = Vec::new();
-
-                            let result = libfn.0(&self.stack[args_start..args_end], &mut |val| {
+                            let result = libfn.0(self, args_start, arg_count, &mut |val| {
                                 ret.push(val);
                             });
 
