@@ -1,5 +1,3 @@
-//! This module defines the dynamically typed value type used by Lea
-
 use Table;
 use Array;
 use Str;
@@ -12,6 +10,7 @@ use lea_core::Const;
 
 use std::io::{self, Write};
 
+/// The type used to represent all Lea values.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Value {
     Nil,

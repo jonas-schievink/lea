@@ -296,9 +296,7 @@ macro_rules! lea_libfn_single {
 ///
 /// ```rust
 /// #![feature(slice_patterns)] // Needed by the macro
-///
-/// # #[macro_use]
-/// # extern crate lea_vm;
+/// # #[macro_use] extern crate lea_vm;
 ///
 /// lea_libfn! {
 ///     fn tostring(vm) {
@@ -349,9 +347,7 @@ macro_rules! lea_lib_inner {
 /// libraries.
 ///
 /// ```rust
-/// # #[macro_use]
-/// # extern crate lea_vm;
-///
+/// # #[macro_use] extern crate lea_vm;
 /// lea_lib! {
 ///     some_string = str "I am a string!".to_owned(),
 /// }

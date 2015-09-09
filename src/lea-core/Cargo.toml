@@ -9,4 +9,5 @@ name = "lea_core"
 path = "lib.rs"
 
 [dependencies]
+lea-num = { path = "../lea-num" }
 rustc-serialize = "0.3"

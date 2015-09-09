@@ -6,6 +6,7 @@
 #![feature(raw)]
 
 extern crate lea_core;
+pub extern crate lea_num;
 
 #[macro_use]
 extern crate log;
@@ -14,12 +15,14 @@ pub mod libfn;
 pub mod function;
 pub mod error;
 pub mod mem;
-pub mod number;
 mod array;
 mod string;
 mod table;
 mod value;
 mod vm;
+
+// Reexport the number crate since its basically used everywhere the VM is used
+pub use lea_num as number;
 
 #[doc(inline)]
 pub use array::Array;
