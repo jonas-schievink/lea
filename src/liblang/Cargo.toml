@@ -10,3 +10,4 @@ path = "lib.rs"
 
 [dependencies]
 lea-vm = { path = "../lea-vm" }
+lea-compiler = { path = "../lea-compiler" }

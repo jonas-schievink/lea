@@ -14,6 +14,14 @@
 
 #[macro_use]
 extern crate lea_vm as vm;
+extern crate lea_compiler as compiler;
+
+use vm::VM;
+use vm::mem::{GcStrategy, TracedRef};
+use vm::{Str, Value};
+use vm::function::{Function, FunctionProto, Upval};
+
+use compiler::{CompileConfig, compile_str};
 
 lea_libfn! {
     fn assert(vm) {
@@ -82,6 +90,77 @@ lea_libfn! {
             println!("");
         }
     }
+
+    fn load(vm) {
+        (code: string, source_name: string, _mode: string, env: *) -> (compiled: fn, err: string) => {
+            let res = match super::load_impl(vm, code, Some(source_name), Some(env)) {
+                Ok(res) => res,
+                Err(e) => return Err(e.into()),
+            };
+
+            return [res]
+        }
+        (code: string, source_name: string, _mode: string) -> (compiled: fn, err: string) => {
+            let res = match super::load_impl(vm, code, Some(source_name), None) {
+                Ok(res) => res,
+                Err(e) => return Err(e.into()),
+            };
+
+            return [res]
+        }
+        (code: string, source_name: string) -> (compiled: fn, err: string) => {
+            let res = match super::load_impl(vm, code, Some(source_name), None) {
+                Ok(res) => res,
+                Err(e) => return Err(e.into()),
+            };
+
+            return [res]
+        }
+        (code: string) -> (compiled: fn, err: string) => {
+            let res = match super::load_impl(vm, code, None, None) {
+                Ok(res) => res,
+                Err(e) => return Err(e.into()),
+            };
+
+            return [res]
+        }
+    }
+}
+
+fn load_impl(vm: &mut VM,
+             code: TracedRef<Str>,
+             source_name: Option<TracedRef<Str>>,
+             env: Option<Value>)
+             -> Result<Value, String> {
+    let compile_result = {
+        let cfg = CompileConfig::default();
+        let code: &str = unsafe { &vm.gc.get_ref(code) };
+        let source_name: &str = match source_name {
+            Some(s) => unsafe { &vm.gc.get_ref(s) },
+            None => "<load>",
+        };
+
+        // compile and dispose of the unneeded data. since the AST is borrowed, this wouldn't work.
+        compile_str(code, source_name, &cfg).map(|result| result.mainproto)
+    };
+
+    match compile_result {
+        Ok(res) => {
+            let proto = FunctionProto::from_fndata(res, &mut vm.gc);
+            let main = vm.main_ref();
+            let main_env: Value = match unsafe { vm.gc.get_ref(main).upvalues[0].get() } {
+                Upval::Closed(env) => env,
+                Upval::Open(_) => unreachable!(),
+            };
+
+            let f = Function::with_env(&vm.gc, proto, env.unwrap_or(main_env));
+
+            Ok(Value::Closure(vm.gc.register_obj(f)))
+        }
+        Err(e) => {
+            Err(format!("{:?}", e)) // FIXME impl Display for CompileError
+        }
+    }
 }
 
 lea_lib! {
@@ -92,4 +171,5 @@ lea_lib! {
     tonumber = fn tonumber,
     type = fn type_name,
     print = fn print,
+    load = fn load,
 }

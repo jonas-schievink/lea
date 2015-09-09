@@ -55,8 +55,10 @@ pub struct VM {
     pub stack: Vec<Value>,
     /// Call stack
     calls: Vec<CallInfo>,
-    /// List of open upvalues, sorted by id (`usize`)
+    /// List of open upvalues, sorted by stack slot (`usize` field)
     open_upvals: Vec<(usize, Rc<Cell<Upval>>)>,
+
+    main: Option<TracedRef<Function>>,
 }
 
 impl VM {
@@ -71,22 +73,25 @@ impl VM {
     pub fn start<F>(&mut self, f: TracedRef<Function>, e: F) -> Option<Vec<Value>>
     where F: FnOnce(&mut VmError) {
         // FIXME When is a nested call okay?
-        let stacksz = self.stack.len();
-        let calls = self.calls.len();
+        assert_eq!(self.stack.len(), 0);
+        assert_eq!(self.calls.len(), 0);
 
+        self.main = Some(f);
         self.push_call(f, 0, 0, 0);  // `ret_count` and `ret_start` are ignored
 
-        match self.main_loop() {
+        let return_vals = match self.main_loop() {
             Ok(vals) => Some(vals),
             Err(mut error) => {
                 e(&mut error);
-
-                self.stack.truncate(stacksz);
-                self.calls.truncate(calls);
-
                 None
             }
-        }
+        };
+
+        self.stack.clear();
+        self.calls.clear();
+        self.main = None;
+
+        return_vals
     }
 }
 
@@ -160,7 +165,7 @@ impl VM {
         &mut self.calls[lastidx]
     }
 
-    fn cur_func(&self) -> &Function {
+    pub fn cur_func(&self) -> &Function {
         unsafe { self.gc.get_ref(self.cur_call().func) }
     }
 
@@ -170,6 +175,12 @@ impl VM {
         let func = unsafe { self.gc.get_ref(call.func) };
 
         unsafe { self.gc.get_ref(func.proto) }
+    }
+
+    /// Obtains a `TracedRef<Function>` pointing at the main function (root of the call stack).
+    /// Will panic when the VM isn't executing a function.
+    pub fn main_ref(&self) -> TracedRef<Function> {
+        self.main.unwrap()
     }
 
     /// Fetches the current opcode and increments the instruction pointer by 1
@@ -473,10 +484,20 @@ impl VM {
                         Ok(i) | Err(i) => i
                     };
 
-                    // close all upvalues from `start_idx` onward
+                    debug!(
+                        "CLOSE({}): closing upvals starting at {}; total upvals: {}; start index: {}",
+                        rel_min,
+                        abs_min,
+                        self.open_upvals.len(),
+                        start_idx,
+                    );
+
+                    // set all upvalues to closed from `start_idx` onward
                     if start_idx < self.open_upvals.len() {
                         let mut count = 0;
                         for &(_, ref upval) in &self.open_upvals[start_idx..] {
+                            debug!("CLOSING {:?}", upval.get());
+
                             count += 1;
                             let new = match upval.get() {
                                 Upval::Open(slot) => Upval::Closed(self.stack[slot]),
@@ -569,7 +590,10 @@ impl VM {
                     }
                 }
                 GETUPVAL(reg, up) => {
-                    let val = match self.cur_func().upvalues[up as usize].get() {
+                    let upval = self.cur_func().upvalues[up as usize].get();
+                    debug!("GETUPVAL #{} = {:?}", up, upval);
+
+                    let val = match upval {
                         Upval::Open(slot) => self.stack[slot],
                         Upval::Closed(val) => val,
                     };
@@ -577,7 +601,10 @@ impl VM {
                 }
                 SETUPVAL(up, reg) => {
                     let val = self.reg_get(reg);
-                    match self.cur_func().upvalues[up as usize].get() {
+                    let upval = self.cur_func().upvalues[up as usize].get();
+                    debug!("SETUPVAL #{} to {:?} (was: {:?})", up, val, upval);
+
+                    match upval {
                         Upval::Open(slot) => self.stack[slot] = val,
                         Upval::Closed(_) => self.cur_func().upvalues[up as usize].set(Upval::Closed(val)),
                     };
@@ -964,7 +991,7 @@ mod tests {
             let (_, ret) = run!($main);
             assert!(ret.unwrap().is_empty());
         }};
-        ( $main:tt => return [ $($val:pat),+ ] ) => {{
+        ( $main:tt => return [ $($val:pat,)+ ] ) => {{
             let (_, ret) = run!($main);
 
             let mut retvals = ret.unwrap().into_iter();
@@ -999,10 +1026,10 @@ mod tests {
             ops: [
                 FUNC(0,0),
                 CALL(0,1,2),    // call with no args, store 1 return value in reg 0
-                RETURN(0,1),
+                RETURN(0,2),
             ]
-        } => [
-            0: Value::Bool(true),  // returned from caller
+        } => return [
+            Value::Bool(true),
         ]);
     }
 
@@ -1028,13 +1055,13 @@ mod tests {
                 LOADBOOL(2,1,true), // set 2 and 3 to true value
                 FUNC(0,0),
                 CALL(0,1,5),    // call with no args, store 4 return values in reg 0-3
-                RETURN(0,1),
+                RETURN(0,5),
             ]
-        } => [
-            0: Value::Bool(true),
-            1: Value::Bool(false),
-            2: Value::Nil,
-            3: Value::Nil, // filled on return (only 3 values explicitly returned, but 4 stored)
+        } => return [
+            Value::Bool(true),
+            Value::Bool(false),
+            Value::Nil,
+            Value::Nil, // filled on return (only 3 values explicitly returned, but 4 stored)
         ]);
     }
 
@@ -1070,12 +1097,12 @@ mod tests {
                 LOADBOOL(2,1,true),
                 CALL(0,4,3),    // call with 3 args (`false`, `true`, `true`, last disposed)
                                 // store 2 return values in reg 0 and 1
-                RETURN(0,1),
+                RETURN(0,4),
             ]
-        } => [
-            0: Value::Bool(true),
-            1: Value::Bool(false),
-            2: Value::Bool(true),  // left over from before call
+        } => return [
+            Value::Bool(true),
+            Value::Bool(false),
+            Value::Bool(true),  // left over from before call
         ]);
     }
 
@@ -1119,7 +1146,7 @@ mod tests {
         } => return [
             Value::Bool(true),
             Value::Bool(false),
-            Value::Bool(false)
+            Value::Bool(false),
         ]);
     }
 
@@ -1133,10 +1160,10 @@ mod tests {
             consts: [],
             ops: [
                 LOADNIL(0,0),
-                RETURN(0,1),
+                RETURN(0,2),
             ]
-        } => [
-            0: Value::Bool(true),
+        } => return [
+            Value::Bool(true),
         ]);
     }
 
@@ -1161,10 +1188,10 @@ mod tests {
             consts: [],
             ops: [
                 LOADNIL(0,0),
-                RETURN(0,1),
+                RETURN(0,2),
             ]
-        } => [
-            0: Value::Nil,
+        } => return [
+            Value::Nil,
         ]);
     }
 
@@ -1179,7 +1206,9 @@ mod tests {
                 LOADNIL(0,0),
                 RETURN(0,2),
             ]
-        } => return [ Value::Number(Number::Int(4)) ]);
+        } => return [
+            Value::Number(Number::Int(4)),
+        ]);
     }
 
     #[test]
@@ -1201,7 +1230,7 @@ mod tests {
                 LOADNIL(0,0),
                 RETURN(0,2),
             ]
-        } => return [ Value::Nil ]);
+        } => return [ Value::Nil, ]);
         test!({
             stack: 4,
             fns: [],
@@ -1212,7 +1241,7 @@ mod tests {
                 LOADBOOL(3,0,false),
                 RETURN(0,5),
             ]
-        } => return [ Value::Nil, Value::Nil, Value::Bool(true), Value::Bool(false) ]);
+        } => return [ Value::Nil, Value::Nil, Value::Bool(true), Value::Bool(false), ]);
     }
 
     #[test]
@@ -1246,17 +1275,17 @@ mod tests {
                 NOT(6,5),       // `false`
                 NOT(7,0),       // `true`
 
-                RETURN(0,1),
+                RETURN(0,9),
             ]
-        } => [
-            0: Value::Nil,
-            1: Value::Number(Number::Int(7)),
-            2: Value::String(_),
-            3: Value::Table(_),
-            4: Value::Array(_),
-            5: Value::Bool(true),
-            6: Value::Bool(false),
-            7: Value::Bool(true),
+        } => return [
+            Value::Nil,
+            Value::Number(Number::Int(7)),
+            Value::String(_),
+            Value::Table(_),
+            Value::Array(_),
+            Value::Bool(true),
+            Value::Bool(false),
+            Value::Bool(true),
         ]);
     }
 
@@ -1303,18 +1332,18 @@ mod tests {
                 LOADBOOL(0,0,false),
                 FUNC(1,0),
                 CALL(1,1,2),    // stores `false` in 1
-                RETURN(0,1),
+                RETURN(0,3),
             ]
-        } => [
-            0: Value::Bool(true),  // changed by inner function
-            1: Value::Bool(false),
+        } => return [
+            Value::Bool(true),  // changed by inner function
+            Value::Bool(false),
         ]);
     }
 
     #[test]
     fn upval_close() {
         test!({
-            stack: 4,
+            stack: 5,
             params: 0,
             varargs: false,
             upvals: [],
@@ -1337,16 +1366,20 @@ mod tests {
             consts: [],
             ops: [
                 LOADBOOL(0,0,false),
-                FUNC(1,0),
-                CALL(1,1,1),
-                MOV(2,0),
+                FUNC(3,0),
+                MOV(4,3),   // Because 3 would be overwritten if we called it
+                CALL(4,1,1),
+                MOV(1,0),
                 CLOSE(0),
-                MOV(3,0),
-                RETURN(0,1),
+                MOV(4,3),
+                CALL(4,1,1),
+                MOV(2,0),
+                RETURN(0,4),
             ]
-        } => [
-            2: Value::Bool(true),  // changed by inner function
-            3: Value::Bool(true),  // not changed, since upvalue is closed
+        } => return [
+            Value::Bool(true),  // changed by inner function
+            Value::Bool(true),  // not changed, since upvalue is closed
+            Value::Bool(true),
         ]);
     }
 }

@@ -104,6 +104,7 @@ pub enum TyMarker {
     Bool,
     Array,
     Table,
+    Fn,
     Any,
     Varargs,
 }
@@ -164,6 +165,7 @@ macro_rules! lea_ident_to_ty_marker {
     ( bool ) => ( $crate::libfn::TyMarker::Bool );
     ( array ) => ( $crate::libfn::TyMarker::Array );
     ( table ) => ( $crate::libfn::TyMarker::Table );
+    ( fn ) => ( $crate::libfn::TyMarker::Fn );
     ( * ) => ( $crate::libfn::TyMarker::Any );
     ( ... ) => ( $crate::libfn::TyMarker::Varargs );
 }

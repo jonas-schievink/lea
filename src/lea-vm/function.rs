@@ -100,6 +100,17 @@ impl Function {
         }
     }
 
+    pub fn with_env<G: GcStrategy>(gc: &G, proto: TracedRef<FunctionProto>, env: Value)
+    -> Function {
+        let mut first = true;
+        Function::new(gc, proto, |_| if first {
+            first = false;
+            Rc::new(Cell::new(Upval::Closed(env)))
+        } else {
+            Rc::new(Cell::new(Upval::Closed(Value::Nil)))
+        })
+    }
+
     /// Sets an upvalue to the given value.
     pub fn set_upvalue(&mut self, id: usize, val: Upval) {
         self.upvalues[id].set(val);
