@@ -1,6 +1,7 @@
 use value::Value;
 use mem::{GcStrategy, TracedRef};
 use string::Str;
+use number::*;
 use VM;
 
 use std::hash::*;
@@ -128,6 +129,24 @@ impl<'a> ToValues for &'a [Value] {
         for value in self {
             push(*value)
         }
+    }
+}
+
+impl ToValues for Number {
+    fn to_values<F, G: GcStrategy>(self, mut push: F, _: &mut G) where F: FnMut(Value) {
+        push(Value::Number(self))
+    }
+}
+
+impl ToValues for LeaFloat {
+    fn to_values<F, G: GcStrategy>(self, mut push: F, _: &mut G) where F: FnMut(Value) {
+        push(Value::Number(self.into()))
+    }
+}
+
+impl ToValues for LeaInt {
+    fn to_values<F, G: GcStrategy>(self, mut push: F, _: &mut G) where F: FnMut(Value) {
+        push(Value::Number(self.into()))
     }
 }
 

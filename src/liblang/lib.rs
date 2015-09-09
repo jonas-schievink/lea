@@ -48,6 +48,27 @@ lea_libfn! {
             return [format!("{}", val)]
         }
     }
+
+    fn tonumber(vm) {
+        (num: number) -> (num: number) => {
+            return [num]
+        }
+        (s: string) -> (num: number) => {
+            let result = unsafe { vm.gc.get_ref(s) }.parse::<::vm::number::LeaFloat>();
+            let num = match result {
+                Ok(num) => num,
+                Err(e) => return Err(format!("{}", e).into()),
+            };
+
+            return [num]
+        }
+    }
+
+    fn type_name(vm) {
+        (of: *) -> (typename: string) => {
+            return [of.get_type_name()]
+        }
+    }
 }
 
 lea_lib! {
@@ -55,4 +76,6 @@ lea_lib! {
     assert = fn assert,
     error = fn error,
     tostring = fn tostring,
+    tonumber = fn tonumber,
+    type = fn type_name,
 }
