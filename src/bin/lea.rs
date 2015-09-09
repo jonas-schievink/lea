@@ -98,7 +98,7 @@ fn run_fndata(main: FnData, vm: &mut VM, env: Value) -> bool {
         None => false,
         Some(vals) => {
             if !vals.is_empty() {
-                for (i, val) in vals.into_iter().enumerate() {
+                for (i, val) in vals.iter().enumerate() {
                     if i != 0 {
                         print!("\t");
                     }

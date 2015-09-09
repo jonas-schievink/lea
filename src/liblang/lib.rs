@@ -72,7 +72,7 @@ lea_libfn! {
 
     fn print(vm) {
         (values: ...) -> () => {
-            for (i, val) in values.into_iter().enumerate() {
+            for (i, val) in values.iter().enumerate() {
                 if i != 0 {
                     print!("\t");
                 }
