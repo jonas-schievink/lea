@@ -137,7 +137,7 @@ impl<'a, W: Write> PrettyPrinter<'a, W> {
             }
             CallArgs::String(ref s) => {
                 try!(write!(self.writer, " "));
-                try!(self.print_string(s.as_ref()));
+                try!(self.print_string(&s));
             }
             CallArgs::Table(ref tbl) => {
                 try!(self.print_table(tbl));
@@ -417,7 +417,7 @@ impl<'a, W: Write> PrettyPrinter<'a, W> {
             ELit(ref c) => {
                 match *c {
                     Const::Number(ref num) => try!(write!(self.writer, "{}", num)),
-                    Const::Str(ref s) => try!(self.print_string(s.as_ref())),
+                    Const::Str(ref s) => try!(self.print_string(&s)),
                     Const::Bool(b) => try!(write!(self.writer, "{}", b)),
                     Const::Nil => try!(write!(self.writer, "nil")),
                 }
@@ -492,7 +492,7 @@ mod tests {
         let printed = print_block(&expblock);
         println!("{}", printed);
 
-        let newblock = block(printed.as_ref()).unwrap().into();
+        let newblock = block(&printed).unwrap().into();
 
         assert_eq!(expblock, newblock);
     }

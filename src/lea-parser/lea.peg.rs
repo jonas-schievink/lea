@@ -292,7 +292,7 @@ esc_seq -> char
     / "\\\r\n"  { '\n' }    // There's a bug in Windows where a newline is preceded by a "\r"
     / "\\x" digits:hexdigit{2} {
         let string: String = digits.into_iter().collect();
-        let i = u8::from_str_radix(string.as_ref(), 16).unwrap();
+        let i = u8::from_str_radix(&string, 16).unwrap();
 
         i as char
     }
