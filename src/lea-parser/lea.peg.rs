@@ -231,16 +231,20 @@ hexdigit -> char
     = [0-9a-fA-F] { match_str.chars().next().unwrap() }
 
 hexstr -> &'input str
-    = hexdigit+ { match_str }
+    = [0-0a-fA-F]+ { match_str }
 
 octstr -> &'input str
     = [0-7]+ { match_str }
 
+binstr -> &'input str
+    = [01]+ { match_str }
+
 // integer without preceding sign
 uinteger -> i64
-    = "0x" hex:hexstr   { i64::from_str_radix(hex, 16).unwrap() }
-    / "0o" oct:octstr   { i64::from_str_radix(oct, 8).unwrap() }
-    / [0-9]+            { match_str.parse().unwrap() }
+    = "0x" hex:hexstr   {? i64::from_str_radix(hex, 16).map_err(|_| "hex string") }
+    / "0o" oct:octstr   {? i64::from_str_radix(oct, 8).map_err(|_| "oct string") }
+    / "0b" bin:binstr   {? i64::from_str_radix(bin, 2).map_err(|_| "bin string") }
+    / [0-9]+            {? match_str.parse().map_err(|_| "integer literal") }
 
 integer -> i64
     = minus:"-"? i:uinteger {
