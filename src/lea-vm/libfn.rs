@@ -272,8 +272,14 @@ macro_rules! lea_libfn_single {
                     _ => {
                         // FIXME This could be a better message
                         return Err(format!(
-                            "invalid arguments for call to {}",
-                            stringify!($name)
+                            "invalid arguments for call to {}: got {}",
+                            stringify!($name),
+                            $vm.stack[arg_start..arg_start+arg_count as usize]
+                                .iter()
+                                .fold(String::new(), |mut s, arg| {
+                                    s.push_str(arg.get_type_name());
+                                    s
+                                })
                         ).into());
                     }
                 }
