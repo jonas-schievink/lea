@@ -42,7 +42,8 @@ impl From<Vec<CheckError>> for CompileError {
 }
 
 impl CompileError {
-    pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<Output=W>) -> io::Result<()> {
+    pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<Output=W>)
+    -> io::Result<()> {
         match *self {
             ErrParse(ref err) => {
                 try!(err.format(code, source_name, t));
@@ -118,6 +119,6 @@ impl Warning {
     }
 
     pub fn get_message(&self) -> &str {
-        self.message.as_ref()
+        &self.message
     }
 }

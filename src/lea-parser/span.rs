@@ -98,7 +98,7 @@ impl Span {
     /// written (to allow proper indentation).
     pub fn print_loc<W: Write>(source_name: &str, line: usize, col: Option<usize>, t: &mut Terminal<Output=W>) -> io::Result<usize> {
         let mut s = format!("{}:{}:", source_name, line);
-        if let Some(col) = col { s.push_str(format!("{}:", col).as_ref()); }
+        if let Some(col) = col { s.push_str(&format!("{}:", col)); }
         s.push_str(" ");
         try!(t.reset());
         try!(write!(t, "{}", s));
@@ -186,7 +186,6 @@ impl Span {
         try!(Span::print_loc(source_name, line, col, t));
         try!(t.fg(INFO_COLOR));
         try!(write!(t, "info: "));
-        try!(t.reset());
         try!(Span::print_msg(info, t));
         Ok(())
     }
@@ -287,9 +286,7 @@ mod tests {
             span.format(code, "A", &mut fmt, color::RED).unwrap();
         }
 
-        let s = String::from_utf8(v).unwrap();
-        let s: &str = s.as_ref();
-        assert_eq!(s, expect);
+        assert_eq!(String::from_utf8(v).unwrap(), expect);
     }
 
     #[test]
