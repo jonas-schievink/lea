@@ -321,8 +321,8 @@ boolean -> bool
     = "true" { true } / "false" { false }
 
 _literal -> Const
-    = f:float   { Const::Float(f) }
-    / i:integer { Const::Int(i) }
+    = f:float   { Const::Number(f.into()) }
+    / i:integer { Const::Number(i.into()) }
     / s:string  { Const::Str(s) }
     / b:boolean { Const::Bool(b) }
     / "nil"     { Const::Nil }

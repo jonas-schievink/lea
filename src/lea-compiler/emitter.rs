@@ -145,7 +145,7 @@ impl Emitter {
     fn add_const(&mut self, c: &Const) -> u16 {
         // ensure that only "useful" constant are added
         debug_assert!(match *c {
-            Const::Int(..) | Const::Float(..) | Const::Str(..) => true,
+            Const::Number(..) | Const::Str(..) => true,
             Const::Bool(..) | Const::Nil => false, // handled by special opcodes
         });
 
@@ -553,7 +553,7 @@ impl Emitter {
                         self.emit(LOADNIL(hint_slot, 0));
                         hint_slot
                     }
-                    Const::Int(_) | Const::Float(_) | Const::Str(_) => {
+                    Const::Number(_) | Const::Str(_) => {
                         let id = self.add_const(lit);
                         self.emit(LOADK(hint_slot, id));
                         hint_slot
@@ -692,7 +692,7 @@ impl Emitter {
                 let tmp = self.alloc_slots(1);
                 for (i, elem) in elems.iter().enumerate() {
                     let real = self.emit_expr(elem, tmp);
-                    let constid = self.add_const(&Const::Int(i as i64));
+                    let constid = self.add_const(&Const::Number((i as i64).into()));
 
                     // TODO Specialized `SETIDX` for constant strings/integers
                     self.emit(LOADK(idx_slot, constid));
@@ -937,7 +937,7 @@ impl Emitter {
                 if let Some(ref step) = *step {
                     self.emit_expr_into(step, step_slot);
                 } else {
-                    let id = self.add_const(&Const::Int(1));
+                    let id = self.add_const(&Const::Number(1.into()));
                     self.emit(LOADK(step_slot, id));
                 }
                 self.emit_expr_into(end, end_slot);

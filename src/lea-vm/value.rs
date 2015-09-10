@@ -60,8 +60,7 @@ impl Value {
 
     pub fn from_literal<G: GcStrategy>(c: Const, gc: &mut G) -> Value {
         match c {
-            Const::Int(i) => Value::Number(i.into()),
-            Const::Float(f) => Value::Number(f.into()),
+            Const::Number(n) => Value::Number(n),
             Const::Str(s) => Value::String(gc.intern_str(s)),
             Const::Bool(b) => Value::Bool(b),
             Const::Nil => Value::Nil,

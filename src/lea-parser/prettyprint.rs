@@ -416,8 +416,7 @@ impl<'a, W: Write> PrettyPrinter<'a, W> {
             }
             ELit(ref c) => {
                 match *c {
-                    Const::Int(i) => try!(write!(self.writer, "{}", i)),
-                    Const::Float(f) => try!(write!(self.writer, "{}", f)),
+                    Const::Number(ref num) => try!(write!(self.writer, "{}", num)),
                     Const::Str(ref s) => try!(self.print_string(s.as_ref())),
                     Const::Bool(b) => try!(write!(self.writer, "{}", b)),
                     Const::Nil => try!(write!(self.writer, "nil")),

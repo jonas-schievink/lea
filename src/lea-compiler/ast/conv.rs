@@ -281,11 +281,11 @@ impl AstConv {
                 parsetree::TableEntry::Elem(value) => {
                     let idx = i;
                     i += 1;
-                    (Spanned::new(value.span, ELit(Const::Int(idx))), self.conv_expr(value))
+                    (Spanned::new(value.span, ELit(Const::Number(idx.into()))), self.conv_expr(value))
                 }
             });
         }
-
+        
         entries
     }
 

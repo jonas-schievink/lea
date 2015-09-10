@@ -1,5 +1,7 @@
 //! Contains Lea's `Number` type
 
+extern crate rustc_serialize;
+
 use std::cmp::Ordering;
 use std::hash::*;
 use std::fmt;
@@ -12,7 +14,7 @@ use self::Number::*;
 pub type LeaInt = i64;
 pub type LeaFloat = f64;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum Number {
     Int(LeaInt),
     Float(LeaFloat),

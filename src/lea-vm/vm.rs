@@ -1252,7 +1252,7 @@ mod tests {
             stack: 8,
             fns: [],
             consts: [
-                Const::Int(7),
+                Const::Number(7.into()),
                 Const::Str("test".to_string()),
             ],
             ops: [

@@ -287,7 +287,7 @@ j = i
         assert_eq!(f.body, Block::with_locals(vec![
             Spanned::default(SAssign(
                 vec![Spanned::default(VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(Const::Str("i".to_owned()))))))],
-                vec![Spanned::default(ELit(Const::Int(0)))],
+                vec![Spanned::default(ELit(Const::Number(0.into())))],
             )),
             Spanned::default(SDecl(vec![Spanned::default("a")], vec![])),
             Spanned::default(SDo(Block::with_locals(vec![
@@ -382,7 +382,7 @@ end
             Spanned::default(SAssign(vec![
                 Spanned::default(VUpval(0))
             ], vec![
-                Spanned::default(ELit(Const::Int(0)))
+                Spanned::default(ELit(Const::Number(0.into())))
             ])),
         ], Default::default()));
     }
