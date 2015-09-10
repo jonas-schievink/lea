@@ -125,6 +125,55 @@ lea_libfn! {
             return [res]
         }
     }
+
+    fn dofile(vm) {
+        () -> (ret: ...) => {
+            use std::io::{Read, stdin};
+
+            let mut buf = String::new();
+            let _res: &[Value] = match stdin().read_to_string(&mut buf) {
+                Ok(_) => {
+                    let code = vm.gc.intern_str(buf);
+
+                    match super::load_impl(vm, code, None, None) {
+                        Ok(_func) => unimplemented!(),    // TODO call this
+                        Err(e) => return Err(e.into()),
+                    }
+                }
+                Err(e) => return Err(format!("couldn't read from stdin: {}", e).into())
+            };
+
+            return [_res]
+        }
+        (filename: string) -> (ret: ...) => {
+            use std::io::Read;
+            use std::fs::File;
+
+            let mut file = match File::open(unsafe { &vm.gc.get_ref(filename) as &str }) {
+                Ok(f) => f,
+                Err(e) => return Err(format!(
+                    "couldn't open file '{}': {}",
+                    unsafe { &vm.gc.get_ref(filename) }, e).into()),
+            };
+
+            let mut buf = String::new();
+            let _res: &[Value] = match file.read_to_string(&mut buf) {
+                Ok(_) => {
+                    let code = vm.gc.intern_str(buf);
+
+                    match super::load_impl(vm, code, None, None) {
+                        Ok(_func) => unimplemented!(),    // TODO call this
+                        Err(e) => return Err(e.into()),
+                    }
+                }
+                Err(e) => return Err(format!(
+                    "couldn't read file '{}': {}",
+                    unsafe { &vm.gc.get_ref(filename) }, e).into())
+            };
+
+            return [_res]
+        }
+    }
 }
 
 fn load_impl(vm: &mut VM,
@@ -172,4 +221,5 @@ lea_lib! {
     type = fn type_name,
     print = fn print,
     load = fn load,
+    dofile = fn dofile,
 }
