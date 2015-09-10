@@ -45,12 +45,12 @@ impl CompileError {
     pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<Output=W>) -> io::Result<()> {
         match *self {
             ErrParse(ref err) => {
-                try!(err.format(code.as_ref(), source_name, t));
+                try!(err.format(code, source_name, t));
             },
             ErrCheck(ref errs) => {
                 let mut i = 1;
                 for err in errs {
-                    try!(err.format(code.as_ref(), source_name, t));
+                    try!(err.format(code, source_name, t));
                     if i < errs.len() - 1 { try!(write!(t, "\n")); }
                     i += 1;
                 }
@@ -59,14 +59,14 @@ impl CompileError {
                 let mut first = true;
                 for w in warns {
                     if first { first = false; } else { try!(write!(t, "\n")); }
-                    try!(w.format(code.as_ref(), source_name, t));
+                    try!(w.format(code, source_name, t));
                 }
             },
             ErrEmit(ref errs) => {
                 for err in errs {
                     let mut msg = err.msg.to_owned();
                     if let Some(ref d) = err.detail {
-                        msg.push_str(format!(" ({})", d).as_ref());
+                        msg.push_str(&format!(" ({})", d));
                     }
 
                     try!(t.fg(color::RED));
@@ -82,7 +82,6 @@ impl CompileError {
 
 pub type CompileResult<T> = Result<T, CompileError>;
 
-/// A warning emitted by an AST transform (Linter/Optimizer)
 #[derive(Clone, Debug)]
 pub struct Warning {
     span: Span,
@@ -93,7 +92,7 @@ pub struct Warning {
 
 impl Warning {
     pub fn new(span: Span, message: String) -> Warning {
-        Warning::with_info(span, message, vec![])
+        Warning::with_info(span, message, Vec::new())
     }
 
     pub fn with_info(span: Span, message: String, info: Vec<String>) -> Warning {
@@ -109,7 +108,7 @@ impl Warning {
     pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<Output=W>)
     -> io::Result<()> {
         let (startline, _end) = self.span.get_lines(code);
-        try!(self.span.print_with_warn(code, source_name, self.message.as_ref(), t));
+        try!(self.span.print_with_warn(code, source_name, &self.message, t));
 
         for info in &self.info {
             try!(Span::print_info(source_name, startline, None, info, t));

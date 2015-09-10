@@ -8,10 +8,12 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use std::fmt;
 use std::cmp;
-use std::default::Default;
 use std::ops::{Deref, DerefMut};
 use std::io::{self, Write};
 
+const WARN_COLOR: Color = color::BRIGHT_YELLOW;
+const ERR_COLOR: Color = color::BRIGHT_RED;
+const INFO_COLOR: Color = color::CYAN;
 
 /// Wraps a `Write` and implements `Terminal`
 pub struct DummyTerm<W: Write>(pub W);
@@ -101,18 +103,7 @@ impl Span {
         try!(t.reset());
         try!(write!(t, "{}", s));
 
-        let st: &str = &s;
-        Ok(UnicodeSegmentation::graphemes(st, true).count())
-    }
-
-    pub fn print_info<W: Write>(source_name: &str, line: usize, col: Option<usize>, info: &str,
-    t: &mut Terminal<Output=W>) -> io::Result<()> {
-        try!(Span::print_loc(source_name, line, col, t));
-        try!(t.fg(color::CYAN));
-        try!(write!(t, "info: "));
-        try!(t.reset());
-        try!(Span::print_msg(info, t));
-        Ok(())
+        Ok(s.graphemes(true).count())
     }
 
     /// Prints a string with code formatting, followed by a line break
@@ -131,9 +122,9 @@ impl Span {
         Ok(())
     }
 
-    /// Given the source code from which this span was created (while compiling it), this prints
-    /// the part of the source code this span points to. All lines contained in this span are
-    /// printed and below each line, a marker shows which part belongs to the span.
+    /// Given the source code from which this span was created, this prints the part of the source
+    /// code this span points to. All lines contained in this span are printed and below each line,
+    /// a marker shows which part belongs to the span.
     pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<Output=W>, c: Color)
     -> io::Result<()> {
         let mut start = self.start;
@@ -172,10 +163,10 @@ impl Span {
     -> io::Result<()> {
         let (start, _end) = self.get_lines(code);
         try!(Span::print_loc(source_name, start, None, t));
-        try!(t.fg(color::BRIGHT_RED));
+        try!(t.fg(ERR_COLOR));
         try!(write!(t, "error: "));
         try!(Span::print_msg(err, t));
-        try!(self.format(code, source_name, t, color::BRIGHT_RED));
+        try!(self.format(code, source_name, t, ERR_COLOR));
         Ok(())
     }
 
@@ -183,10 +174,20 @@ impl Span {
     -> io::Result<()> {
         let (start, _end) = self.get_lines(code);
         try!(Span::print_loc(source_name, start, None, t));
-        try!(t.fg(color::YELLOW));
+        try!(t.fg(WARN_COLOR));
         try!(write!(t, "warning: "));
         try!(Span::print_msg(warn, t));
-        try!(self.format(code, source_name, t, color::YELLOW));
+        try!(self.format(code, source_name, t, WARN_COLOR));
+        Ok(())
+    }
+
+    pub fn print_info<W: Write>(source_name: &str, line: usize, col: Option<usize>, info: &str,
+    t: &mut Terminal<Output=W>) -> io::Result<()> {
+        try!(Span::print_loc(source_name, line, col, t));
+        try!(t.fg(INFO_COLOR));
+        try!(write!(t, "info: "));
+        try!(t.reset());
+        try!(Span::print_msg(info, t));
         Ok(())
     }
 
