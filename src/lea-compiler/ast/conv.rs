@@ -143,7 +143,7 @@ impl AstConv {
                 ))
             }
             parsetree::SMethod(var, name, func) => {
-                // var:name(args...)   =>   var.name = function(self, args...)
+                // function var:name(args...)   =>   var.name = function(self, args...)
                 let mut func: Function<'a> = self.conv_func(func);
                 func.params.insert(0, Spanned::new(name.span, "self"));
 
@@ -156,6 +156,7 @@ impl AstConv {
                 ))
             }
             parsetree::SLFunc(local, func) => {
+                // local function f...  =>  local f; f = function...
                 ConvResult::Two(
                     _Stmt::SDecl(vec![local], vec![]),
                     _Stmt::SAssign(
@@ -285,7 +286,7 @@ impl AstConv {
                 }
             });
         }
-        
+
         entries
     }
 

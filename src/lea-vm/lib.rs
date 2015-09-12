@@ -6,7 +6,7 @@
 #![feature(raw)]
 
 extern crate lea_core;
-pub extern crate lea_num;
+extern crate lea_num;
 
 #[macro_use]
 extern crate log;

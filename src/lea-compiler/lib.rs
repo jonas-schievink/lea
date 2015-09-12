@@ -89,9 +89,9 @@ use ast::Function;
 mod errors;
 mod check;
 mod ast;
+mod emitter;
+mod resolve;
 pub mod transform;
-pub mod emitter;
-pub mod resolve;
 
 pub use errors::*;
 pub use lea_core::fndata::FnData;

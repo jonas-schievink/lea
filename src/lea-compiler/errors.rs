@@ -6,7 +6,7 @@ use super::check::CheckError;
 
 use parser::span::Span;
 
-use term::{color, Terminal};
+use term::Terminal;
 
 use std::io::{self, Write};
 
@@ -65,14 +65,7 @@ impl CompileError {
             },
             ErrEmit(ref errs) => {
                 for err in errs {
-                    let mut msg = err.msg.to_owned();
-                    if let Some(ref d) = err.detail {
-                        msg.push_str(&format!(" ({})", d));
-                    }
-
-                    try!(t.fg(color::RED));
-                    try!(write!(t, "{}", msg));
-                    try!(t.reset());
+                    try!(err.format(code, source_name, t));
                 }
             }
         }
