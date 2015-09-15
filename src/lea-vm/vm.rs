@@ -38,6 +38,7 @@ struct CallInfo {
     dtop: u8,
     /// Number of varargs stored in the value stack before the stack frame of this call.
     va_count: u8,
+
     /// Number of return values the caller can accept (minus 1). 0 = any number.
     return_lim: u8,
     /// First (local) slot that a return value should be placed in. If `return_lim` is 1, this

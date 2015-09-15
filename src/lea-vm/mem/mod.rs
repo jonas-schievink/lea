@@ -26,7 +26,6 @@ use std::mem::transmute;
 use string::Str;
 
 pub mod noop;
-pub mod stw;
 
 
 // TODO finalizers and weak references (with callback)

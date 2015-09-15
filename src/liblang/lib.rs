@@ -126,7 +126,7 @@ lea_libfn! {
         }
     }
 
-    fn dofile(vm) {
+    /*fn dofile(vm) {
         () -> (ret: ...) => {
             use std::io::{Read, stdin};
 
@@ -173,7 +173,7 @@ lea_libfn! {
 
             return [_res]
         }
-    }
+    }*/
 }
 
 fn load_impl(vm: &mut VM,
@@ -221,5 +221,5 @@ lea_lib! {
     type = fn type_name,
     print = fn print,
     load = fn load,
-    dofile = fn dofile,
+    //dofile = fn dofile,
 }
