@@ -1,9 +1,7 @@
 //! The `leac` compiler command line utility.
 
-#![feature(plugin)]
-#![plugin(docopt_macros)]
-
-extern crate docopt;
+#[macro_use]
+extern crate clap;
 extern crate rustc_serialize;
 extern crate bincode;
 extern crate term;
@@ -21,57 +19,54 @@ use bincode::rustc_serialize::EncodingError;
 use std::io::{self, stdin, stderr, stdout, Read, Write};
 use std::fs::File;
 use std::path::Path;
+use std::str::FromStr;
 
 
-#[derive(Debug, RustcDecodable)]
+#[derive(Debug)]
 #[allow(non_camel_case_types)]
 enum Encoding {
-    json,
-    bin,
-    debug,
+    Json,
+    Bin,
+    Debug,
 }
 
 impl Encoding {
     pub fn encode<W: Write>(&self, fndata: &FnData, wr: &mut W)
     -> io::Result<()> {
+        use Encoding::*;
         match *self {
-            Encoding::json => {
+            Json => {
                 match json::encode(fndata) {
                     Ok(s) => Ok(try!(write!(wr, "{}", &s))),
                     Err(_) => Err(io::Error::new(io::ErrorKind::Other, "json encoding error")),
                 }
             }
-            Encoding::bin => {
+            Bin => {
                 match bincode::rustc_serialize::encode_into(fndata, wr, SizeLimit::Infinite) {
                     Ok(_) => Ok(()),
                     Err(EncodingError::IoError(e)) => Err(e),
                     Err(EncodingError::SizeLimit) => Err(io::Error::new(io::ErrorKind::Other, "size limit reached")),
                 }
             }
-            Encoding::debug => {
+            Debug => {
                 write!(wr, "{:#?}\n", fndata)
             }
         }
     }
 }
 
-docopt!(Args derive Debug, "
-The Lea compiler
-
-Usage:
-    leac ( --help | --version )
-    leac [-o <out>] [-e <enc>] [--] <file>
-
-Options:
-    -h, --help                  Show this help.
-    -v, --version               Show the version of the Lea package.
-    -o <out>, --out <out>       Write output to <out> (`-` to write to stdout).
-    -e <enc>, --encoding <enc>  The encoding to use for writing the compiled code.
-
-By default, leac will write the compiled code to stdout. If stdout is a terminal, leac will print \
-it using the `debug` encoding. Otherwise, leac will encode the compilation result in a binary \
-form (`bin` encoding).
-", flag_encoding: Option<Encoding>, flag_out: Option<String>);
+impl FromStr for Encoding {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use Encoding::*;
+        match s {
+            "json" => Ok(Json),
+            "bin" => Ok(Bin),
+            "debug" => Ok(Debug),
+            _ => Err(()),
+        }
+    }
+}
 
 
 /// Opens a terminal that writes to stderr. If stderr couldn't be opened as a terminal, creates a
@@ -112,68 +107,68 @@ fn read_file(filename: &str) -> io::Result<String> {
     Ok(s)
 }
 
-#[allow(dead_code)]     // TODO write tests
 fn main() {
-    match Args::docopt().decode::<Args>() {
-        Err(e) => {
-            println!("{}", e);
-        }
-        Ok(args) => {
-            match args {
-                Args { flag_version: true, .. } => {
-                    println!("Lea {}", lea::version_str());
-                }
-                Args { arg_file, flag_out, .. } => {
-                    // Read input
-                    let mut code = String::new();
-                    let source_name;
-                    if arg_file == "-" {
-                        stdin().read_to_string(&mut code).unwrap();
-                        source_name = "<stdin>".to_owned();
-                    } else {
-                        source_name = arg_file;
-                        code = match read_file(&source_name) {
-                            Ok(content) => content,
-                            Err(e) => {
-                                writeln!(stderr(), "{}", e).unwrap();
-                                return;
-                            }
-                        }
-                    }
+    let matches = clap_app!(leac =>
+        (version: lea::version_str())
+        (about: "The Lea byte code compiler")
+        (@arg FILE: +required "The file to compile")
+        (@arg out: -o --out +takes_value "Write output to <out> (`-` to write to stdout).")
+        (@arg enc: -e --encoding +takes_value "The encoding to use for writing the compiled code.")
+        (after_help: "By default, leac will write the compiled code to stdout. If stdout is a \
+            terminal, leac will print it using the `debug` encoding. Otherwise, leac will encode \
+            the compilation result in a binary form (`bin` encoding).\n")
+    ).get_matches();
 
-                    // Open output
-                    let mut out: Box<Write>;
-                    match flag_out.as_ref().map(|s| s.as_ref()) {
-                        None | Some("-") => {
-                            out = Box::new(stdout()) as Box<Write>;
-                        }
-                        Some(s) => {
-                            let f = match File::create(&Path::new(s)) {
-                                Ok(f) => f,
-                                Err(e) => {
-                                    writeln!(stderr(), "{}", e).unwrap();
-                                    return;
-                                }
-                            };
+    let encoding = match matches.value_of("enc") {
+        None => Encoding::Debug,
+        Some(_) => value_t_or_exit!(matches.value_of("enc"), Encoding),
+    };
 
-                            out = Box::new(f) as Box<Write>;
-                        }
-                    }
-
-                    let enc = args.flag_encoding.unwrap_or(Encoding::bin);
-
-                    match compile(&code, &source_name).unwrap() {
-                        Some(fndata) => {
-                            // serialize to `out`, except if `out` is a terminal and we defaulted to `-` (TODO)
-                            if let Err(e) = enc.encode(&fndata, &mut out) {
-                                writeln!(stderr(), "{}", e).unwrap();
-                                return;
-                            }
-                        }
-                        None => {}
-                    }
-                }
+    // Read input
+    let file = matches.value_of("FILE").unwrap();
+    let mut code = String::new();
+    let source_name;
+    if file == "-" {
+        stdin().read_to_string(&mut code).unwrap();
+        source_name = "<stdin>";
+    } else {
+        source_name = file;
+        code = match read_file(&source_name) {
+            Ok(content) => content,
+            Err(e) => {
+                writeln!(stderr(), "{}", e).unwrap();
+                return;
             }
         }
+    }
+
+    // Open output
+    let mut writer: Box<Write>;
+    match matches.value_of("out") {
+        None | Some("-") => {
+            writer = Box::new(stdout()) as Box<Write>;
+        }
+        Some(s) => {
+            let f = match File::create(&Path::new(s)) {
+                Ok(f) => f,
+                Err(e) => {
+                    writeln!(stderr(), "{}", e).unwrap();
+                    return;
+                }
+            };
+
+            writer = Box::new(f) as Box<Write>;
+        }
+    }
+
+    match compile(&code, &source_name).unwrap() {
+        Some(fndata) => {
+            // serialize to `out`, except if `out` is a terminal and we defaulted to `-` (TODO)
+            if let Err(e) = encoding.encode(&fndata, &mut writer) {
+                writeln!(stderr(), "{}", e).unwrap();
+                return;
+            }
+        }
+        None => {}
     }
 }

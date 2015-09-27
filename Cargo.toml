@@ -37,8 +37,7 @@ lea-parser = { path = "src/lea-parser" }
 lea-compiler = { path = "src/lea-compiler" }
 lea-vm = { path = "src/lea-vm" }
 lea-liblang = { path = "src/liblang" }
-docopt = { git = "https://github.com/docopt/docopt.rs" }
-docopt_macros = { git = "https://github.com/docopt/docopt.rs" }
+clap = "1.4"
 rustc-serialize = "0.3"
 bincode = "0.4"
 term = "0.2"

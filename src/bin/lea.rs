@@ -1,9 +1,7 @@
 //! Minimal REPL
 
-#![feature(plugin)]
-#![plugin(docopt_macros)]
-
-extern crate docopt;
+#[macro_use]
+extern crate clap;
 extern crate rustc_serialize;
 extern crate term;
 extern crate lea_compiler as compiler;
@@ -17,22 +15,6 @@ use vm::function::FunctionProto;
 use vm::{Value, VM};
 
 use std::io::{self, stdin, stderr, Write, BufRead};
-
-
-docopt!(Args derive Debug, "
-The interactive Lea REPL
-
-Usage:
-    lea [ --help | --version ]
-    lea [ -e <code> ]... [--] <file> [ <arg> ]...
-    lea [ -e <code> ]... [-i | --interactive]
-
-Options:
-    -h, --help          Show this help
-    -v, --version       Show the version of the Lea package
-    -e, --exec <code>   Execute <code>
-    -i, --interactive   Enter interactive mode after processing all arguments
-", arg_file: Option<String>);
 
 
 /// Opens a terminal that writes to stderr. If stderr couldn't be opened as a terminal, creates a
@@ -155,51 +137,51 @@ fn repl(vm: &mut VM, env: Value) -> io::Result<()> {
     Ok(())
 }
 
-#[allow(dead_code)]     // TODO write tests
 fn main() {
-    match Args::docopt().decode::<Args>() {
-        Err(e) => {
-            println!("{}", e);
+    let args = clap_app!(lea =>
+        (version: lea::version_str())
+        (about: "The interactive Lea REPL")
+        (@arg FILE: "The file to execute")
+        (@arg exec: -e --exec +takes_value ... "Execute code")
+        (@arg interactive: -i --interactive
+            "Enter interactive mode after processing all arguments")
+    ).get_matches();
+
+    let arg_file = args.value_of("FILE");
+    let flag_exec = args.values_of("exec").unwrap_or(Vec::new());
+    let flag_interactive = args.value_of("interactive").is_some();
+
+    let enter_repl = flag_interactive || (flag_exec.is_empty() && arg_file.is_none());
+    let mut vm = VM::new();
+    let env = lea::build_stdlib(&mut vm.gc);
+
+    for code in flag_exec {
+        match run_code(&code, "<cmdline>", &mut vm, env) {
+            Ok(true) => {}
+            Ok(false) => {return}
+            Err(e) => {
+                println!("{}", e);
+                return
+            }
         }
-        Ok(args) => match args {
-            Args { flag_version: true, .. } => {
-                println!("Lea {}", lea::version_str());
+    }
+
+    // TODO Pass the arguments to the program
+    if let Some(file) = arg_file {
+        match run_file(&file, &mut vm, env) {
+            Ok(true) => {}
+            Ok(false) => {return}
+            Err(e) => {
+                println!("{}", e);
+                return
             }
-            Args { flag_exec, flag_interactive, arg_file, .. } => {
-                let enter_repl = flag_interactive || (flag_exec.is_empty() && arg_file.is_none());
-                let mut vm = VM::new();
-                let env = lea::build_stdlib(&mut vm.gc);
+        }
+    }
 
-                for code in flag_exec {
-                    match run_code(&code, "<cmdline>", &mut vm, env) {
-                        Ok(true) => {}
-                        Ok(false) => {return}
-                        Err(e) => {
-                            println!("{}", e);
-                            return
-                        }
-                    }
-                }
-
-                // TODO Pass the arguments to the program
-                if let Some(file) = arg_file {
-                    match run_file(&file, &mut vm, env) {
-                        Ok(true) => {}
-                        Ok(false) => {return}
-                        Err(e) => {
-                            println!("{}", e);
-                            return
-                        }
-                    }
-                }
-
-                if enter_repl {
-                    match repl(&mut vm, env) {
-                        Err(e) => println!("{}", e),
-                        Ok(_) => {}
-                    }
-                }
-            }
+    if enter_repl {
+        match repl(&mut vm, env) {
+            Err(e) => println!("{}", e),
+            Ok(_) => {}
         }
     }
 }
