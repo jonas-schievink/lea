@@ -116,7 +116,7 @@ impl<'a> CompileConfig<'a> {
     pub fn named_lints(names: &[&str]) -> Option<CompileConfig<'a>> {
         let mut conf = CompileConfig::empty();
         for name in names {
-            match transform::TRANSFORMS.get(name) {
+            match transform::TRANSFORMS.get(*name) {
                 None => { return None; },
                 Some(tr) => {
                     conf.trans.push((tr, LintMode::Warn));
