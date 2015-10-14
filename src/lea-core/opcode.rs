@@ -20,35 +20,35 @@ pub use self::Opcode::*;
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, RustcEncodable, RustcDecodable)]
 #[repr(u8)]
 pub enum Opcode {
-    /// > R[A] := R[B]
+    /// **`R[A] := R[B]`**
     MOV(u8, u8),
-    /// > R[A] := C[Xu]
+    /// **`R[A] := C[Xu]`**
     ///
     /// Loads the constant with index `Xu` into `R[A]`.
     LOADK(u8, u16),
-    /// > R[A] := nil, R[A+1] := nil, ..., R[A+B] := nil
+    /// **`R[A] := nil, R[A+1] := nil, ..., R[A+B] := nil`**
     ///
     /// Assigns `nil` to the B+1 registers starting at A. If B is 0, assigns `nil` only to `R[A]`.
     LOADNIL(u8, u8),
-    /// > R[A], R[A+1], ..., R[A+B] := C
+    /// **`R[A], R[A+1], ..., R[A+B] := C`**
     ///
     /// Assigns a boolean to B+1 registers from `R[A]` to `R[A+B]`. If C is `false`, assign `false`
     /// to the registers, otherwise assign `true`.
     LOADBOOL(u8, u8, bool),
-    /// > R[A] := {}
+    /// **`R[A] := {}`**
     ///
     /// Creates a new table and assigns it to `R[A]`.
     TABLE(u8),  // TODO Include initial capacity / Create from template
-    /// > R[A] := []
+    /// **`R[A] := []`**
     ///
     /// Creates a new array and assigns it to `R[A]`.
     ARRAY(u8),  // TODO Include initial capacity / Create from template
-    /// > R[A] := closure of PROTO[Xu]
+    /// **`R[A] := closure of PROTO[Xu]`**
     ///
     /// Instantiates function prototype number `Xu` and stores a reference to the created closure
     /// in `R[A]`
     FUNC(u8, u16),
-    /// > R[A], R[A+1], ..., R[A+C-2] := R\[A](R[A+1], ..., R[A+B-1])
+    /// **`R[A], R[A+1], ..., R[A+C-2] := R\[A](R[A+1], ..., R[A+B-1])`**
     ///
     /// Calls `R[A]` with B-1 arguments stored in `R[A+1]` through `R[A+B-1]`. If B is 1, no
     /// arguments are passed. If B is 0, passes all arguments from A+1 to the top of the stack
@@ -64,7 +64,7 @@ pub enum Opcode {
     ///
     /// This might invoke a metamethod if `R[A]` has a metatable with a `__call` field.
     CALL(u8, u8, u8),
-    /// > return R[A], R[A+1], ..., R[A+B-2]
+    /// **`return R[A], R[A+1], ..., R[A+B-2]`**
     ///
     /// Returns B-1 values stored in `R[A]` through `R[A+B-2]` to the caller. If B is 1, returns no
     /// values and just leaves the current function, returning control to the caller. If B is 0,
@@ -73,111 +73,115 @@ pub enum Opcode {
     /// If the program's main function executes this opcode, the VM will pass the return values to
     /// the code that started the VM.
     RETURN(u8, u8),
-    /// > close_upval(R[A], R[A+1], ...)
+    /// **`close_upval(R[A], R[A+1], ...)`**
     ///
     /// Closes all open upvalues in registers `A` and higher.
     CLOSE(u8),
-    /// > R[A], R[A+1], ..., R[A+B-1] := varargs
+    /// **`R[A], R[A+1], ..., R[A+B-1] := varargs`**
     ///
     /// Stores B arguments passed as variable arguments (in `...`) in `R[A]` through `R[A+B-1]`.
     /// If B is 0, stores all varargs in `R[A]`, `R[A+1]`, ... (expanding the stack if necessary).
     VARARGS(u8, u8),
-    /// > PC += Xs
+    /// **`PC += Xs`**
     ///
     /// Unconditional jump. Offsets `PC` by `Xs`, which may be negative.
     ///
     /// All jumps share the same property: If `Xs` is 0, PC will not be changed (the jump acts
     /// like a no-op). If `Xs` is -1, an endless loop is created.
     JMP(i16),
-    /// > if R[A]: PC += Xs
+    /// **`if R[A]: PC += Xs`**
     ///
     /// Conditional jump. If the value in `R[A]` is "truthy" (not `false` or `nil`), offsets `PC`
     /// by `Xs`.
     IF(u8, i16),
-    /// > if not R[A]: PC += Xs
+    /// **`if not R[A]: PC += Xs`**
     ///
     /// If the value in `R[A]` is `false` or `nil`, offsets `PC` by `Xs`.
     IFNOT(u8, i16),
-    /// > assert: R[A], R[A+1], R[A+2] are numeric
-    /// > if (R[A+1] >= 0 && R[A] > R[A+2]) || (R[A+1] < 0 && R[A] < R[A+2]): PC += Xu
+    /// **`assert: R[A], R[A+1], R[A+2] are numeric`**
+    ///
+    /// **`if (R[A+1] >= 0 && R[A] > R[A+2]) || (R[A+1] < 0 && R[A] < R[A+2]): PC += Xu`**
     ///
     /// Jumps out of a for-loop if the loop variable in `R[A]` is outside the range of the loop:
     /// If the loop step in `R[A+1]` is non-negative, this occurs exactly when the value is larger
     /// than the loop limit in `R[A+2]`. If the step is negative, this occurs when the value is
     /// smaller than the limit, since the loop runs backwards.
     FORCHECK(u8, u16),
-    /// > R[A] := U[B]
+    /// **`R[A] := U[B]`**
     GETUPVAL(u8, u8),
-    /// > U[A] := R[B]
+    /// **`U[A] := R[B]`**
     SETUPVAL(u8, u8),
-    /// > R[A] := R[B][R[C]]
+    /// **`R[A] := R[B][R[C]]`**
     ///
     /// Indexes `R[B]` with the value in `R[C]` and stores the result in `R[A]`.
     GETIDX(u8, u8, u8),
-    /// > R[A][R[B]] := R[C]
+    /// **`R[A][R[B]] := R[C]`**
     ///
     /// Stores `R[C]` in `R[A]` at index `R[B]`.
     SETIDX(u8, u8, u8),
 
-    // Operator opcodes. Any of them can call a metamethod if the value in R[B] or R[C] has an
-    // associated metatable that overrides the operator.
-
-    /// > R[A] := R[B] + R[C]
+    /// **`R[A] := R[B] + R[C]`**
+    ///
+    /// All operator opcodes can call a metamethod, depending on the values in `R[B]` and `R[C]` and
+    /// the specific operation.
     ADD(u8, u8, u8),
-    /// > R[A] := R[B] - R[C]
+    /// **`R[A] := R[B] - R[C]`**
     SUB(u8, u8, u8),
-    /// > R[A] := R[B] * R[C]
+    /// **`R[A] := R[B] * R[C]`**
     MUL(u8, u8, u8),
-    /// > R[A] := R[B] / R[C]
+    /// **`R[A] := R[B] / R[C]`**
     DIV(u8, u8, u8),
-    /// > R[A] := R[B] % R[C]
+    /// **`R[A] := R[B] % R[C]`**
     MOD(u8, u8, u8),
-    /// > R[A] := R[B] ^ R[C]
+    /// **`R[A] := R[B] ^ R[C]`**
     POW(u8, u8, u8),
 
-    /// > R[A] := R[B] == R[C]
+    /// **`R[A] := R[B] == R[C]`**
     EQ(u8, u8, u8),
-    /// > R[A] := R[B] != R[C]
+    /// **`R[A] := R[B] != R[C]`**
     NEQ(u8, u8, u8),
-    /// > R[A] := R[B] <= R[C]
+    /// **`R[A] := R[B] <= R[C]`**
     LEQ(u8, u8, u8),
-    /// > R[A] := R[B] >= R[C]
+    /// **`R[A] := R[B] >= R[C]`**
     GEQ(u8, u8, u8),
-    /// > R[A] := R[B] < R[C]
+    /// **`R[A] := R[B] < R[C]`**
     LESS(u8, u8, u8),
-    /// > R[A] := R[B] > R[C]
+    /// **`R[A] := R[B] > R[C]`**
     GREATER(u8, u8, u8),
 
-    // LAND and LOR are implemented with jumps because they can shortcut. This also implies that
-    // they cannot be overridden via a metatable.
-
-    /// > R[A] := R[B] & R[C]
+    /// **`R[A] := R[B] & R[C]`**
+    ///
+    /// Bitwise and. Logical `and` / `or` (`&&` / `||`) can shortcut and is implemented via
+    /// test-and-jump. `&&` / `||` can also not be overridden via a metamethod.
     BAND(u8, u8, u8),
-    /// > R[A] := R[B] | R[C]
+    /// **`R[A] := R[B] | R[C]`**
     BOR(u8, u8, u8),
-    /// > R[A] := R[B] ~ R[C]
+    /// **`R[A] := R[B] ~ R[C]`**
     BXOR(u8, u8, u8),
-    /// > R[A] := R[B] << R[C]
+    /// **`R[A] := R[B] << R[C]`**
     SHIFTL(u8, u8, u8),
-    /// > R[A] := R[B] >> R[C]
+    /// **`R[A] := R[B] >> R[C]`**
     SHIFTR(u8, u8, u8),
 
-    /// > R[A] := R[B] .. R[C]
+    /// **`R[A] := R[B] .. R[C]`**
     ///
     /// Concatenates the value in `R[B]` with the value in `R[C]`. Numbers are coerced to strings.
+    /// If one of the values is neither a string nor a number, the `__concat` metamethod is called
+    /// to convert the value.
     CONCAT(u8, u8, u8),
 
-    /// > R[A] := -R[B]
+    /// **`R[A] := -R[B]`**
     NEG(u8, u8),
-    /// > R[A] := ~R[B]
+    /// **`R[A] := ~R[B]`**
     INV(u8, u8),
-    /// > R[A] := #R[B]
+    /// **`R[A] := #R[B]`**
     LEN(u8, u8),
-    /// > R[A] := !R[B]
+    /// **`R[A] := !R[B]`**
     ///
     /// The values `false` and `nil` will be converted to `true`, any other value will be
     /// converted to `false`. This does not call a metamethod.
     NOT(u8, u8),
+
     /// Causes a VM panic. Used by the emitter for opcodes that will be replaced later in the
     /// compilation (such as forward jumps).
     INVALID,
