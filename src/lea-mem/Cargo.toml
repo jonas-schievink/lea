@@ -9,4 +9,4 @@ name = "lea_mem"
 path = "lib.rs"
 
 [dependencies]
-libc = "*"
+libc = "0.1"
