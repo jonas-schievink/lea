@@ -70,7 +70,7 @@ impl GcStrategy for NoopGc {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mem::GcStrategy;
+    use GcStrategy;
 
     #[test]
     fn test_drop() {

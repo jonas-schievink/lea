@@ -1,7 +1,7 @@
 use value::Value;
 use mem::{GcStrategy, TracedRef};
-use string::Str;
 use number::*;
+use Str;
 use VM;
 
 use std::hash::*;
@@ -153,7 +153,20 @@ impl ToValues for LeaInt {
     }
 }
 
-impl<T: Into<Str>> ToValues for T {
+// These impls are all the same, and an impl for `T: Into<Str>` would be better, but isn't allowed
+// due to conflicting impls :(
+// (any type could `impl Into<Str>`, including types like `LeaFloat`)
+impl ToValues for Str {
+    fn to_values<F, G: GcStrategy>(self, mut push: F, gc: &mut G) where F: FnMut(Value) {
+        push(Value::String(gc.intern_str(self)))
+    }
+}
+impl<'a> ToValues for &'a str {
+    fn to_values<F, G: GcStrategy>(self, mut push: F, gc: &mut G) where F: FnMut(Value) {
+        push(Value::String(gc.intern_str(self)))
+    }
+}
+impl ToValues for String {
     fn to_values<F, G: GcStrategy>(self, mut push: F, gc: &mut G) where F: FnMut(Value) {
         push(Value::String(gc.intern_str(self)))
     }

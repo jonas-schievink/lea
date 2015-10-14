@@ -11,4 +11,5 @@ path = "lib.rs"
 [dependencies]
 lea-core = { path = "../lea-core" }
 lea-num = { path = "../lea-num" }
+lea-mem = { path = "../lea-mem" }
 log = "0.3"
