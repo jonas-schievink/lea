@@ -8,25 +8,18 @@
 // TODO: Evaluate the use of huge pages for arena allocation (on each OS separately). Might want to
 // switch dynamically, to prevent too much wasted memory (does this really matter?).
 
-#[cfg(unix)]
-#[path = "alloc_posix.rs"]
-mod alloc;
-
-#[cfg(windows)]
-#[path = "alloc_windows.rs"]
-mod alloc;
-
 mod box64;
-
-use self::alloc::{ArenaBox, alloc_arena};
 
 use GcStrategy;
 use GcCallback;
 use string::Str;
 use TracedRef;
 
+use aligned_alloc::{aligned_alloc, aligned_free};
+
 use std::any::Any;
 use std::mem;
+use std::ops::{Deref, DerefMut};
 
 /// Selects the size of an arena:
 ///
@@ -90,7 +83,7 @@ impl Default for Metadata {
 /// An arena. This structure is large, never handle it by-value, only via `ArenaBox`, provided by
 /// the platform-specific allocation module.
 #[repr(C)]
-pub struct Arena {  // FIXME `pub` because Rust bug...
+struct Arena {
     metadata: Metadata,
     cells: [Cell; CELL_COUNT as usize],
 }
@@ -101,7 +94,7 @@ impl Arena {
         // `alloc_arena` returns uninitialized memory. The arena doesn't care if the data area is
         // uninitialized, but the metadata area needs to be cleared first.
         unsafe {
-            let mut b = alloc_arena();
+            let mut b = ArenaBox::alloc();
             b.metadata = Metadata::default();
 
             b
@@ -113,6 +106,31 @@ impl Arena {
     fn alloc(&mut self, size: usize) -> Option<*mut ()> {
         let _cells = (size >> 4).next_power_of_two();
         unimplemented!();
+    }
+}
+
+/// Manages an `Arena`, allocated with a suitable alignment.
+struct ArenaBox(*mut Arena);
+
+impl ArenaBox {
+    /// Allocates an uninitialized `Arena`
+    unsafe fn alloc() -> ArenaBox {
+        ArenaBox(aligned_alloc(ARENA_SIZE, ARENA_SIZE) as *mut Arena)
+    }
+}
+
+impl Deref for ArenaBox {
+    type Target = Arena;
+    fn deref(&self) -> &Arena { unsafe { &*self.0 } }
+}
+
+impl DerefMut for ArenaBox {
+    fn deref_mut(&mut self) -> &mut Arena { unsafe { &mut *self.0 } }
+}
+
+impl Drop for ArenaBox {
+    fn drop(&mut self) {
+        unsafe { aligned_free(self.0 as *mut ()) }
     }
 }
 
