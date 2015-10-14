@@ -18,6 +18,8 @@
 //! marked. This makes sure that the finalization function can access the object and all reachable
 //! objects. The object is removed from the finalized-object list and its finalizer is invoked.
 
+extern crate libc;
+
 use std::any::Any;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -25,6 +27,7 @@ use std::mem::transmute;
 
 use string::Str;
 
+pub mod arena;
 pub mod noop;
 pub mod string;
 
