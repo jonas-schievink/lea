@@ -1,4 +1,4 @@
-//! Minimal REPL
+//! Interpreter and minimal REPL
 
 #[macro_use]
 extern crate clap;
@@ -140,7 +140,7 @@ fn repl(vm: &mut VM, env: Value) -> io::Result<()> {
 fn main() {
     let args = clap_app!(lea =>
         (version: lea::version_str())
-        (about: "The interactive Lea REPL")
+        (about: "Lea interpreter and interactive REPL")
         (@arg FILE: "The file to execute")
         (@arg exec: -e --exec +takes_value ... "Execute code")
         (@arg interactive: -i --interactive

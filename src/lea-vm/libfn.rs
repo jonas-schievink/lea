@@ -79,10 +79,10 @@ fn size() {
 }
 
 //===============================================================================================
-// What follows is an abomination. *It* allows defining library function in a type-safe way. *It*
-// also preserves metadata about the functions: Parameters and return values, including their
-// declared values, are stored along with the function. *It* is also completely macro-based, so
-// inexplicable behaviour is to be expected.
+// What follows is an abomination. *It* allows defining library functions that pattern-match the
+// types of their arguments. *It* also preserves metadata about the functions: Parameters and return
+// values, including their declared values, are stored along with the function. *It* is also
+// completely macro-based, so prepare for inexplicable behaviour and confusing error messages!
 //
 // If you want to live a happy life, don't scroll past this. You haven't missed anything. If you
 // want to suffer for eternity, please continue and take a look at *it*.
@@ -95,7 +95,7 @@ fn size() {
 //   since it's not entirely useless. Let's hope LLVM optimizes this right...
 // * Autoderef values
 //   Currently, if a function matches an argument with `name: string`, the type of name is
-//   TracedRef<Str>. Autoderef could use the VMs GC to get a `&Str` instead. Smart use of traits
+//   `TracedRef<Str>`. Autoderef could use the VMs GC to get a `&Str` instead. Smart use of traits
 //   makes this easier. If the autoderef'd value is returned, it must be converted back to a Value.
 
 pub enum TyMarker {
@@ -125,6 +125,8 @@ impl ToValues for Value {
     }
 }
 
+/// Passing `Value` slices will return all values inside. Allows to return an argument list matched
+/// via `list: ...`.
 impl<'a> ToValues for &'a [Value] {
     fn to_values<F, G: GcStrategy>(self, mut push: F, _: &mut G) where F: FnMut(Value) {
         for value in self {
@@ -157,6 +159,7 @@ impl<T: Into<Str>> ToValues for T {
     }
 }
 
+/// Convert the Lea type specified in an argument matcher to a `TyMarker`.
 #[macro_export]
 #[doc(hidden)]
 macro_rules! lea_ident_to_ty_marker {
@@ -170,12 +173,15 @@ macro_rules! lea_ident_to_ty_marker {
     ( ... ) => ( $crate::libfn::TyMarker::Varargs );
 }
 
+/// Interpret the argument as a pattern and return it.
 #[macro_export]
 #[doc(hidden)]
 macro_rules! lea_to_pat {
     ( $p:pat ) => ( $p );
 }
 
+/// "Token-Tree muncher" that will convert an argument matcher to a (slice) pattern that can be used
+/// inside a Rust `match`.
 #[macro_export]
 #[doc(hidden)]
 macro_rules! lea_build_ty_pat {
@@ -199,6 +205,7 @@ macro_rules! lea_build_ty_pat {
         { lea_to_pat!([$($p)*]) };
 }
 
+/// Interprets its argument as a block.
 #[macro_export]
 #[doc(hidden)]
 macro_rules! lea_to_block {
@@ -355,7 +362,7 @@ macro_rules! lea_lib_inner {
 /// ```rust
 /// # #[macro_use] extern crate lea_vm;
 /// lea_lib! {
-///     some_string = str "I am a string!".to_owned(),
+///     some_string = str "I am a string!",
 /// }
 ///
 /// # fn main() {}
@@ -363,6 +370,7 @@ macro_rules! lea_lib_inner {
 #[macro_export]
 macro_rules! lea_lib {
     ( $($t:tt)* ) => {
+        /// Initialize this Lea library by populating the given `Table`
         pub fn init<G: $crate::mem::GcStrategy>(env: &mut $crate::Table, gc: &mut G) {
             use $crate::Value;
 

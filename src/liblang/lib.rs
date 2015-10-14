@@ -2,6 +2,7 @@
 //! form an essential part of the language.
 //!
 //! Examples:
+//!
 //! * `assert`
 //! * `error`
 //! * `setmetatable`
