@@ -111,12 +111,11 @@ pub trait GcCallback {
 
 /// Trait for Garbage Collector implementations.
 pub trait GcStrategy {
-    /// Instruct the GC to perform a collection step. This can be called by user code. A VM
-    /// instance is passed so the GC can run finalizers.
+    /// Instruct the GC to perform a collection step. This can be called by user code. A callback
+    /// is passed so the GC can run finalizers and find the roots.
     fn collect_step<C: GcCallback>(&mut self, &mut C);
 
-    /// Perform an atomic collection. The GC shall perform all necessary tracing and free all
-    /// currently unreachable objects.
+    /// Perform an atomic collection. The GC should try to free all currently unreachable objects.
     fn collect_atomic<C: GcCallback>(&mut self, &mut C);
 
     /// Called when a garbage-collected object is created. The GC should take ownership of the
