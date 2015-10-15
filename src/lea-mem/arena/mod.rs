@@ -152,21 +152,21 @@ impl Arena {
         // Find a free block (first cell has: Block = 0, Mark = 1) that's large enough
 
         // First index of current free block
-        let mut block_start = None;
-        // Length of our current free block
+        let mut block_start = 0;
+        // Length of our current free block. If 0, no current free block exists.
         let mut block_len = 0;
 
         for cell in FIRST_CELL_INDEX..CELL_COUNT {
             let block = self.metadata.block_bitmap.get(cell);
             let mark = self.metadata.mark_bitmap.get(cell);
 
-            if block_start.is_none() {
+            if block_len == 0 {
                 // We don't have a free block we can follow, so we're only interested in new free
                 // blocks.
                 if !block && mark {
                     // Start of a free block. Save the index.
-                    block_start = Some(cell);
-                    block_len = 0;
+                    block_start = cell;
+                    block_len = 1;
                 }
             } else {
                 match (block, mark) {
@@ -183,31 +183,30 @@ impl Arena {
                     (true, _) => {
                         // Start of allocated block. Since our block is too small for the
                         // allocation, we have to start over.
-                        block_start = None;
+                        block_len = 0;
+                        continue;
+                    }
+                }
+            }
+
+            if block_len == cells {
+                // Done, cut the block into pieces and allocate. `cell` is the last cell of the
+                // allocated block.
+
+                // Mark the block as allocated:
+                self.metadata.block_bitmap.set(block_start, true);
+
+                // Mark the following cell as a new free block, if applicable
+                if cell < CELL_COUNT {
+                    let block = self.metadata.block_bitmap.get(cell + 1);
+                    let mark = self.metadata.mark_bitmap.get(cell + 1);
+                    if !block && !mark {
+                        // Block extent. Make new free block.
+                        self.metadata.mark_bitmap.set(cell + 1, true);
                     }
                 }
 
-                if block_len == cells {
-                    // Done, cut the block into pieces and allocate. `cell` is the last cell of the
-                    // allocated block.
-
-                    let block_start = block_start.unwrap();
-
-                    // Mark the block as allocated:
-                    self.metadata.block_bitmap.set(block_start, true);
-
-                    // Mark the following cell as a new free block, if applicable
-                    if cell < CELL_COUNT {
-                        let block = self.metadata.block_bitmap.get(cell + 1);
-                        let mark = self.metadata.mark_bitmap.get(cell + 1);
-                        if !block && !mark {
-                            // Block extent. Make new free block.
-                            self.metadata.mark_bitmap.set(cell + 1, true);
-                        }
-                    }
-
-                    return Some(block_start)
-                }
+                return Some(block_start)
             }
         }
 
@@ -363,4 +362,6 @@ fn alloc() {
     assert_eq!(arena.metadata.mark_bitmap.get(FIRST_CELL_INDEX), true);
     assert_eq!(arena.metadata.block_bitmap.get(FIRST_CELL_INDEX), false);
     assert_eq!(arena.alloc_cells(1), Some(FIRST_CELL_INDEX));
+    assert_eq!(arena.alloc_cells(17), Some(FIRST_CELL_INDEX + 1));
+    assert_eq!(arena.alloc_cells(1), Some(FIRST_CELL_INDEX + 1 + 17));
 }
