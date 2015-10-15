@@ -213,10 +213,21 @@ impl Arena {
         None
     }
 
+    /// Deallocates a block of cells starting with the cell at `block_start`.
+    #[inline]
+    fn dealloc_cells(&mut self, block_start: u16) {
+        // Must actually be start of allocated block
+        debug_assert_eq!(self.metadata.block_bitmap.get(block_start), true);
+
+        // Mark block as free
+        self.metadata.block_bitmap.set(block_start, false);
+        self.metadata.mark_bitmap.set(block_start, true);
+    }
+
     /// Tries to allocate `size` bytes inside this arena. The allocation will always be aligned to
     /// 16 bytes.
-    fn alloc(&mut self, size: usize) -> Option<*mut ()> {
-        let cells = cmp::max(1, size.next_power_of_two());
+    fn alloc(&mut self, bytes: usize) -> Option<*mut ()> {
+        let cells = cmp::max(1, bytes.next_power_of_two());
         debug_assert!(cells <= u16::MAX as usize);
 
         self.alloc_cells(cells as u16).map(|cell| self.cell_index_to_ptr(cell))
@@ -271,7 +282,8 @@ impl GcStrategy for ArenaGc {
 
         debug_assert!(mem::align_of::<T>() <= 16,
             "align {} too large for arena allocation", mem::align_of::<T>());
-        debug_assert!(size <= 64, "size {} too large for arena allocation", size);
+        debug_assert!(size <= 64,
+            "size {} too large for arena allocation", size);
 
         for arena in &mut self.arenas {
             if let Some(ptr) = arena.alloc(size) {
@@ -357,11 +369,23 @@ fn bitmaps() {
 }
 
 #[test]
-fn alloc() {
+fn alloc_seq() {
     let mut arena = Arena::new();
     assert_eq!(arena.metadata.mark_bitmap.get(FIRST_CELL_INDEX), true);
     assert_eq!(arena.metadata.block_bitmap.get(FIRST_CELL_INDEX), false);
     assert_eq!(arena.alloc_cells(1), Some(FIRST_CELL_INDEX));
     assert_eq!(arena.alloc_cells(17), Some(FIRST_CELL_INDEX + 1));
     assert_eq!(arena.alloc_cells(1), Some(FIRST_CELL_INDEX + 1 + 17));
+}
+
+#[test]
+fn alloc_dealloc() {
+    let mut arena = Arena::new();
+    assert_eq!(arena.metadata.mark_bitmap.get(FIRST_CELL_INDEX), true);
+    assert_eq!(arena.metadata.block_bitmap.get(FIRST_CELL_INDEX), false);
+    assert_eq!(arena.alloc_cells(17), Some(FIRST_CELL_INDEX));
+    arena.dealloc_cells(FIRST_CELL_INDEX);
+    assert_eq!(arena.alloc_cells(1), Some(FIRST_CELL_INDEX));
+    // This will coalesce the 2 free blocks
+    assert_eq!(arena.alloc_cells(17), Some(FIRST_CELL_INDEX + 1));
 }

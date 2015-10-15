@@ -14,7 +14,7 @@ use string::Str;
 
 use super::*;
 
-#[allow(dead_code)]     // possible bug in dead_code lint
+#[allow(dead_code)]     // possible bug in dead_code lint (the fields *are* used in the drop glue)
 struct Boxed {
     obj: Box<Any>,
     next: Option<Box<Boxed>>,
