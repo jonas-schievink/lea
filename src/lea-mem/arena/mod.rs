@@ -5,6 +5,10 @@
 //! reserved for metadata. Arenas must be aligned to their size, which requires platform-specific
 //! allocation code (there seems to be no suitable "aligned allocation" crate).
 
+// This is still implemented as a stop-the-world collector. We use the `mark` bitmap for the only
+// mark bit of objects. When this is made incremental, the second mark bit needs to be stored
+// inside the objects somehow.
+
 // TODO: Evaluate the use of huge pages for arena allocation (on each OS separately). Might want to
 // switch dynamically, to prevent too much wasted memory (does this really matter?).
 

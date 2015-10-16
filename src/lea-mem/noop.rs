@@ -4,7 +4,7 @@
 //!
 //! When the `NoopGc` is dropped, all objects will be dropped along with it.
 //!
-//! This is the default GC until the stop-the-world collector works correctly.
+//! This is the default GC until we have one that works.
 
 use std::any::Any;
 use std::mem::replace;
