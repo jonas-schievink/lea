@@ -18,6 +18,8 @@
 //! marked. This makes sure that the finalization function can access the object and all reachable
 //! objects. The object is removed from the finalized-object list and its finalizer is invoked.
 
+// TODO finalizers and weak tables
+
 extern crate aligned_alloc;
 
 use std::any::Any;
@@ -30,9 +32,6 @@ use string::Str;
 pub mod arena;
 pub mod noop;
 pub mod string;
-
-
-// TODO finalizers and weak references (with callback)
 
 pub type DefaultGc = noop::NoopGc;
 
@@ -67,9 +66,6 @@ impl<T: Any> Eq for TracedRef<T> {}
 
 impl<T: Any> Hash for TracedRef<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        // XXX Hasher's methods are all unstable, except `write`, which we can't use, since there's
-        // no constant that tells us the size of pointers in bytes (so we can't transmute to a
-        // fixed-size array)
         state.write_usize(self.ptr as usize);
     }
 }

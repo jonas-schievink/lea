@@ -1,9 +1,12 @@
 //! Arena allocator inspired by LuaJIT's [new GC](http://wiki.luajit.org/New-Garbage-Collector).
 //!
-//! The allocator uses fixed-size arenas to allocate all objects. An arena can have any power-of-two
-//! size from 64 KiB up to 1 MiB. Arenas are split up into 16 Byte cells. 1/64th of the arena is
-//! reserved for metadata. Arenas must be aligned to their size, which requires platform-specific
-//! allocation code (there seems to be no suitable "aligned allocation" crate).
+//! The allocator uses fixed-size arenas to allocate all objects. An arena can have any
+//! power-of-two size from 64 KiB up to 1 MiB. Arenas are split up into 16 Byte cells. 1/64th of
+//! the arena is reserved for metadata.
+//!
+//! Arenas must be aligned to their size to allow bit-masking tricks: When given an address to an
+//! object, we can get the arena's base address and the cell number by just masking and shifting
+//! bits.
 
 // This is still implemented as a stop-the-world collector. We use the `mark` bitmap for the only
 // mark bit of objects. When this is made incremental, the second mark bit needs to be stored
@@ -142,8 +145,8 @@ impl Arena {
     }
 
     fn cell_index_to_ptr(&self, cell: u16) -> *mut () {
-        let self_ptr = self as *const _ as usize;
-        let cell_addr = self_ptr + ((cell as usize) << 4);
+        let self_addr = self as *const _ as usize;
+        let cell_addr = self_addr + ((cell as usize) << 4);
 
         cell_addr as *mut ()
     }
@@ -152,6 +155,9 @@ impl Arena {
     /// success and `None` on failure.
     fn alloc_cells(&mut self, cells: u16) -> Option<u16> {
         debug_assert!(cells > 0);
+
+        // This is a completely naive first-fit algorithm that scans all cells for each allocation
+        // and can be improved significantly.
 
         // Find a free block (first cell has: Block = 0, Mark = 1) that's large enough
 
@@ -219,7 +225,8 @@ impl Arena {
 
     /// Deallocates a block of cells starting with the cell at `block_start`.
     #[inline]
-    fn dealloc_cells(&mut self, block_start: u16) {
+    #[allow(dead_code)]
+    fn dealloc_block(&mut self, block_start: u16) {
         // Must actually be start of allocated block
         debug_assert_eq!(self.metadata.block_bitmap.get(block_start), true);
 
@@ -236,6 +243,17 @@ impl Arena {
 
         self.alloc_cells(cells as u16).map(|cell| self.cell_index_to_ptr(cell))
     }
+}
+
+/// Calculates a pointer to the arena the object was allocated in, as well as the cell index of the
+/// block.
+#[allow(dead_code)]
+unsafe fn ptr_to_arena(ptr: *const ()) -> (*mut Arena, u16) {
+    let addr = ptr as usize;
+    let arena_addr = addr & !(ARENA_SIZE - 1);
+    let cell = (addr >> 4) & (CELL_COUNT as usize - 1);
+
+    (arena_addr as *mut Arena, cell as u16)
 }
 
 /// Manages an `Arena`, allocated with a suitable alignment.
@@ -388,7 +406,7 @@ fn alloc_dealloc() {
     assert_eq!(arena.metadata.mark_bitmap.get(FIRST_CELL_INDEX), true);
     assert_eq!(arena.metadata.block_bitmap.get(FIRST_CELL_INDEX), false);
     assert_eq!(arena.alloc_cells(17), Some(FIRST_CELL_INDEX));
-    arena.dealloc_cells(FIRST_CELL_INDEX);
+    arena.dealloc_block(FIRST_CELL_INDEX);
     assert_eq!(arena.alloc_cells(1), Some(FIRST_CELL_INDEX));
     // This will coalesce the 2 free blocks
     assert_eq!(arena.alloc_cells(17), Some(FIRST_CELL_INDEX + 1));
