@@ -1,22 +1,4 @@
 //! Memory management interface and garbage collection.
-//!
-//! # Finalization
-//!
-//! Finalizers allow Lea code to be run when a table is unreachable and would be collected by the
-//! GC. They can execute arbitrary code and potentially make the table reachable again, and have
-//! access to the table and its referenced objects, which means that the GC must not collect them
-//! when a finalizer needs to run.
-//!
-//! A tables metatable can specify a `__gc` field, which will be run as a finalizer for the table
-//! (if it's a function). The table should register itself for finalization in the GC when its
-//! metatable is changed and contains a `__gc` field. If the metatable doesn't contain the field,
-//! and it is later added to it, the table will *not* be marked for finalization, matching Lua
-//! semantics.
-//!
-//! The GC manages a list of objects with finalizers and scans through them after the main mark
-//! phase. If any object is unmarked, it will be added to a finalization list and recursively
-//! marked. This makes sure that the finalization function can access the object and all reachable
-//! objects. The object is removed from the finalized-object list and its finalizer is invoked.
 
 // TODO finalizers and weak tables
 
