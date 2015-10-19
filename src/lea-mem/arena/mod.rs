@@ -124,7 +124,7 @@ impl Default for Metadata {
     }
 }
 
-/// An arena. This structure is large, never handle it by-value, only via `ArenaBox`.
+/// An arena. This structure is large, never handle it by-value, only via `BoxedArena`.
 #[repr(C)]
 struct Arena {
     metadata: Metadata,
@@ -132,12 +132,12 @@ struct Arena {
 }
 
 impl Arena {
-    /// Allocates a new `Arena` and returns an `ArenaBox`.
-    fn new() -> ArenaBox {
+    /// Allocates a new `Arena` and returns an `BoxedArena`.
+    fn new() -> BoxedArena {
         // `alloc_arena` returns uninitialized memory. The arena doesn't care if the data area is
         // uninitialized, but the metadata area needs to be cleared first.
         unsafe {
-            let mut b = ArenaBox::alloc();
+            let mut b = BoxedArena::alloc();
             b.metadata = Metadata::default();
 
             b
@@ -257,25 +257,25 @@ unsafe fn ptr_to_arena(ptr: *const ()) -> (*mut Arena, u16) {
 }
 
 /// Manages an `Arena`, allocated with a suitable alignment.
-struct ArenaBox(*mut Arena);
+struct BoxedArena(*mut Arena);
 
-impl ArenaBox {
+impl BoxedArena {
     /// Allocates an uninitialized `Arena`
-    unsafe fn alloc() -> ArenaBox {
-        ArenaBox(aligned_alloc(ARENA_SIZE, ARENA_SIZE) as *mut Arena)
+    unsafe fn alloc() -> BoxedArena {
+        BoxedArena(aligned_alloc(ARENA_SIZE, ARENA_SIZE) as *mut Arena)
     }
 }
 
-impl Deref for ArenaBox {
+impl Deref for BoxedArena {
     type Target = Arena;
     fn deref(&self) -> &Arena { unsafe { &*self.0 } }
 }
 
-impl DerefMut for ArenaBox {
+impl DerefMut for BoxedArena {
     fn deref_mut(&mut self) -> &mut Arena { unsafe { &mut *self.0 } }
 }
 
-impl Drop for ArenaBox {
+impl Drop for BoxedArena {
     fn drop(&mut self) {
         unsafe { aligned_free(self.0 as *mut ()) }
     }
@@ -283,7 +283,7 @@ impl Drop for ArenaBox {
 
 /// Arena-based GC
 pub struct ArenaGc {
-    arenas: Vec<ArenaBox>,
+    arenas: Vec<BoxedArena>,
 }
 
 impl GcStrategy for ArenaGc {
