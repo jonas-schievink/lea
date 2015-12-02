@@ -1,6 +1,6 @@
 //! No-op Garbage Collector. This implementation doesn't collect garbage at all, so it is very
 //! simple: Neither Finalizers nor `Drop` glue needs to run, Weak references can be ignored (they
-//! will always be valid) and we don't have to keep track of all live objects.
+//! will always be valid) and the collection methods do nothing.
 //!
 //! When the `NoopGc` is dropped, all objects will be dropped along with it.
 //!

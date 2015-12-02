@@ -132,18 +132,6 @@ struct Arena {
 }
 
 impl Arena {
-    /// Allocates a new `Arena` and returns an `BoxedArena`.
-    fn new() -> BoxedArena {
-        // `alloc_arena` returns uninitialized memory. The arena doesn't care if the data area is
-        // uninitialized, but the metadata area needs to be cleared first.
-        unsafe {
-            let mut b = BoxedArena::alloc();
-            b.metadata = Metadata::default();
-
-            b
-        }
-    }
-
     fn cell_index_to_ptr(&self, cell: u16) -> *mut () {
         let self_addr = self as *const _ as usize;
         let cell_addr = self_addr + ((cell as usize) << 4);
@@ -260,9 +248,14 @@ unsafe fn ptr_to_arena(ptr: *const ()) -> (*mut Arena, u16) {
 struct BoxedArena(*mut Arena);
 
 impl BoxedArena {
-    /// Allocates an uninitialized `Arena`
-    unsafe fn alloc() -> BoxedArena {
-        BoxedArena(aligned_alloc(ARENA_SIZE, ARENA_SIZE) as *mut Arena)
+    /// Allocates and initialized a new `Arena`
+    fn new() -> BoxedArena {
+        // `aligned_alloc` returns a pointer to uninitialized memory. The arena doesn't care if the
+        // data area is uninitialized, but the metadata area needs to be initialized first.
+        let mut b = BoxedArena(aligned_alloc(ARENA_SIZE, ARENA_SIZE) as *mut Arena);
+        b.metadata = Metadata::default();
+
+        b
     }
 }
 
@@ -302,9 +295,9 @@ impl GcStrategy for ArenaGc {
 
         let size = mem::size_of::<T>();
 
-        debug_assert!(mem::align_of::<T>() <= 16,
+        assert!(mem::align_of::<T>() <= 16,
             "align {} too large for arena allocation", mem::align_of::<T>());
-        debug_assert!(size <= 64,
+        assert!(size <= 64,
             "size {} too large for arena allocation", size);
 
         for arena in &mut self.arenas {
@@ -316,7 +309,7 @@ impl GcStrategy for ArenaGc {
         }
 
         // no luck, allocate a new arena
-        let mut arena = Arena::new();
+        let mut arena = BoxedArena::new();
         let traced_ref = match arena.alloc(size) {
             Some(ptr) => TracedRef {
                 ptr: ptr as *const T,
@@ -392,7 +385,7 @@ fn bitmaps() {
 
 #[test]
 fn alloc_seq() {
-    let mut arena = Arena::new();
+    let mut arena = BoxedArena::new();
     assert_eq!(arena.metadata.mark_bitmap.get(FIRST_CELL_INDEX), true);
     assert_eq!(arena.metadata.block_bitmap.get(FIRST_CELL_INDEX), false);
     assert_eq!(arena.alloc_cells(1), Some(FIRST_CELL_INDEX));
@@ -402,7 +395,7 @@ fn alloc_seq() {
 
 #[test]
 fn alloc_dealloc() {
-    let mut arena = Arena::new();
+    let mut arena = BoxedArena::new();
     assert_eq!(arena.metadata.mark_bitmap.get(FIRST_CELL_INDEX), true);
     assert_eq!(arena.metadata.block_bitmap.get(FIRST_CELL_INDEX), false);
     assert_eq!(arena.alloc_cells(17), Some(FIRST_CELL_INDEX));
