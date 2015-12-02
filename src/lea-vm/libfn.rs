@@ -270,7 +270,7 @@ macro_rules! lea_process_body {
 #[macro_export]
 #[doc(hidden)]
 macro_rules! lea_libfn_single {
-    (fn $name:ident ($vm:ident) {
+    ($( #[$doc:meta] )* fn $name:ident ($vm:ident) {
         $(
             ( $( $pname:ident : $pty:tt ),* ) ->
             ( $( $rname:ident : $rty:tt ),* ) =>
@@ -321,6 +321,7 @@ macro_rules! lea_libfn_single {
         }
 
         #[allow(non_upper_case_globals)]
+        $( #[$doc] )*
         pub static $name: $crate::libfn::LibFnTyInfo = &[
             $(
                 (
@@ -353,8 +354,8 @@ macro_rules! lea_libfn_single {
 /// ```
 #[macro_export]
 macro_rules! lea_libfn {
-    ( $( fn $name:ident ($vm:ident) { $($b:tt)* } )+ ) => {
-        $( lea_libfn_single!(fn $name ($vm) { $($b)* } ); )+
+    ( $( $(#[$doc:meta])* fn $name:ident ($vm:ident) { $($b:tt)* } )+ ) => {
+        $( lea_libfn_single!($(#[$doc])* fn $name ($vm) { $($b)* } ); )+
     };
 }
 

@@ -25,6 +25,9 @@ use vm::function::{Function, FunctionProto, Upval};
 use compiler::{CompileConfig, compile_str};
 
 lea_libfn! {
+    /// Asserts that the first argument is neither `nil` nor `false`.
+    ///
+    /// Otherwise, errors with an optional message. Returns all arguments if successful.
     fn assert(vm) {
         (val: *, msg: *, rest: ...) -> (vals: ...) => {
             if !val.is_truthy() { return Err(msg.into()) }
@@ -36,6 +39,10 @@ lea_libfn! {
         }
     }
 
+    /// Causes a runtime error with an optional message.
+    ///
+    /// This will cause the VM to return to the last protected function call or terminate the
+    /// program if no such call is in progress.
     fn error(vm) {
         () -> () => {
             return Err("explicit error".to_owned().into())
@@ -49,6 +56,10 @@ lea_libfn! {
         }
     }
 
+    /// Converts its only argument to a string.
+    ///
+    /// Accepts either a `string`, in which case this function does nothing, or a `number`, in which
+    /// case the number will be converted appropriately.
     fn tostring(vm) {
         (val: string) -> (s: string) => {
             return [Value::String(val)]
@@ -58,6 +69,12 @@ lea_libfn! {
         }
     }
 
+    /// Converts its only argument to a number.
+    ///
+    /// Like `tostring`, this accepts a `number`, which will be returned as-is, or a `string`, which
+    /// will be converted to a number.
+    ///
+    /// If the string-number-conversion fails, `nil` will be returned instead.
     fn tonumber(vm) {
         (num: number) -> (num: number) => {
             return [num]
@@ -65,20 +82,24 @@ lea_libfn! {
         (s: string) -> (num: number) => {
             let result = unsafe { vm.gc.get_ref(s) }.parse::<::vm::number::LeaFloat>();
             let num = match result {
-                Ok(num) => num,
-                Err(e) => return Err(format!("{}", e).into()),
+                Ok(num) => Value::Number(num.into()),
+                Err(_) => Value::Nil,
             };
 
             return [num]
         }
     }
 
+    /// Returns the name of the type of its argument as a string.
     fn type_name(vm) {
         (of: *) -> (typename: string) => {
             return [of.get_type_name()]
         }
     }
 
+    /// Prints its arguments to the standard output, followed by a newline.
+    ///
+    /// The arguments will be converted to strings (this conversion can never fail).
     fn print(vm) {
         (values: ...) -> () => {
             for (i, val) in values.iter().enumerate() {
@@ -92,6 +113,7 @@ lea_libfn! {
         }
     }
 
+    /// Load (compile) a string of source code and return a callable main function.
     fn load(vm) {
         (code: string, source_name: string, _mode: string, env: *) -> (compiled: fn, err: string) => {
             let res = match super::load_impl(vm, code, Some(source_name), Some(env)) {
