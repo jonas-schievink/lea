@@ -296,10 +296,9 @@ macro_rules! lea_libfn_single {
                             stringify!($name),
                             $vm.stack[arg_start..arg_start+arg_count as usize]
                                 .iter()
-                                .fold(String::new(), |mut s, arg| {
-                                    s.push_str(arg.get_type_name());
-                                    s
-                                })
+                                .map(|arg| arg.get_type_name())
+                                .collect::<Vec<_>>()
+                                .join(", ")
                         ).into());
                     }
                 }

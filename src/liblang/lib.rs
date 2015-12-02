@@ -11,7 +11,7 @@
 //! * `type`
 //! * `pcall`
 
-#![feature(slice_patterns)] // required by the abomination macros
+#![feature(slice_patterns)] // FIXME: required by the abomination macros
 
 #[macro_use]
 extern crate lea_vm as vm;
