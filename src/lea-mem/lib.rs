@@ -15,6 +15,7 @@ pub mod arena;
 pub mod noop;
 pub mod string;
 
+/// The recommended allocator. May change without further notice.
 pub type DefaultGc = noop::NoopGc;
 
 /// A GC-managed object that may reference other GC-managed objects and keep them alive. Provides a

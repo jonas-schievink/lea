@@ -1,3 +1,5 @@
+//! Types and macros for defining library functions in Rust, callable from Lea.
+
 use value::Value;
 use mem::{GcStrategy, TracedRef};
 use number::*;
@@ -31,6 +33,7 @@ impl From<Value> for LibFnError {
     }
 }
 
+/// Newtype of a function reference to be used for library functions.
 #[derive(Copy)]
 pub struct LibFn(pub for<'a, 'b> fn(&'a mut VM,
                                     arg_start: usize,
@@ -98,17 +101,28 @@ fn size() {
 //   `TracedRef<Str>`. Autoderef could use the VMs GC to get a `&Str` instead. Smart use of traits
 //   makes this easier. If the autoderef'd value is returned, it must be converted back to a Value.
 
+/// Describes how an argument type of a function is matched.
 pub enum TyMarker {
+    /// `number`
     Number,
+    /// `string`
     String,
+    /// `bool`
     Bool,
+    /// `array`
     Array,
+    /// `table`
     Table,
+    /// `fn`
     Fn,
+    /// `*`: Matches any value
     Any,
+    /// `...`: Matches a list of values with any type (or an empty list)
     Varargs,
 }
 
+/// Records type information about a function. Currently unused, but might come in handy when
+/// autogenerating documentation or performing correctness analyses.
 pub type LibFnTyInfo = &'static [(
     &'static [(&'static str, TyMarker)],
     &'static [(&'static str, TyMarker)]
@@ -274,6 +288,7 @@ macro_rules! lea_libfn_single {
             use $crate::mem::GcStrategy;
 
             #[allow(unreachable_code)]  // Don't warn when our inserted return isn't reachable
+            // (FIXME: When attributes are allowed on expressions, annotate the `return` instead)
             pub fn $name($vm: &mut VM,
                          arg_start: usize,
                          arg_count: u8,
@@ -382,7 +397,7 @@ macro_rules! lea_lib_inner {
 #[macro_export]
 macro_rules! lea_lib {
     ( $($t:tt)* ) => {
-        /// Initialize this Lea library by populating the given `Table`
+        /// Initialize this Lea library by populating the given `Table`. Macro-generated.
         pub fn init<G: $crate::mem::GcStrategy>(env: &mut $crate::Table, gc: &mut G) {
             use $crate::Value;
 

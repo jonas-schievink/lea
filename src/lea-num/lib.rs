@@ -11,9 +11,12 @@ use std::num::Wrapping;
 
 use self::Number::*;
 
+/// The integer type to use for `Number::Int`
 pub type LeaInt = i64;
+/// The floating point type to use for `Number::Float`
 pub type LeaFloat = f64;
 
+/// Either an integer or a float. Converted as necessary.
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum Number {
     Int(LeaInt),
