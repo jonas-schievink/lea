@@ -3,6 +3,7 @@
 
 use Number;
 
+/// A constant as encountered in Lea source code
 #[derive(Debug, PartialEq, Clone, RustcEncodable, RustcDecodable)]
 pub enum Const {
     Number(Number),

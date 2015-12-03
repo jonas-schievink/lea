@@ -18,7 +18,7 @@ pub enum UpvalDesc {
     Upval(usize),
 }
 
-/// Function representation used by the emitter. Later converted to a `FunctionProto`. This owns
+/// Function representation output by the compiler. Later converted to a `FunctionProto`. This owns
 /// all child functions (as `FnData`) and can be serialized.
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct FnData {

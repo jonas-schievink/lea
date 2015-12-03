@@ -1,15 +1,5 @@
 //! The `lang` library bundles core functions that integrate deeply into the language runtime and
 //! form an essential part of the language.
-//!
-//! Examples:
-//!
-//! * `assert`
-//! * `error`
-//! * `setmetatable`
-//! * `tonumber`
-//! * `tostring`
-//! * `type`
-//! * `pcall`
 
 #![feature(slice_patterns)] // FIXME: required by the abomination macros
 

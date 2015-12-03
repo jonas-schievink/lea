@@ -24,7 +24,7 @@
 //! In `check.rs`, a `Checker` visitor is implemented, which runs over an AST and verifies that all
 //! statements and expressions are used in a valid context. Since the PEG parser has no state, it
 //! cannot do this (and it is better - though slower - to do it this way, since it separates
-//! syntax error and context-dependant errors).
+//! syntax error and context-dependent errors).
 //!
 //! For example, the checker will deny a `break` statement used outside of a loop and the varargs
 //! expression `...` outside of a varargs function.
@@ -34,8 +34,7 @@
 //! The resolver implemented in `resolve.rs` transforms any named variable (`VNamed` in the AST) to
 //! a local, upvalue, or global reference. This makes it easy to see which identifier refers to
 //! which variable (might be useful for code highlighting in IDEs) and makes the emitter a bit
-//! simpler, since it doesn't have to figure out what an identifier means if it encounters it: It
-//! already knows, since the resolver stored it in the AST.
+//! simpler, since it doesn't have to figure out what an identifier means if it encounters it.
 //!
 //! ## Linting / Optimizing
 //!
