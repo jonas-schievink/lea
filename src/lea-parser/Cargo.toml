@@ -3,6 +3,7 @@
 name = "lea-parser"
 version = "0.0.1"
 authors = ["Jonas Schievink <jonas@schievink.net>"]
+build = "build.rs"
 
 [lib]
 name = "lea_parser"
@@ -11,5 +12,8 @@ path = "lib.rs"
 [dependencies]
 term = "0.2"
 unicode-segmentation = "0.1"
-peg = { git = "https://github.com/kevinmehall/rust-peg.git" }
 lea-core = { path = "../lea-core" }
+lalrpop-util = "0.7"
+
+[build-dependencies]
+lalrpop = "0.7"
