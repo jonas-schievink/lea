@@ -161,42 +161,42 @@ fn fold_binop(lhs: &Const, op: BinOp, rhs: &Const) -> Result<Const, String> {
 impl<'a> Transform<'a> for Folder {
     fn visit_expr(&mut self, mut e: Expr<'a>) -> Expr<'a> {
         e.value = match e.value {
-            EBinOp(mut lhs, op, mut rhs) => {
+            ExprKind::BinOp(mut lhs, op, mut rhs) => {
                 lhs = Box::new(self.visit_expr(*lhs));
                 rhs = Box::new(self.visit_expr(*rhs));
 
                 let lspan = lhs.span;
                 let rspan = rhs.span;
-                if let ELit(lit_lhs) = lhs.value {
-                    if let ELit(lit_rhs) = rhs.value {
+                if let ExprKind::Lit(lit_lhs) = lhs.value {
+                    if let ExprKind::Lit(lit_rhs) = rhs.value {
                         match fold_binop(&lit_lhs, op, &lit_rhs) {
-                            Ok(newlit) => ELit(newlit),
+                            Ok(newlit) => ExprKind::Lit(newlit),
                             Err(msg) => {
                                 self.warns.push(Warning::new(e.span, msg));
-                                EBinOp(Box::new(Spanned::new(lspan, ELit(lit_lhs))), op, Box::new(Spanned::new(rspan, ELit(lit_rhs))))
+                                ExprKind::BinOp(Box::new(Spanned::new(lspan, ExprKind::Lit(lit_lhs))), op, Box::new(Spanned::new(rspan, ExprKind::Lit(lit_rhs))))
                             }
                         }
                     } else {
-                        EBinOp(Box::new(Spanned::new(lspan, ELit(lit_lhs))), op, rhs)
+                        ExprKind::BinOp(Box::new(Spanned::new(lspan, ExprKind::Lit(lit_lhs))), op, rhs)
                     }
                 } else {
-                    EBinOp(lhs, op, rhs)
+                    ExprKind::BinOp(lhs, op, rhs)
                 }
             },
-            EUnOp(op, mut arg) => {
+            ExprKind::UnOp(op, mut arg) => {
                 arg = Box::new(self.visit_expr(*arg));
 
                 let span = arg.span;
-                if let ELit(lit) = arg.value {
+                if let ExprKind::Lit(lit) = arg.value {
                     match fold_unop(op, &lit) {
-                        Ok(newlit) => ELit(newlit),
+                        Ok(newlit) => ExprKind::Lit(newlit),
                         Err(msg) => {
                             self.warns.push(Warning::new(e.span, msg));
-                            EUnOp(op, Box::new(Spanned::new(span, ELit(lit))))
+                            ExprKind::UnOp(op, Box::new(Spanned::new(span, ExprKind::Lit(lit))))
                         }
                     }
                 } else {
-                    EUnOp(op, arg)
+                    ExprKind::UnOp(op, arg)
                 }
             },
             _ => { return walk_expr(e, self) },

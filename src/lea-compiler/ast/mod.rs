@@ -6,11 +6,6 @@
 pub mod visit;
 pub mod conv;
 
-pub use self::_Variable::*;
-pub use self::_Stmt::*;
-pub use self::_Expr::*;
-pub use self::Call::*;
-
 use parser::span::{Span, Spanned};
 use parser::op::*;
 
@@ -70,11 +65,11 @@ impl<'a> PartialEq for Block<'a> {
 #[derive(Clone, PartialEq, Debug)]
 pub enum Call<'a> {
     /// Regular call: f(e1, e2, ..)
-    SimpleCall(Box<Expr<'a>>, Vec<Expr<'a>>),
+    Normal(Box<Expr<'a>>, Vec<Expr<'a>>),
 
     /// some.thing:name(...) - passes `some.thing` as the first argument, without evaluating it
     /// twice
-    MethodCall(Box<Expr<'a>>, Spanned<&'a str>, Vec<Expr<'a>>),
+    Method(Box<Expr<'a>>, Spanned<&'a str>, Vec<Expr<'a>>),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -93,33 +88,33 @@ pub struct Function<'a> {
 
 /// Something that can be set to a value
 #[derive(Clone, PartialEq, Debug)]
-pub enum _Variable<'a> {
+pub enum VarKind<'a> {
     /// References a named variable; later resolved to local, global or upvalue references
-    VNamed(&'a str),
+    Named(&'a str),
 
     /// References the local variable with the given ID.
     ///
     /// Note that the resolver has to ensure that the ID is valid, since not all locals can be
     /// reached from all blocks.
-    VLocal(usize),
+    Local(usize),
 
     /// References the upvalue with the given id (index into the `upvalues` field of the Function)
-    VUpval(usize),
+    Upval(usize),
 
     /// References an indexed variable (a field)
-    VIndex(Box<Variable<'a>>, Box<Expr<'a>>),
+    Indexed(Box<Variable<'a>>, Box<Expr<'a>>),
 }
 
-pub type Variable<'a> = Spanned<_Variable<'a>>;
+pub type Variable<'a> = Spanned<VarKind<'a>>;
 
 /// Statement nodes
 #[derive(Clone, Debug, PartialEq)]
-pub enum _Stmt<'a> {
+pub enum StmtKind<'a> {
     /// Declare a list of locals and assign initial values.
     ///
     /// Initial values are optional and default to `nil` (the second vector can have less elements
     /// than the first).
-    SDecl(Vec<Spanned<&'a str>>, Vec<Expr<'a>>),
+    Decl(Vec<Spanned<&'a str>>, Vec<Expr<'a>>),
 
     /// Assigns a list of expressions to a list of variables.
     ///
@@ -128,42 +123,42 @@ pub enum _Stmt<'a> {
     ///
     /// Might contain less variables than expressions or less expressions than variables. In the
     /// latter case, the leftover variables are assigned to nil.
-    SAssign(Vec<Variable<'a>>, Vec<Expr<'a>>),
+    Assign(Vec<Variable<'a>>, Vec<Expr<'a>>),
 
     /// Execute a block in a new scope
-    SDo(Block<'a>),
+    Do(Block<'a>),
 
     /// Abort the current loop
-    SBreak,
+    Break,
 
     /// Return a possibly empty list of values to the caller
-    SReturn(Vec<Expr<'a>>),
+    Return(Vec<Expr<'a>>),
 
     /// Function call as statement
-    SCall(Call<'a>),
+    Call(Call<'a>),
 
     /// Executes `body` if `cond` is true and `el` if not
-    SIf {
+    If {
         cond: Expr<'a>,
         body: Block<'a>,
         el: Option<Block<'a>>,
     },
 
     /// Loops a block while `cond` is true
-    SWhile {
+    While {
         cond: Expr<'a>,
         body: Block<'a>,
     },
 
     /// Loops a block until `abort_on` is true. The body is executed at least once (`abort_on` is
     /// checked after the body has run).
-    SRepeat {
+    Repeat {
         body: Block<'a>,
         abort_on: Expr<'a>,
     },
 
     /// Numeric for loop
-    SFor {
+    For {
         var: Spanned<&'a str>,    // named local, newly declared
         start: Expr<'a>,
         step: Option<Expr<'a>>,
@@ -172,7 +167,7 @@ pub enum _Stmt<'a> {
     },
 
     /// Generic for loop
-    SForIn {
+    ForIn {
         /// The loop variables, returned by iterator
         vars: Vec<Spanned<&'a str>>,
         /// Expression list: Iterator function, state, start value, [ignored ...]
@@ -181,36 +176,36 @@ pub enum _Stmt<'a> {
     },
 }
 
-pub type Stmt<'a> = Spanned<_Stmt<'a>>;
+pub type Stmt<'a> = Spanned<StmtKind<'a>>;
 
 /// Expression nodes
 #[derive(Clone, PartialEq, Debug)]
-pub enum _Expr<'a> {
-    ELit(Const),
-    EBinOp(Box<Expr<'a>>, BinOp, Box<Expr<'a>>),
-    EUnOp(UnOp, Box<Expr<'a>>),
+pub enum ExprKind<'a> {
+    Lit(Const),
+    BinOp(Box<Expr<'a>>, BinOp, Box<Expr<'a>>),
+    UnOp(UnOp, Box<Expr<'a>>),
 
     /// Variable used as expression
-    EVar(Variable<'a>),
+    Var(Variable<'a>),
     /// Calls a function, might return multiple results
-    ECall(Call<'a>),
+    Call(Call<'a>),
 
     /// Instantiates a function/closure
-    EFunc(Function<'a>),
+    Func(Function<'a>),
 
     /// Table constructor
-    ETable(Vec<(Expr<'a>, Expr<'a>)>),
+    Table(Vec<(Expr<'a>, Expr<'a>)>),
     /// Array constructor, takes a list of initial values
-    EArray(Vec<Expr<'a>>),
+    Array(Vec<Expr<'a>>),
     /// "..."; expands to var args. only valid if used inside varargs functions
-    EVarArgs,
+    VarArgs,
 }
 
-impl<'a> _Expr<'a> {
+impl<'a> ExprKind<'a> {
     /// Returns true if this expression might evaluate to multiple results.
     pub fn is_multi_result(&self) -> bool {
         match *self {
-            ECall(_) | EVarArgs => true,
+            ExprKind::Call(_) | ExprKind::VarArgs => true,
             _ => false,
         }
     }
@@ -221,15 +216,15 @@ impl<'a> _Expr<'a> {
     /// effects.
     pub fn has_side_effects(&self) -> bool {
         match *self {
-            ELit(_) | EVarArgs | EFunc(_) => false,
-            EVar(ref var) => match **var {
-                VLocal(_) | VUpval(_) => false,
+            ExprKind::Lit(_) | ExprKind::VarArgs | ExprKind::Func(_) => false,
+            ExprKind::Var(ref var) => match **var {
+                VarKind::Local(_) | VarKind::Upval(_) => false,
                 _ => true,  // might cause a table index, which can error
             },
-            EArray(ref elems) => {
+            ExprKind::Array(ref elems) => {
                 elems.iter().any(|elem| elem.has_side_effects())
             }
-            ETable(ref cons) => {
+            ExprKind::Table(ref cons) => {
                 cons.iter().any(|&(ref k, ref v)| k.has_side_effects() || v.has_side_effects())
             }
             _ => true,
@@ -237,4 +232,4 @@ impl<'a> _Expr<'a> {
     }
 }
 
-pub type Expr<'a> = Spanned<_Expr<'a>>;
+pub type Expr<'a> = Spanned<ExprKind<'a>>;

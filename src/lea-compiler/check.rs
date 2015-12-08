@@ -35,7 +35,7 @@ struct Checker {
 impl<'a> Visitor<'a> for Checker {
     fn visit_stmt(&mut self, s: &Stmt) {
         match s.value {
-            SBreak => {
+            StmtKind::Break => {
                 if self.looplvl == 0 {
                     self.errs.push(CheckError {
                         msg: "use of `break` outside of loop",
@@ -43,7 +43,7 @@ impl<'a> Visitor<'a> for Checker {
                     });
                 }
             },
-            SFor{..} | SWhile{..} | SRepeat{..} => {
+            StmtKind::For{..} | StmtKind::While{..} | StmtKind::Repeat{..} => {
                 self.looplvl += 1;
                 walk_stmt_ref(s, self);
                 self.looplvl -= 1;
@@ -54,7 +54,7 @@ impl<'a> Visitor<'a> for Checker {
 
     fn visit_expr(&mut self, e: &Expr) {
         match e.value {
-            EVarArgs => {
+            ExprKind::VarArgs => {
                 if !self.vararg_func {
                     self.errs.push(CheckError {
                         msg: "use of ... outside varargs function",

@@ -45,7 +45,7 @@ impl DerefMut for DeprOps {
 impl<'a> Visitor<'a> for DeprOps {
     fn visit_expr(&mut self, e: &Expr) {
         match e.value {
-            EBinOp(ref lhs, op, ref rhs) => {
+            ExprKind::BinOp(ref lhs, op, ref rhs) => {
                 self.visit_expr(&**lhs);
                 self.visit_expr(&**rhs);
 
@@ -56,7 +56,7 @@ impl<'a> Visitor<'a> for DeprOps {
                     ));
                 }
             },
-            EUnOp(op, ref p) => {
+            ExprKind::UnOp(op, ref p) => {
                 self.visit_expr(&**p);
 
                 if let Some(newop) = DEPR_UNOPS.get(&op) {

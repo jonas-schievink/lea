@@ -61,7 +61,9 @@ impl<'a> Function<'a> {
 /// Describes how a variable is indexed
 #[derive(Clone, PartialEq, Debug)]
 pub enum VarIndex<'a> {
+    /// `var.ident`
     DotIndex(Spanned<&'a str>),
+    /// `var[expr]`
     ExprIndex(Box<Expr<'a>>),
 }
 

@@ -76,7 +76,7 @@ struct Emitter {
     /// leaving the current block.
     needs_close: bool,
 
-    /// Opcode indices of `SBreak` (was emitted as opcode `INVALID`). These are replaced by
+    /// Opcode indices of `StmtKind::Break` (was emitted as opcode `INVALID`). These are replaced by
     /// forward jumps after the current loop when the loop is fully emitted.
     break_indices: Vec<usize>,
 
@@ -290,7 +290,7 @@ impl Emitter {
     fn emit_assign<F>(&mut self, target: &Variable, f: F)
     where F: FnOnce(&mut Emitter, u8) -> u8 {
         match target.value {
-            VLocal(id) => {
+            VarKind::Local(id) => {
                 let slot = self.get_slot(id);
                 let realslot = f(self, slot);
 
@@ -298,7 +298,7 @@ impl Emitter {
                     self.emit(MOV(slot, realslot));
                 }
             }
-            VUpval(id) => {
+            VarKind::Upval(id) => {
                 if id > u8::MAX as usize {
                     self.err_span("upvalue limit reached",
                         Some(format!("upvalue #{} over limit {}", id, u8::MAX)), target.span);
@@ -311,7 +311,7 @@ impl Emitter {
                     self.dealloc_slots(1);
                 }
             }
-            VIndex(ref v, ref idx) => {
+            VarKind::Indexed(ref v, ref idx) => {
                 let slot = self.alloc_slots(1);
                 let slot = self.emit_var(v, slot);
                 let idxslot = self.alloc_slots(1);
@@ -325,15 +325,15 @@ impl Emitter {
                 self.dealloc_slots(3);
             }
 
-            VNamed(_) => panic!("VNamed encountered by emitter, resolver is broken")
+            VarKind::Named(_) => panic!("VarKind::Named encountered by emitter, resolver is broken")
         }
     }
 
     /// Emits a variable used as an expression
     fn emit_var(&mut self, v: &Variable, hint_slot: u8) -> u8 {
         match v.value {
-            VLocal(id) => self.get_slot(id),    // ignores hint
-            VUpval(id) => {
+            VarKind::Local(id) => self.get_slot(id),    // ignores hint
+            VarKind::Upval(id) => {
                 if id > u8::MAX as usize {
                     self.err_span("upvalue limit reached",
                         Some(format!("upvalue #{} over limit {}", id, u8::MAX)),
@@ -343,7 +343,7 @@ impl Emitter {
                 }
                 hint_slot
             }
-            VIndex(ref var, ref idx) => {
+            VarKind::Indexed(ref var, ref idx) => {
                 let var_slot = self.alloc_slots(1);
                 let var_slot = self.emit_var(&*var, var_slot);
                 let idx_slot = self.alloc_slots(1);
@@ -355,7 +355,7 @@ impl Emitter {
                 hint_slot
             }
 
-            VNamed(_) => panic!("VNamed encountered by emitter, resolver is broken")
+            VarKind::Named(_) => panic!("VarKind::Named encountered by emitter, resolver is broken")
         }
     }
 
@@ -433,7 +433,7 @@ impl Emitter {
     /// implementation-defined limit.
     fn emit_call<F>(&mut self, c: &Call, max_res: u8, f: F) where F: FnOnce(&mut Emitter, u8) {
         match *c {
-            SimpleCall(ref callee, ref args) => {
+            Call::Normal(ref callee, ref args) => {
                 // Regular call: f(e1, e2, ..)
                 // Stack: FUNCTION | ARGS...
 
@@ -450,7 +450,7 @@ impl Emitter {
 
                 self.dealloc_slots(1);  // func_slot
             }
-            MethodCall(ref obj, ref name, ref args) => {
+            Call::Method(ref obj, ref name, ref args) => {
                 // some.thing:name(...) - passes `some.thing` as the first argument, without
                 // evaluating it twice (unlike `some.thing.name(some.thing, ...)`).
 
@@ -494,10 +494,10 @@ impl Emitter {
     fn emit_expr_multi<F>(&mut self, e: &Expr, max_res: u8, f: F)
     where F: FnOnce(&mut Emitter, /* start */ u8) {
         match e.value {
-            ECall(ref call) => {
+            ExprKind::Call(ref call) => {
                 self.emit_call(call, max_res, f);
             }
-            EVarArgs => {
+            ExprKind::VarArgs => {
                 let start_slot = if max_res == 0 {
                     // top of stack
                     self.stacksize
@@ -539,7 +539,7 @@ impl Emitter {
     /// result.
     fn emit_expr(&mut self, e: &Expr, hint_slot: u8) -> u8 {
         match e.value {
-            ECall(ref call) => {
+            ExprKind::Call(ref call) => {
                 self.emit_call(call, 2, |emitter, slot| {
                     // need to move, since `slot` is deallocated
                     emitter.emit(MOV(hint_slot, slot));
@@ -547,7 +547,7 @@ impl Emitter {
 
                 hint_slot
             }
-            ELit(ref lit) => {
+            ExprKind::Lit(ref lit) => {
                 match *lit {
                     Const::Nil => {
                         self.emit(LOADNIL(hint_slot, 0));
@@ -564,8 +564,8 @@ impl Emitter {
                     }
                 }
             }
-            EVar(ref var) => self.emit_var(var, hint_slot),
-            EBinOp(ref lhs, op, ref rhs) => {
+            ExprKind::Var(ref var) => self.emit_var(var, hint_slot),
+            ExprKind::BinOp(ref lhs, op, ref rhs) => {
                 match op {
                     BinOp::LAnd | BinOp::LAndLua => {
                         // A && B  <=>  if A then B else A
@@ -642,7 +642,7 @@ impl Emitter {
 
                 hint_slot
             }
-            EUnOp(op, ref expr) => {
+            ExprKind::UnOp(op, ref expr) => {
                 let slot = self.alloc_slots(1);
                 let realslot = self.emit_expr(expr, slot);
                 if slot != realslot { self.dealloc_slots(1); }
@@ -657,17 +657,17 @@ impl Emitter {
                 if slot == realslot { self.dealloc_slots(1); }
                 hint_slot
             }
-            EFunc(ref func) => {
+            ExprKind::Func(ref func) => {
                 let id = self.emit_func(func);
                 self.emit(FUNC(hint_slot, id as u16));
                 hint_slot
             }
-            EVarArgs => {
+            ExprKind::VarArgs => {
                 // Fetch the first vararg into `hint_slot`
                 self.emit(VARARGS(hint_slot, 1));
                 hint_slot
             }
-            ETable(ref cons) => {
+            ExprKind::Table(ref cons) => {
                 // TODO Use table prototypes
 
                 self.emit(TABLE(hint_slot));
@@ -683,7 +683,7 @@ impl Emitter {
 
                 hint_slot
             }
-            EArray(ref elems) => {
+            ExprKind::Array(ref elems) => {
                 // TODO Use array prototypes
 
                 // Create new array and put all elements into consecutive indexes
@@ -715,26 +715,26 @@ impl Emitter {
 
     fn emit_stmt(&mut self, s: &Stmt, block: &Block) {
         match s.value {
-            SDecl(ref names, ref exprs) => {
+            StmtKind::Decl(ref names, ref exprs) => {
                 // allocate stack slots for locals
                 let mut locals = Vec::<Variable>::new();
                 for name in names {
                     let id = *block.get_local(name).unwrap();
                     let slot = self.alloc_slots(1);
                     self.alloc.insert(id, slot);
-                    locals.push(Spanned::default(VLocal(id)));
+                    locals.push(Spanned::default(VarKind::Local(id)));
 
                     debug!("alloc: {} (id {}) -> slot {}", name.value, id, slot);
                 }
 
                 // build fake assignment node and use generic assigment code to emit code
                 let mut vals = exprs.clone();
-                vals.push(Spanned::default(ELit(Const::Nil)));
+                vals.push(Spanned::default(ExprKind::Lit(Const::Nil)));
 
-                let assign = SAssign(locals, vals);
+                let assign = StmtKind::Assign(locals, vals);
                 self.emit_stmt(&Spanned::new(s.span, assign), block);
             }
-            SAssign(ref vars, ref vals) => {
+            StmtKind::Assign(ref vars, ref vals) => {
                 // We need `min(varcount-1, valcount-1)` temps (= `tmpcount`). Eval first
                 // `tmpcount` expressions on the right-hand side into the temps (these all must
                 // exist since `tmpcount` < `valcount`).
@@ -834,23 +834,23 @@ impl Emitter {
                     }
                 }
             }
-            SDo(ref block) => {
+            StmtKind::Do(ref block) => {
                 self.visit_block(block);
             }
-            SBreak => {
+            StmtKind::Break => {
                 let index = self.emit_raw(INVALID);
                 self.break_indices.push(index);
             }
-            SReturn(ref vals) => {
+            StmtKind::Return(ref vals) => {
                 let start = self.stacksize;  // first return value here (if any)
                 self.emit_expr_list(vals, |emitter, count| {
                     emitter.emit(RETURN(start, count));
                 });
             }
-            SCall(ref call) => {
+            StmtKind::Call(ref call) => {
                 self.emit_call(call, 1, |_, _| ());    // store 0 results
             }
-            SIf { ref cond, ref body, ref el } => {
+            StmtKind::If { ref cond, ref body, ref el } => {
                 let cond_slot = self.alloc_slots(1);
                 let cond_slot = self.emit_expr(cond, cond_slot);
 
@@ -873,7 +873,7 @@ impl Emitter {
                     self.visit_block(el);
                 }
             }
-            SWhile { ref cond, ref body } => {
+            StmtKind::While { ref cond, ref body } => {
                 let cond_opcode = self.get_next_addr() as isize; // start of cond eval
                 let cond_slot = self.alloc_slots(1);
                 let cond_slot = self.emit_expr(cond, cond_slot);
@@ -905,7 +905,7 @@ impl Emitter {
                 self.finalize_breaks();
                 self.break_indices = break_indices;
             }
-            SRepeat { ref body, ref abort_on } => {
+            StmtKind::Repeat { ref body, ref abort_on } => {
                 let head_op = self.get_next_addr() as isize;
                 let break_indices = mem::replace(&mut self.break_indices, Vec::new());
 
@@ -927,7 +927,7 @@ impl Emitter {
                 self.finalize_breaks();
                 self.break_indices = break_indices;
             }
-            SFor { ref var, ref start, ref step, ref end, ref body } => {
+            StmtKind::For { ref var, ref start, ref step, ref end, ref body } => {
                 // internal loop variable
                 let inner_var_slot = self.alloc_slots(3);
                 let step_slot = inner_var_slot + 1;
@@ -978,7 +978,7 @@ impl Emitter {
                 self.finalize_breaks();
                 self.break_indices = break_indices;
             }
-            SForIn { ref vars, ref iter, ref body } => {
+            StmtKind::ForIn { ref vars, ref iter, ref body } => {
                 // Initialize invisible loop state:
                 // > local f, s, var = iter...
                 // (see the Lua manual for info)

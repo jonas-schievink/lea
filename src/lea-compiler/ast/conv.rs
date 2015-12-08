@@ -101,45 +101,45 @@ impl AstConv {
     fn conv_stmt<'a>(&mut self, stmt: parsetree::Stmt<'a>) -> ConvResult<Stmt<'a>> {
         match stmt.value {
             parsetree::StmtKind::Decl(names, exprs) => {
-                ConvResult::One(_Stmt::SDecl(
+                ConvResult::One(StmtKind::Decl(
                     names,
                     exprs.into_iter().map(|e| self.conv_expr(e)).collect()
                 ))
             }
             parsetree::StmtKind::Assign(vars, exprs) => {
-                ConvResult::One(_Stmt::SAssign(
+                ConvResult::One(StmtKind::Assign(
                     vars.into_iter().map(|var| self.conv_var(var)).collect(),
                     exprs.into_iter().map(|e| self.conv_expr(e)).collect()
                 ))
             }
             parsetree::StmtKind::Do(block) => {
-                ConvResult::One(_Stmt::SDo(self.conv_block(block)))
+                ConvResult::One(StmtKind::Do(self.conv_block(block)))
             }
             parsetree::StmtKind::Break => {
-                ConvResult::One(_Stmt::SBreak)
+                ConvResult::One(StmtKind::Break)
             }
             parsetree::StmtKind::Semi => {
                 ConvResult::Zero
             }
             parsetree::StmtKind::Return(exprs) => {
-                ConvResult::One(_Stmt::SReturn(
+                ConvResult::One(StmtKind::Return(
                     exprs.into_iter().map(|e| self.conv_expr(e)).collect()
                 ))
             }
             parsetree::StmtKind::Call(call) => {
-                ConvResult::One(_Stmt::SCall(match call {
+                ConvResult::One(StmtKind::Call(match call {
                     parsetree::Call::Normal(callee, args) => {
-                        SimpleCall(Box::new(self.conv_expr(*callee)), self.conv_args(args))
+                        Call::Normal(Box::new(self.conv_expr(*callee)), self.conv_args(args))
                     }
                     parsetree::Call::Method(obj, name, args) => {
-                        MethodCall(Box::new(self.conv_expr(*obj)), name, self.conv_args(args))
+                        Call::Method(Box::new(self.conv_expr(*obj)), name, self.conv_args(args))
                     }
                 }))
             }
             parsetree::StmtKind::Func(var, func) => {
-                ConvResult::One(_Stmt::SAssign(
+                ConvResult::One(StmtKind::Assign(
                     vec![self.conv_var(var)],
-                    vec![Spanned::new(func.body.span, EFunc(self.conv_func(func)))]
+                    vec![Spanned::new(func.body.span, ExprKind::Func(self.conv_func(func)))]
                 ))
             }
             parsetree::StmtKind::Method(var, name, func) => {
@@ -147,21 +147,21 @@ impl AstConv {
                 let mut func: Function<'a> = self.conv_func(func);
                 func.params.insert(0, Spanned::new(name.span, "self"));
 
-                ConvResult::One(_Stmt::SAssign(
-                    vec![Spanned::new(var.span, VIndex(
+                ConvResult::One(StmtKind::Assign(
+                    vec![Spanned::new(var.span, VarKind::Indexed(
                         Box::new(self.conv_var(var)),
-                        Box::new(Spanned::new(name.span, ELit(Const::Str(name.value.to_owned()))))
+                        Box::new(Spanned::new(name.span, ExprKind::Lit(Const::Str(name.value.to_owned()))))
                     ))],
-                    vec![Spanned::new(func.body.span, EFunc(func))]
+                    vec![Spanned::new(func.body.span, ExprKind::Func(func))]
                 ))
             }
             parsetree::StmtKind::LocalFunc(local, func) => {
                 // local function f...  =>  local f; f = function...
                 ConvResult::Two(
-                    _Stmt::SDecl(vec![local], vec![]),
-                    _Stmt::SAssign(
-                        vec![Spanned::new(local.span, VNamed(local.value))],
-                        vec![Spanned::new(func.body.span, EFunc(self.conv_func(func)))]
+                    StmtKind::Decl(vec![local], vec![]),
+                    StmtKind::Assign(
+                        vec![Spanned::new(local.span, VarKind::Named(local.value))],
+                        vec![Spanned::new(func.body.span, ExprKind::Func(self.conv_func(func)))]
                     )
                 )
             }
@@ -177,7 +177,7 @@ impl AstConv {
                         localmap: Default::default(),
                         span: elif.span,
                         stmts: vec![
-                            Spanned::new(elif.span, SIf {
+                            Spanned::new(elif.span, StmtKind::If {
                                 cond: self.conv_expr(cond),
                                 body: self.conv_block(body),
                                 el: old,
@@ -186,26 +186,26 @@ impl AstConv {
                     })
                 });
 
-                ConvResult::One(_Stmt::SIf {
+                ConvResult::One(StmtKind::If {
                     cond: self.conv_expr(cond),
                     body: self.conv_block(body),
                     el: myelse,
                 })
             }
             parsetree::StmtKind::While { cond, body } => {
-                ConvResult::One(_Stmt::SWhile {
+                ConvResult::One(StmtKind::While {
                     cond: self.conv_expr(cond),
                     body: self.conv_block(body),
                 })
             }
             parsetree::StmtKind::Repeat { abort_on, body } => {
-                ConvResult::One(_Stmt::SRepeat {
+                ConvResult::One(StmtKind::Repeat {
                     abort_on: self.conv_expr(abort_on),
                     body: self.conv_block(body),
                 })
             }
             parsetree::StmtKind::For { var, start, step, end, body } => {
-                ConvResult::One(_Stmt::SFor {
+                ConvResult::One(StmtKind::For {
                     var: var,
                     start: self.conv_expr(start),
                     step: step.map(|e| self.conv_expr(e)),
@@ -214,7 +214,7 @@ impl AstConv {
                 })
             }
             parsetree::StmtKind::ForIn { vars, iter, body } => {
-                ConvResult::One(_Stmt::SForIn {
+                ConvResult::One(StmtKind::ForIn {
                     vars: vars,
                     iter: iter.into_iter().map(|e| self.conv_expr(e)).collect(),
                     body: self.conv_block(body),
@@ -226,13 +226,13 @@ impl AstConv {
     fn conv_var<'a>(&mut self, var: parsetree::Variable<'a>) -> Variable<'a> {
         Spanned::new(var.span, match var.value {
             parsetree::VarKind::Named(name) => {
-                VNamed(name)
+                VarKind::Named(name)
             }
             parsetree::VarKind::Indexed(var, index) => {
-                VIndex(Box::new(self.conv_var(*var)), match index {
+                VarKind::Indexed(Box::new(self.conv_var(*var)), match index {
                     parsetree::VarIndex::DotIndex(name) => {
                         Box::new(Spanned::new(name.span,
-                            ELit(Const::Str(name.value.to_owned()))))
+                            ExprKind::Lit(Const::Str(name.value.to_owned()))))
                     }
                     parsetree::VarIndex::ExprIndex(expr) => {
                         Box::new(self.conv_expr(*expr))
@@ -244,27 +244,27 @@ impl AstConv {
 
     fn conv_expr<'a>(&mut self, expr: parsetree::Expr<'a>) -> Expr<'a> {
         Spanned::new(expr.span, match expr.value {
-            parsetree::ExprKind::Lit(lit) => ELit(lit),
+            parsetree::ExprKind::Lit(lit) => ExprKind::Lit(lit),
             parsetree::ExprKind::BinOp(lhs, op, rhs) =>
-                EBinOp(Box::new(self.conv_expr(*lhs)), op, Box::new(self.conv_expr(*rhs))),
-            parsetree::ExprKind::UnOp(op, expr) => EUnOp(op, Box::new(self.conv_expr(*expr))),
+                ExprKind::BinOp(Box::new(self.conv_expr(*lhs)), op, Box::new(self.conv_expr(*rhs))),
+            parsetree::ExprKind::UnOp(op, expr) => ExprKind::UnOp(op, Box::new(self.conv_expr(*expr))),
             parsetree::ExprKind::Braced(expr) => self.conv_expr(*expr).value,
-            parsetree::ExprKind::Var(var) => EVar(self.conv_var(var)),
-            parsetree::ExprKind::Call(call) => ECall(match call {
+            parsetree::ExprKind::Var(var) => ExprKind::Var(self.conv_var(var)),
+            parsetree::ExprKind::Call(call) => ExprKind::Call(match call {
                 parsetree::Call::Normal(callee, args) => {
-                    SimpleCall(Box::new(self.conv_expr(*callee)), self.conv_args(args))
+                    Call::Normal(Box::new(self.conv_expr(*callee)), self.conv_args(args))
                 }
                 parsetree::Call::Method(obj, name, args) => {
-                    MethodCall(Box::new(self.conv_expr(*obj)), name, self.conv_args(args))
+                    Call::Method(Box::new(self.conv_expr(*obj)), name, self.conv_args(args))
                 }
             }),
             parsetree::ExprKind::Table(cons) => {
-                ETable(self.conv_table(cons))
+                ExprKind::Table(self.conv_table(cons))
             }
-            parsetree::ExprKind::Func(func) => EFunc(self.conv_func(func)),
+            parsetree::ExprKind::Func(func) => ExprKind::Func(self.conv_func(func)),
             parsetree::ExprKind::Array(elems) =>
-                EArray(elems.into_iter().map(|e| self.conv_expr(e)).collect()),
-            parsetree::ExprKind::VarArgs => EVarArgs,
+                ExprKind::Array(elems.into_iter().map(|e| self.conv_expr(e)).collect()),
+            parsetree::ExprKind::VarArgs => ExprKind::VarArgs,
         })
     }
 
@@ -274,7 +274,7 @@ impl AstConv {
         for entry in cons {
             entries.push(match entry {
                 parsetree::TableEntry::IdentPair(key, value) => {
-                    (Spanned::new(key.span, ELit(Const::Str(key.value.into()))), self.conv_expr(value))
+                    (Spanned::new(key.span, ExprKind::Lit(Const::Str(key.value.into()))), self.conv_expr(value))
                 }
                 parsetree::TableEntry::Pair(key, value) => {
                     (self.conv_expr(key), self.conv_expr(value))
@@ -282,7 +282,7 @@ impl AstConv {
                 parsetree::TableEntry::Elem(value) => {
                     let idx = i;
                     i += 1;
-                    (Spanned::new(value.span, ELit(Const::Number(idx.into()))), self.conv_expr(value))
+                    (Spanned::new(value.span, ExprKind::Lit(Const::Number(idx.into()))), self.conv_expr(value))
                 }
             });
         }
@@ -297,10 +297,10 @@ impl AstConv {
             }
             parsetree::CallArgs::String(s) => {
                 // TODO use real span
-                vec![Spanned::default(ELit(Const::Str(s)))]
+                vec![Spanned::default(ExprKind::Lit(Const::Str(s)))]
             }
             parsetree::CallArgs::Table(cons) => {
-                vec![Spanned::default(ETable(self.conv_table(cons)))]
+                vec![Spanned::default(ExprKind::Table(self.conv_table(cons)))]
             }
         }
     }

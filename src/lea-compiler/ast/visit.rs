@@ -81,63 +81,63 @@ pub fn walk_func<'a, V: Transform<'a>>(mut f: Function<'a>, visitor: &mut V) -> 
 
 pub fn walk_stmt<'a, V: Transform<'a>>(mut stmt: Stmt<'a>, visitor: &mut V) -> Stmt<'a> {
     stmt.value = match stmt.value {
-        SDecl(names, mut vals) => {
+        StmtKind::Decl(names, mut vals) => {
             vals = vals.map_in_place(|val| visitor.visit_expr(val));
-            SDecl(names, vals)
+            StmtKind::Decl(names, vals)
         },
-        SAssign(mut vars, mut vals) => {
+        StmtKind::Assign(mut vars, mut vals) => {
             vars = vars.map_in_place(|var| visitor.visit_var(var));
             vals = vals.map_in_place(|val| visitor.visit_expr(val));
-            SAssign(vars, vals)
+            StmtKind::Assign(vars, vals)
         },
-        SDo(mut block) => {
+        StmtKind::Do(mut block) => {
             block = visitor.visit_block(block);
-            SDo(block)
+            StmtKind::Do(block)
         },
-        SReturn(mut vals) => {
+        StmtKind::Return(mut vals) => {
             vals = vals.map_in_place(|val| visitor.visit_expr(val));
-            SReturn(vals)
+            StmtKind::Return(vals)
         },
-        SCall(SimpleCall(mut callee, mut argv)) => {
+        StmtKind::Call(Call::Normal(mut callee, mut argv)) => {
             callee = Box::new(visitor.visit_expr(*callee));
             argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
-            SCall(SimpleCall(callee, argv))
+            StmtKind::Call(Call::Normal(callee, argv))
         },
-        SCall(MethodCall(mut callee, name, mut argv)) => {
+        StmtKind::Call(Call::Method(mut callee, name, mut argv)) => {
             callee = Box::new(visitor.visit_expr(*callee));
             argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
-            SCall(MethodCall(callee, name, argv))
+            StmtKind::Call(Call::Method(callee, name, argv))
         },
-        SIf {mut cond, mut body, mut el} => {
+        StmtKind::If {mut cond, mut body, mut el} => {
             cond = visitor.visit_expr(cond);
             body = visitor.visit_block(body);
             el = el.map(|el| visitor.visit_block(el));
-            SIf {cond: cond, body: body, el: el}
+            StmtKind::If {cond: cond, body: body, el: el}
         },
-        SWhile {mut cond, mut body} => {
+        StmtKind::While {mut cond, mut body} => {
             cond = visitor.visit_expr(cond);
             body = visitor.visit_block(body);
-            SWhile {cond: cond, body: body}
+            StmtKind::While {cond: cond, body: body}
         },
-        SRepeat {mut abort_on, mut body} => {
+        StmtKind::Repeat {mut abort_on, mut body} => {
             abort_on = visitor.visit_expr(abort_on);
             body = visitor.visit_block(body);
-            SRepeat {abort_on: abort_on, body: body}
+            StmtKind::Repeat {abort_on: abort_on, body: body}
         },
-        SFor {mut start, mut step, mut end, mut body, var} => {
+        StmtKind::For {mut start, mut step, mut end, mut body, var} => {
             start = visitor.visit_expr(start);
             step = step.map(|s| visitor.visit_expr(s));
             end = visitor.visit_expr(end);
             body = visitor.visit_block(body);
-            SFor {start: start, step: step, end: end, body: body, var: var}
+            StmtKind::For {start: start, step: step, end: end, body: body, var: var}
         },
-        SForIn {iter: mut iter_exprs, mut body, vars} => {
+        StmtKind::ForIn {iter: mut iter_exprs, mut body, vars} => {
             iter_exprs = iter_exprs.map_in_place(|e| visitor.visit_expr(e));
             body = visitor.visit_block(body);
-            SForIn {iter: iter_exprs, body: body, vars: vars}
+            StmtKind::ForIn {iter: iter_exprs, body: body, vars: vars}
         },
 
-        SBreak => SBreak,
+        StmtKind::Break => StmtKind::Break,
     };
 
     stmt
@@ -146,12 +146,12 @@ pub fn walk_stmt<'a, V: Transform<'a>>(mut stmt: Stmt<'a>, visitor: &mut V) -> S
 
 pub fn walk_stmt_ref<'a, V: Visitor<'a>>(stmt: &'a Stmt, visitor: &mut V) {
     match stmt.value {
-        SDecl(_, ref vals) => {
+        StmtKind::Decl(_, ref vals) => {
             for e in vals {
                 visitor.visit_expr(e);
             }
         },
-        SAssign(ref vars, ref vals) => {
+        StmtKind::Assign(ref vars, ref vals) => {
             for var in vars {
                 visitor.visit_var(var);
             }
@@ -160,93 +160,93 @@ pub fn walk_stmt_ref<'a, V: Visitor<'a>>(stmt: &'a Stmt, visitor: &mut V) {
                 visitor.visit_expr(val);
             }
         },
-        SDo(ref block) => {
+        StmtKind::Do(ref block) => {
             visitor.visit_block(block);
         },
-        SReturn(ref vals) => {
+        StmtKind::Return(ref vals) => {
             for val in vals {
                 visitor.visit_expr(val);
             }
         },
-        SCall(SimpleCall(ref callee, ref argv)) => {
+        StmtKind::Call(Call::Normal(ref callee, ref argv)) => {
             visitor.visit_expr(&**callee);
             for arg in argv {
                 visitor.visit_expr(arg);
             }
         },
-        SCall(MethodCall(ref callee, _, ref argv)) => {
+        StmtKind::Call(Call::Method(ref callee, _, ref argv)) => {
             visitor.visit_expr(&**callee);
             for arg in argv {
                 visitor.visit_expr(arg);
             }
         },
-        SIf {ref cond, ref body, ref el} => {
+        StmtKind::If {ref cond, ref body, ref el} => {
             visitor.visit_expr(cond);
             visitor.visit_block(body);
             el.as_ref().map(|el| visitor.visit_block(el));
         },
-        SWhile {ref cond, ref body} => {
+        StmtKind::While {ref cond, ref body} => {
             visitor.visit_expr(cond);
             visitor.visit_block(body);
         },
-        SRepeat {ref abort_on, ref body} => {
+        StmtKind::Repeat {ref abort_on, ref body} => {
             visitor.visit_expr(abort_on);
             visitor.visit_block(body);
         },
-        SFor {ref start, ref step, ref end, ref body, ..} => {
+        StmtKind::For {ref start, ref step, ref end, ref body, ..} => {
             visitor.visit_expr(start);
             if let Some(ref stepexpr) = *step { visitor.visit_expr(stepexpr); }
             visitor.visit_expr(end);
             visitor.visit_block(body);
         },
-        SForIn {iter: ref iter_exprs, ref body, ..} => {
+        StmtKind::ForIn {iter: ref iter_exprs, ref body, ..} => {
             for e in iter_exprs {
                 visitor.visit_expr(e);
             }
             visitor.visit_block(body);
         },
 
-        SBreak => {},
+        StmtKind::Break => {},
     };
 }
 
 pub fn walk_expr<'a, V: Transform<'a>>(mut expr: Expr<'a>, visitor: &mut V) -> Expr<'a> {
     expr.value = match expr.value {
-        EBinOp(mut lhs, op, mut rhs) => {
+        ExprKind::BinOp(mut lhs, op, mut rhs) => {
             lhs = Box::new(visitor.visit_expr(*lhs));
             rhs = Box::new(visitor.visit_expr(*rhs));
-            EBinOp(lhs, op, rhs)
+            ExprKind::BinOp(lhs, op, rhs)
         },
-        EUnOp(op, mut operand) => {
+        ExprKind::UnOp(op, mut operand) => {
             operand = Box::new(visitor.visit_expr(*operand));
-            EUnOp(op, operand)
+            ExprKind::UnOp(op, operand)
         },
-        EVar(var) => {
-            EVar(visitor.visit_var(var))
+        ExprKind::Var(var) => {
+            ExprKind::Var(visitor.visit_var(var))
         },
-        ECall(SimpleCall(mut callee, mut argv)) => {
+        ExprKind::Call(Call::Normal(mut callee, mut argv)) => {
             callee = Box::new(visitor.visit_expr(*callee));
             argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
-            ECall(SimpleCall(callee, argv))
+            ExprKind::Call(Call::Normal(callee, argv))
         },
-        ECall(MethodCall(mut callee, name, mut argv)) => {
+        ExprKind::Call(Call::Method(mut callee, name, mut argv)) => {
             callee = Box::new(visitor.visit_expr(*callee));
             argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
-            ECall(MethodCall(callee, name, argv))
+            ExprKind::Call(Call::Method(callee, name, argv))
         },
-        EFunc(func) => {
-            EFunc(visitor.visit_func(func))
+        ExprKind::Func(func) => {
+            ExprKind::Func(visitor.visit_func(func))
         },
-        ETable(cons) => {
-            ETable(cons.map_in_place(|(key, value)| (visitor.visit_expr(key), visitor.visit_expr(value))))
+        ExprKind::Table(cons) => {
+            ExprKind::Table(cons.map_in_place(|(key, value)| (visitor.visit_expr(key), visitor.visit_expr(value))))
         },
-        EArray(exprs) => {
-            EArray(exprs.map_in_place(|e| visitor.visit_expr(e)))
+        ExprKind::Array(exprs) => {
+            ExprKind::Array(exprs.map_in_place(|e| visitor.visit_expr(e)))
         },
 
         // Explicitly ignore these, they carry nothing visitable
-        EVarArgs => EVarArgs,
-        ELit(lit) => ELit(lit),
+        ExprKind::VarArgs => ExprKind::VarArgs,
+        ExprKind::Lit(lit) => ExprKind::Lit(lit),
     };
 
     expr
@@ -254,59 +254,59 @@ pub fn walk_expr<'a, V: Transform<'a>>(mut expr: Expr<'a>, visitor: &mut V) -> E
 
 pub fn walk_expr_ref<'a, V: Visitor<'a>>(expr: &'a Expr, visitor: &mut V) {
     match expr.value {
-        EBinOp(ref lhs, _, ref rhs) => {
+        ExprKind::BinOp(ref lhs, _, ref rhs) => {
             visitor.visit_expr(&**lhs);
             visitor.visit_expr(&**rhs);
         },
-        EUnOp(_, ref operand) => {
+        ExprKind::UnOp(_, ref operand) => {
             visitor.visit_expr(&**operand);
         },
-        EVar(ref var) => {
+        ExprKind::Var(ref var) => {
             visitor.visit_var(var);
         },
-        ECall(SimpleCall(ref callee, ref argv)) => {
+        ExprKind::Call(Call::Normal(ref callee, ref argv)) => {
             visitor.visit_expr(&**callee);
             for arg in argv {
                 visitor.visit_expr(arg);
             }
         },
-        ECall(MethodCall(ref callee, _, ref argv)) => {
+        ExprKind::Call(Call::Method(ref callee, _, ref argv)) => {
             visitor.visit_expr(&**callee);
             for arg in argv {
                 visitor.visit_expr(arg);
             }
         },
-        EFunc(ref func) => {
+        ExprKind::Func(ref func) => {
             visitor.visit_func(func);
         },
-        ETable(ref cons) => {
+        ExprKind::Table(ref cons) => {
             for &(ref k, ref v) in cons {
                 visitor.visit_expr(k);
                 visitor.visit_expr(v);
             }
         },
-        EArray(ref exprs) => {
+        ExprKind::Array(ref exprs) => {
             for e in exprs {
                 visitor.visit_expr(e);
             }
         },
 
         // Explicitly ignore these, they carry nothing visitable
-        EVarArgs => {},
-        ELit(_) => {},
+        ExprKind::VarArgs => {},
+        ExprKind::Lit(_) => {},
     };
 }
 
 pub fn walk_var<'a, V: Transform<'a>>(mut var: Variable<'a>, visitor: &mut V) -> Variable<'a> {
     var.value = match var.value {
-        VIndex(mut var, mut idx) => {
+        VarKind::Indexed(mut var, mut idx) => {
             var = Box::new(visitor.visit_var(*var));
             idx = Box::new(visitor.visit_expr(*idx));
-            VIndex(var, idx)
+            VarKind::Indexed(var, idx)
         },
-        VNamed(name) => VNamed(name),
-        VLocal(id) => VLocal(id),
-        VUpval(id) => VUpval(id),
+        VarKind::Named(name) => VarKind::Named(name),
+        VarKind::Local(id) => VarKind::Local(id),
+        VarKind::Upval(id) => VarKind::Upval(id),
     };
 
     var
@@ -314,11 +314,11 @@ pub fn walk_var<'a, V: Transform<'a>>(mut var: Variable<'a>, visitor: &mut V) ->
 
 pub fn walk_var_ref<'a, V: Visitor<'a>>(var: &'a Variable, visitor: &mut V) {
     match var.value {
-        VIndex(ref var, ref idx) => {
+        VarKind::Indexed(ref var, ref idx) => {
             visitor.visit_var(&**var);
             visitor.visit_expr(&**idx);
         },
-        VNamed(_) | VLocal(_) | VUpval(_) => {},
+        VarKind::Named(_) | VarKind::Local(_) | VarKind::Upval(_) => {},
     }
 }
 
@@ -354,9 +354,9 @@ mod tests {
         }
 
         let myblock = Block::new(vec![
-            Spanned::default(SAssign(
-                vec![Spanned::default(VNamed("i"))],
-                vec![Spanned::default(ELit(Const::Number(0.into())))],
+            Spanned::default(StmtKind::Assign(
+                vec![Spanned::default(VarKind::Named("i"))],
+                vec![Spanned::default(ExprKind::Lit(Const::Number(0.into())))],
             )),
         ], Span::new(0, 0));
         let mut v = NoopVisitor {stmts: 0, exprs: 0, vars: 0};
@@ -373,7 +373,7 @@ mod tests {
         impl<'a> Transform<'a> for MutVisitor {
             fn visit_expr(&mut self, mut expr: Expr<'a>) -> Expr<'a> {
                 expr.value = match expr.value {
-                    ELit(Const::Bool(true)) => ELit(Const::Bool(false)),
+                    ExprKind::Lit(Const::Bool(true)) => ExprKind::Lit(Const::Bool(false)),
                     _ => { return expr; }
                 };
 
@@ -382,13 +382,13 @@ mod tests {
         }
 
         let mut b = Block::new(vec![
-            Spanned::default(SReturn(vec![Spanned::default(ELit(Const::Bool(true)))])),
+            Spanned::default(StmtKind::Return(vec![Spanned::default(ExprKind::Lit(Const::Bool(true)))])),
         ], Span::new(0, 0));
         b = walk_block(b, &mut MutVisitor);
 
         assert_eq!(b.stmts, vec![
-            Spanned::default(SReturn(vec![
-                Spanned::default(ELit(Const::Bool(false)))
+            Spanned::default(StmtKind::Return(vec![
+                Spanned::default(ExprKind::Lit(Const::Bool(false)))
             ])),
         ]);
     }

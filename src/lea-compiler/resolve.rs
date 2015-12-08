@@ -67,7 +67,7 @@ impl<'a> FuncData<'a> {
     }
 }
 
-/// A resolver will resolve any `VNamed` references in a function
+/// A resolver will resolve any `VarKind::Named` references in a function
 struct Resolver<'a> {
     /// Stack of active functions
     funcs: Vec<FuncData<'a>>,
@@ -157,20 +157,21 @@ impl<'a> Resolver<'a> {
     }
 
     /// Resolves the given named variable
-    fn resolve_var(&mut self, name: &'a str, span: Span) -> _Variable<'a> {
+    fn resolve_var(&mut self, name: &'a str, span: Span) -> VarKind<'a> {
         // first, try a local with that name
         if let Some(id) = self.funcs[self.funcs.len() - 1].get_local(name) {
-            VLocal(id)
+            VarKind::Local(id)
         } else {
             // find an upvalue
             if let Some(id) = self.get_upval(&name) {
-                VUpval(id)
+                VarKind::Upval(id)
             } else {
                 // fall back to global access; resolve environment
                 let envvar = Box::new(Spanned::new(span,
                     self.resolve_var("_ENV", span)));
 
-                VIndex(envvar, Box::new(Spanned::new(span, ELit(Const::Str(name.to_owned())))))
+                VarKind::Indexed(envvar,
+                    Box::new(Spanned::new(span, ExprKind::Lit(Const::Str(name.to_owned())))))
             }
         }
     }
@@ -179,22 +180,22 @@ impl<'a> Resolver<'a> {
 impl<'a> Transform<'a> for Resolver<'a> {
     fn visit_stmt(&mut self, mut s: Stmt<'a>) -> Stmt<'a> {
         s.value = match s.value {
-            SDecl(names, mut exprs) => {
+            StmtKind::Decl(names, mut exprs) => {
                 exprs = exprs.into_iter().map(|e| walk_expr(e, self)).collect();
 
                 for name in &names {
                     self.add_local(*name);
                 }
 
-                SDecl(names, exprs)
+                StmtKind::Decl(names, exprs)
             },
-            SFor{var, start, step, end, mut body} => {
+            StmtKind::For{var, start, step, end, mut body} => {
                 body = self.resolve_block(body, vec![var]);
-                SFor{var: var, start: start, step: step, end: end, body: body}
+                StmtKind::For{var: var, start: start, step: step, end: end, body: body}
             },
-            SForIn{vars, iter, mut body} => {
+            StmtKind::ForIn{vars, iter, mut body} => {
                 body = self.resolve_block(body, vars.clone());
-                SForIn{vars: vars, iter: iter, body: body}
+                StmtKind::ForIn{vars: vars, iter: iter, body: body}
             },
             _ => { return walk_stmt(s, self); },
         };
@@ -203,7 +204,7 @@ impl<'a> Transform<'a> for Resolver<'a> {
     }
 
     fn visit_var(&mut self, mut v: Variable<'a>) -> Variable<'a> {
-        if let VNamed(name) = v.value {
+        if let VarKind::Named(name) = v.value {
             v.value = self.resolve_var(name, v.span);
             v
         } else {
@@ -237,7 +238,7 @@ impl<'a> Transform<'a> for Resolver<'a> {
 /// Resolves all locals used in the given main function and all functions defined within. This will
 /// also resolve the environment of all functions.
 ///
-/// All occurrences of `VNamed` will be converted to `VLocal`, `VUpval`, or `VIndex` after this
+/// All occurrences of `VarKind::Named` will be converted to `VarKind::Local`, `VarKind::Upval`, or `VarKind::Indexed` after this
 /// function returns.
 pub fn resolve_func(f: Function) -> Function {
     Resolver {
@@ -285,30 +286,30 @@ j = i
         f = resolve_func(f);
 
         assert_eq!(f.body, Block::with_locals(vec![
-            Spanned::default(SAssign(
-                vec![Spanned::default(VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(Const::Str("i".to_owned()))))))],
-                vec![Spanned::default(ELit(Const::Number(0.into())))],
+            Spanned::default(StmtKind::Assign(
+                vec![Spanned::default(VarKind::Indexed(Box::new(Spanned::default(VarKind::Upval(0))), Box::new(Spanned::default(ExprKind::Lit(Const::Str("i".to_owned()))))))],
+                vec![Spanned::default(ExprKind::Lit(Const::Number(0.into())))],
             )),
-            Spanned::default(SDecl(vec![Spanned::default("a")], vec![])),
-            Spanned::default(SDo(Block::with_locals(vec![
-                Spanned::default(SDecl(vec![Spanned::default("i")], vec![])),
-                Spanned::default(SDecl(vec![Spanned::default("j")], vec![
-                    Spanned::default(EVar(Spanned::default(VLocal(1)))),
+            Spanned::default(StmtKind::Decl(vec![Spanned::default("a")], vec![])),
+            Spanned::default(StmtKind::Do(Block::with_locals(vec![
+                Spanned::default(StmtKind::Decl(vec![Spanned::default("i")], vec![])),
+                Spanned::default(StmtKind::Decl(vec![Spanned::default("j")], vec![
+                    Spanned::default(ExprKind::Var(Spanned::default(VarKind::Local(1)))),
                 ])),
-                Spanned::default(SAssign(
-                    vec![Spanned::default(VIndex(
-                        Box::new(Spanned::default(VLocal(1))),
-                        Box::new(Spanned::default(EVar(Spanned::default(VLocal(2)))))
+                Spanned::default(StmtKind::Assign(
+                    vec![Spanned::default(VarKind::Indexed(
+                        Box::new(Spanned::default(VarKind::Local(1))),
+                        Box::new(Spanned::default(ExprKind::Var(Spanned::default(VarKind::Local(2)))))
                     ))],
-                    vec![Spanned::default(EVar(Spanned::default(VLocal(0))))],
+                    vec![Spanned::default(ExprKind::Var(Spanned::default(VarKind::Local(0))))],
                 )),
             ], Default::default(), localmap!{ i: 1, j: 2 }))),
-            Spanned::default(SAssign(
+            Spanned::default(StmtKind::Assign(
                 vec![Spanned::default(
-                    VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(Const::Str("j".to_owned())))))
+                    VarKind::Indexed(Box::new(Spanned::default(VarKind::Upval(0))), Box::new(Spanned::default(ExprKind::Lit(Const::Str("j".to_owned())))))
                 )],
-                vec![Spanned::default(EVar(Spanned::default(
-                    VIndex(Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(Const::Str("i".to_owned())))))
+                vec![Spanned::default(ExprKind::Var(Spanned::default(
+                    VarKind::Indexed(Box::new(Spanned::default(VarKind::Upval(0))), Box::new(Spanned::default(ExprKind::Lit(Const::Str("i".to_owned())))))
                 )))],
             )),
         ], Default::default(), localmap!{ a: 0 }));
@@ -333,37 +334,37 @@ end
             locals: vec![Spanned::default("a"), Spanned::default("f")],
             upvalues: vec![UpvalDesc::Upval(0)],    // `_ENV`; the UpvalDesc is ignored
             body: Block::with_locals(vec![
-                Spanned::default(SDecl(vec![Spanned::default("a")], vec![])),
-                Spanned::default(SDecl(vec![Spanned::default("f")], vec![])),
-                Spanned::default(SAssign(vec![
-                    Spanned::default(VLocal(1))
-                ], vec![Spanned::default(EFunc(Function {
+                Spanned::default(StmtKind::Decl(vec![Spanned::default("a")], vec![])),
+                Spanned::default(StmtKind::Decl(vec![Spanned::default("f")], vec![])),
+                Spanned::default(StmtKind::Assign(vec![
+                    Spanned::default(VarKind::Local(1))
+                ], vec![Spanned::default(ExprKind::Func(Function {
                     params: vec![],
                     varargs: false,
                     locals: vec![Spanned::default("f"), Spanned::default("g")],
                     upvalues: vec![UpvalDesc::Local(1), UpvalDesc::Local(0)],
                     body: Block::with_locals(vec![
-                        Spanned::default(SAssign(vec![
-                            Spanned::default(VUpval(0))
+                        Spanned::default(StmtKind::Assign(vec![
+                            Spanned::default(VarKind::Upval(0))
                         ], vec![
-                            Spanned::default(ELit(Const::Nil))
+                            Spanned::default(ExprKind::Lit(Const::Nil))
                         ])),
-                        Spanned::default(SDecl(vec![Spanned::default("f")], vec![
-                            Spanned::default(EVar(Spanned::default(VUpval(0))))
+                        Spanned::default(StmtKind::Decl(vec![Spanned::default("f")], vec![
+                            Spanned::default(ExprKind::Var(Spanned::default(VarKind::Upval(0))))
                         ])),
-                        Spanned::default(SDecl(vec![Spanned::default("g")], vec![])),
-                        Spanned::default(SAssign(vec![
-                            Spanned::default(VLocal(1))
-                        ], vec![Spanned::default(EFunc(Function {
+                        Spanned::default(StmtKind::Decl(vec![Spanned::default("g")], vec![])),
+                        Spanned::default(StmtKind::Assign(vec![
+                            Spanned::default(VarKind::Local(1))
+                        ], vec![Spanned::default(ExprKind::Func(Function {
                             params: vec![],
                             varargs: false,
                             locals: vec![],
                             upvalues: vec![UpvalDesc::Local(0), UpvalDesc::Upval(1)],
                             body: Block::with_locals(vec![
-                                Spanned::default(SAssign(vec![
-                                    Spanned::default(VUpval(0))
+                                Spanned::default(StmtKind::Assign(vec![
+                                    Spanned::default(VarKind::Upval(0))
                                 ], vec![
-                                    Spanned::default(EVar(Spanned::default(VUpval(1))))
+                                    Spanned::default(ExprKind::Var(Spanned::default(VarKind::Upval(1))))
                                 ])),
                             ], Default::default(), localmap!{}),
                         }))])),
@@ -379,10 +380,10 @@ end
         f = resolve_func(f);
 
         assert_eq!(f.body, Block::new(vec![
-            Spanned::default(SAssign(vec![
-                Spanned::default(VUpval(0))
+            Spanned::default(StmtKind::Assign(vec![
+                Spanned::default(VarKind::Upval(0))
             ], vec![
-                Spanned::default(ELit(Const::Number(0.into())))
+                Spanned::default(ExprKind::Lit(Const::Number(0.into())))
             ])),
         ], Default::default()));
     }
@@ -404,69 +405,69 @@ local function h() local function h1() r = nil end end
             locals: vec![Spanned::default("_ENV"), Spanned::default("f"), Spanned::default("g"), Spanned::default("h")],
             upvalues: vec![UpvalDesc::Upval(0)],
             body: Block::with_locals(vec![
-                Spanned::default(SAssign(vec![
-                    Spanned::default(VUpval(0))
+                Spanned::default(StmtKind::Assign(vec![
+                    Spanned::default(VarKind::Upval(0))
                 ], vec![
-                    Spanned::default(ELit(Const::Nil))
+                    Spanned::default(ExprKind::Lit(Const::Nil))
                 ])),
-                Spanned::default(SDecl(vec![Spanned::default("_ENV")], vec![])),
-                Spanned::default(SDecl(vec![Spanned::default("f")], vec![])),
-                Spanned::default(SAssign(vec![
-                    Spanned::default(VLocal(1))
-                ], vec![Spanned::default(EFunc(Function {
+                Spanned::default(StmtKind::Decl(vec![Spanned::default("_ENV")], vec![])),
+                Spanned::default(StmtKind::Decl(vec![Spanned::default("f")], vec![])),
+                Spanned::default(StmtKind::Assign(vec![
+                    Spanned::default(VarKind::Local(1))
+                ], vec![Spanned::default(ExprKind::Func(Function {
                     params: vec![],
                     varargs: false,
                     locals: vec![Spanned::default("_ENV")],
                     upvalues: vec![],
                     body: Block::with_locals(vec![
-                        Spanned::default(SDecl(vec![Spanned::default("_ENV")], vec![])),
-                        Spanned::default(SAssign(vec![
-                            Spanned::default(VIndex(
-                                Box::new(Spanned::default(VLocal(0))), Box::new(Spanned::default(ELit(Const::Str("i".to_owned()))))
+                        Spanned::default(StmtKind::Decl(vec![Spanned::default("_ENV")], vec![])),
+                        Spanned::default(StmtKind::Assign(vec![
+                            Spanned::default(VarKind::Indexed(
+                                Box::new(Spanned::default(VarKind::Local(0))), Box::new(Spanned::default(ExprKind::Lit(Const::Str("i".to_owned()))))
                             )),
-                        ], vec![Spanned::default(ELit(Const::Nil))])),
+                        ], vec![Spanned::default(ExprKind::Lit(Const::Nil))])),
                     ], Default::default(), localmap!{ _ENV: 0 }),
                 }))])),
-                Spanned::default(SDecl(vec![Spanned::default("g")], vec![])),
-                Spanned::default(SAssign(vec![
-                    Spanned::default(VLocal(2))
-                ], vec![Spanned::default(EFunc(Function {
+                Spanned::default(StmtKind::Decl(vec![Spanned::default("g")], vec![])),
+                Spanned::default(StmtKind::Assign(vec![
+                    Spanned::default(VarKind::Local(2))
+                ], vec![Spanned::default(ExprKind::Func(Function {
                     params: vec![],
                     varargs: false,
                     locals: vec![],
                     upvalues: vec![UpvalDesc::Local(0)],
                     body: Block::with_locals(vec![
-                        Spanned::default(SAssign(vec![
-                            Spanned::default(VUpval(0))
+                        Spanned::default(StmtKind::Assign(vec![
+                            Spanned::default(VarKind::Upval(0))
                         ], vec![
-                            Spanned::default(ELit(Const::Nil))
+                            Spanned::default(ExprKind::Lit(Const::Nil))
                         ])),
                     ], Default::default(), localmap!{}),
                 }))])),
-                Spanned::default(SDecl(vec![Spanned::default("h")], vec![])),
-                Spanned::default(SAssign(vec![
-                    Spanned::default(VLocal(3))
-                ], vec![Spanned::default(EFunc(Function {
+                Spanned::default(StmtKind::Decl(vec![Spanned::default("h")], vec![])),
+                Spanned::default(StmtKind::Assign(vec![
+                    Spanned::default(VarKind::Local(3))
+                ], vec![Spanned::default(ExprKind::Func(Function {
                     params: vec![],
                     varargs: false,
                     locals: vec![Spanned::default("h1")],
                     upvalues: vec![UpvalDesc::Local(0)],
                     body: Block::with_locals(vec![
-                        Spanned::default(SDecl(vec![Spanned::default("h1")], vec![])),
-                        Spanned::default(SAssign(vec![
-                            Spanned::default(VLocal(0))
-                        ], vec![Spanned::default(EFunc(Function {
+                        Spanned::default(StmtKind::Decl(vec![Spanned::default("h1")], vec![])),
+                        Spanned::default(StmtKind::Assign(vec![
+                            Spanned::default(VarKind::Local(0))
+                        ], vec![Spanned::default(ExprKind::Func(Function {
                             params: vec![],
                             varargs: false,
                             locals: vec![],
                             upvalues: vec![UpvalDesc::Upval(0)],
                             body: Block::new(vec![
-                                Spanned::default(SAssign(vec![
-                                    Spanned::default(VIndex(
-                                        Box::new(Spanned::default(VUpval(0))), Box::new(Spanned::default(ELit(Const::Str("r".to_owned()))))
+                                Spanned::default(StmtKind::Assign(vec![
+                                    Spanned::default(VarKind::Indexed(
+                                        Box::new(Spanned::default(VarKind::Upval(0))), Box::new(Spanned::default(ExprKind::Lit(Const::Str("r".to_owned()))))
                                     ))
                                 ], vec![
-                                    Spanned::default(ELit(Const::Nil)),
+                                    Spanned::default(ExprKind::Lit(Const::Nil)),
                                 ])),
                             ], Default::default()),
                         }))])),
