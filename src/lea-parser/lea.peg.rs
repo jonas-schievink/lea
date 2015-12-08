@@ -18,7 +18,7 @@ index -> VarIndex<'input>
 
 variable -> Variable<'input>
     = i:ident idxs:index* {
-        let mut v = Spanned::new(i.span, VNamed(i.value));
+        let mut v = Spanned::new(i.span, VarKind::Named(i.value));
         for idx in idxs {
             let start = v.span.start;
             let end = match idx {
@@ -26,7 +26,7 @@ variable -> Variable<'input>
                 VarIndex::DotIndex(ref id) => id.span.start + id.span.len,
             };
 
-            v = mkspanned(VIndex(Box::new(v), idx), start, end);
+            v = mkspanned(VarKind::Indexed(Box::new(v), idx), start, end);
         }
 
         v
@@ -42,8 +42,8 @@ methodname -> Spanned<&'input str>
     = ":" __* name:ident __* { name }
 
 callee -> Expr<'input>
-    = v:variable            { mkspanned(EVar(v), start_pos, pos) }
-    / "(" e:expression ")"  { mkspanned(EBraced(Box::new(e)), start_pos, pos) }
+    = v:variable            { mkspanned(ExprKind::Var(v), start_pos, pos) }
+    / "(" e:expression ")"  { mkspanned(ExprKind::Braced(Box::new(e)), start_pos, pos) }
 
 call -> Call<'input>
     = callee:callee name:methodname? args:callargs+ {
@@ -52,26 +52,26 @@ call -> Call<'input>
         let callee_span = callee.span.clone();
         let callee = Box::new(callee);
         let mut what = Spanned::new(callee_span, match name {
-            None => SimpleCall(callee, first_args),
-            Some(name) => MethodCall(callee, name, first_args),
+            None => Call::Normal(callee, first_args),
+            Some(name) => Call::Method(callee, name, first_args),
         });
 
         for list in it {
             what = Spanned::new(callee_span,
-                SimpleCall(Box::new(Spanned::new(what.span, ECall(what.value))), list));
+                Call::Normal(Box::new(Spanned::new(what.span, ExprKind::Call(what.value))), list));
         }
 
         what.value
     }
 
 atom_inner -> Expr<'input>
-    = lit:literal           { Spanned::new(lit.span, ELit(lit.value)) }
-    / op:unop a:atom        { mkspanned(EUnOp(op, Box::new(a)), start_pos, pos) }
-    / t:tablecons           { mkspanned(ETable(t), start_pos, pos) }
-    / a:arraycons           { mkspanned(EArray(a), start_pos, pos) }
-    / "function" f:funcbody { mkspanned(EFunc(f), start_pos, pos) }
-    / "..."                 { mkspanned(EVarArgs, start_pos, pos) }
-    / c:call                { mkspanned(ECall(c), start_pos, pos) }
+    = lit:literal           { Spanned::new(lit.span, ExprKind::Lit(lit.value)) }
+    / op:unop a:atom        { mkspanned(ExprKind::UnOp(op, Box::new(a)), start_pos, pos) }
+    / t:tablecons           { mkspanned(ExprKind::Table(t), start_pos, pos) }
+    / a:arraycons           { mkspanned(ExprKind::Array(a), start_pos, pos) }
+    / "function" f:funcbody { mkspanned(ExprKind::Func(f), start_pos, pos) }
+    / "..."                 { mkspanned(ExprKind::VarArgs, start_pos, pos) }
+    / c:call                { mkspanned(ExprKind::Call(c), start_pos, pos) }
     / callee
 
 // Atomic expression. Either a literal, a unary operator applied to another atom or a full expr
@@ -107,7 +107,7 @@ elseif -> Spanned<(Expr<'input>, Block<'input>)>
 
 stmt_if -> Stmt<'input>
     = "if" cond:expression "then" __+ body:block elifs:elseif* el:("else" __+ block)? "end" {
-        mkspanned(SIf {
+        mkspanned(StmtKind::If {
             cond: cond,
             body: body,
             elifs: elifs,
@@ -143,20 +143,20 @@ funcbody -> Function<'input>
 stmt_inner -> Stmt<'input>
     = stmt_if
     / "while" cond:expression "do" __+ body:block "end" {
-        mkspanned(SWhile { cond: cond, body: body }, start_pos, pos)
+        mkspanned(StmtKind::While { cond: cond, body: body }, start_pos, pos)
     }
     / "repeat" __+ body:block "until" cond:expression {
-        mkspanned(SRepeat { abort_on: cond, body: body }, start_pos, pos)
+        mkspanned(StmtKind::Repeat { abort_on: cond, body: body }, start_pos, pos)
     }
     / "for" __+ vars:identlist __+ "in" it:expression_list "do" __+ body:block "end" {
-        mkspanned(SForIn {
+        mkspanned(StmtKind::ForIn {
             vars: vars,
             iter: it,
             body: body,
         }, start_pos, pos)
     }
     / "for" __+ var:ident __* "=" start:expression "," end:expression step:("," expression)? "do" __+ body:block "end" {
-        mkspanned(SFor {
+        mkspanned(StmtKind::For {
             var: var,
             start: start,
             step: step,
@@ -166,25 +166,25 @@ stmt_inner -> Stmt<'input>
     }
     / "function" __+ var:variable method:methodname? f:funcbody {
         mkspanned(match method {
-            None => SFunc(var, f),
-            Some(method) => SMethod(var, method, f),
+            None => StmtKind::Func(var, f),
+            Some(method) => StmtKind::Method(var, method, f),
         }, start_pos, pos)
     }
     / "local" __+ "function" __+ name:ident f:funcbody {
-        mkspanned(SLFunc(name, f), start_pos, pos)
+        mkspanned(StmtKind::LocalFunc(name, f), start_pos, pos)
     }
-    / "do" __+ b:block "end" { mkspanned(SDo(b), start_pos, pos) }
-    / "break" { mkspanned(SBreak, start_pos, pos) }
-    / ";" { mkspanned(SSemi, start_pos, pos) }
-    / "return" vals:expression_list { mkspanned(SReturn(vals), start_pos, pos) }
-    / "return" { mkspanned(SReturn(vec![]), start_pos, pos) }
+    / "do" __+ b:block "end" { mkspanned(StmtKind::Do(b), start_pos, pos) }
+    / "break" { mkspanned(StmtKind::Break, start_pos, pos) }
+    / ";" { mkspanned(StmtKind::Semi, start_pos, pos) }
+    / "return" vals:expression_list { mkspanned(StmtKind::Return(vals), start_pos, pos) }
+    / "return" { mkspanned(StmtKind::Return(vec![]), start_pos, pos) }
     / "local" __+ locals:identlist __* "=" exprs:expression_list {
-        mkspanned(SDecl(locals, exprs), start_pos, pos)
+        mkspanned(StmtKind::Decl(locals, exprs), start_pos, pos)
     }
-    / "local" __+ locals:identlist { mkspanned(SDecl(locals, vec![]), start_pos, pos) }
-    / c:call { mkspanned(SCall(c), start_pos, pos) }
+    / "local" __+ locals:identlist { mkspanned(StmtKind::Decl(locals, vec![]), start_pos, pos) }
+    / c:call { mkspanned(StmtKind::Call(c), start_pos, pos) }
     / vars:varlist __* "=" vals:expression_list {
-        mkspanned(SAssign(vars, vals), start_pos, pos)
+        mkspanned(StmtKind::Assign(vars, vals), start_pos, pos)
     }
 
 #[pub]

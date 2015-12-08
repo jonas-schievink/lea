@@ -2,11 +2,6 @@
 
 // TODO: Represent comments in the parse tree
 
-pub use self::_Variable::*;
-pub use self::_Stmt::*;
-pub use self::_Expr::*;
-pub use self::Call::*;
-
 use span::{Span, Spanned};
 use op::*;
 
@@ -38,11 +33,11 @@ pub enum CallArgs<'a> {
 #[derive(Clone, PartialEq, Debug)]
 pub enum Call<'a> {
     /// Regular call: f(e1, e2, ..)
-    SimpleCall(Box<Expr<'a>>, CallArgs<'a>),
+    Normal(Box<Expr<'a>>, CallArgs<'a>),
 
     /// some.thing:name(...) - passes `some.thing` as the first argument, without evaluating it
     /// twice
-    MethodCall(Box<Expr<'a>>, Spanned<&'a str>, CallArgs<'a>),
+    Method(Box<Expr<'a>>, Spanned<&'a str>, CallArgs<'a>),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -70,25 +65,25 @@ pub enum VarIndex<'a> {
     ExprIndex(Box<Expr<'a>>),
 }
 
-/// Something that can be set to a value
+/// Something that can be assigned a value
 #[derive(Clone, PartialEq, Debug)]
-pub enum _Variable<'a> {
+pub enum VarKind<'a> {
     /// References a named variable; later resolved to local, global or upvalue references
-    VNamed(&'a str),
+    Named(&'a str),
 
-    VIndex(Box<Variable<'a>>, VarIndex<'a>),
+    Indexed(Box<Variable<'a>>, VarIndex<'a>),
 }
 
-pub type Variable<'a> = Spanned<_Variable<'a>>;
+pub type Variable<'a> = Spanned<VarKind<'a>>;
 
 /// Statement nodes
 #[derive(Clone, Debug, PartialEq)]
-pub enum _Stmt<'a> {
+pub enum StmtKind<'a> {
     /// Declare a list of locals and assign initial values.
     ///
     /// Initial values are optional and default to `nil` (the second vector can have less elements
     /// than the first).
-    SDecl(Vec<Spanned<&'a str>>, Vec<Expr<'a>>),
+    Decl(Vec<Spanned<&'a str>>, Vec<Expr<'a>>),
 
     /// Assigns a list of expressions to a list of variables.
     ///
@@ -97,22 +92,22 @@ pub enum _Stmt<'a> {
     ///
     /// Might contain less variables than expressions or less expressions than variables. In the
     /// latter case, the leftover variables are assigned to nil.
-    SAssign(Vec<Variable<'a>>, Vec<Expr<'a>>),
+    Assign(Vec<Variable<'a>>, Vec<Expr<'a>>),
 
     /// Execute a block in a new scope
-    SDo(Block<'a>),
+    Do(Block<'a>),
 
     /// Abort the current loop
-    SBreak,
+    Break,
 
     /// No-op semicolon statement
-    SSemi,
+    Semi,
 
     /// Return a possibly empty list of values to the caller
-    SReturn(Vec<Expr<'a>>),
+    Return(Vec<Expr<'a>>),
 
     /// Function call as statement
-    SCall(Call<'a>),
+    Call(Call<'a>),
 
     /// Assign function to named variable.
     ///
@@ -125,7 +120,7 @@ pub enum _Stmt<'a> {
     /// ```lua
     /// XY = function(...) ... end
     /// ```
-    SFunc(Variable<'a>, Function<'a>),
+    Func(Variable<'a>, Function<'a>),
 
     /// Method declaration.
     ///
@@ -138,7 +133,7 @@ pub enum _Stmt<'a> {
     /// ```lua
     /// some.thing.methodname = function(self, ...) ... end
     /// ```
-    SMethod(Variable<'a>, Spanned<&'a str>, Function<'a>),
+    Method(Variable<'a>, Spanned<&'a str>, Function<'a>),
 
     /// Assign function to newly declared local.
     ///
@@ -151,10 +146,10 @@ pub enum _Stmt<'a> {
     /// ```lua
     /// local XY; XY = function(...) ... end
     /// ```
-    SLFunc(Spanned<&'a str>, Function<'a>),
+    LocalFunc(Spanned<&'a str>, Function<'a>),
 
     /// Executes `body` if `cond` is true and the `elseif`s or `else` if not.
-    SIf {
+    If {
         cond: Expr<'a>,
         body: Block<'a>,
         elifs: Vec<Spanned<(/* cond */ Expr<'a>, /* body */ Block<'a>)>>,
@@ -162,20 +157,20 @@ pub enum _Stmt<'a> {
     },
 
     /// Loops a block while `cond` is true
-    SWhile {
+    While {
         cond: Expr<'a>,
         body: Block<'a>,
     },
 
     /// Loops a block until `abort_on` is true. The body is executed at least once (`abort_on` is
     /// checked after the body has run).
-    SRepeat {
+    Repeat {
         abort_on: Expr<'a>,
         body: Block<'a>,
     },
 
     /// Numeric for loop
-    SFor {
+    For {
         var: Spanned<&'a str>,    // named local, newly declared
         start: Expr<'a>,
         step: Option<Expr<'a>>,
@@ -184,7 +179,7 @@ pub enum _Stmt<'a> {
     },
 
     /// Generic for loop
-    SForIn {
+    ForIn {
         /// The loop variables, returned by iterator
         vars: Vec<Spanned<&'a str>>,
         /// Expression list: Iterator function, state, start value, [ignored ...]
@@ -193,7 +188,7 @@ pub enum _Stmt<'a> {
     },
 }
 
-pub type Stmt<'a> = Spanned<_Stmt<'a>>;
+pub type Stmt<'a> = Spanned<StmtKind<'a>>;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum TableEntry<'a> {
@@ -209,26 +204,26 @@ pub type TableCons<'a> = Vec<TableEntry<'a>>;
 
 /// Expression nodes
 #[derive(Clone, PartialEq, Debug)]
-pub enum _Expr<'a> {
-    ELit(Const),
-    EBinOp(Box<Expr<'a>>, BinOp, Box<Expr<'a>>),
-    EUnOp(UnOp, Box<Expr<'a>>),
-    EBraced(Box<Expr<'a>>),
+pub enum ExprKind<'a> {
+    Lit(Const),
+    BinOp(Box<Expr<'a>>, BinOp, Box<Expr<'a>>),
+    UnOp(UnOp, Box<Expr<'a>>),
+    Braced(Box<Expr<'a>>),
 
     /// Variable used as expression
-    EVar(Variable<'a>),
+    Var(Variable<'a>),
     /// Calls a function, might return multiple results
-    ECall(Call<'a>),
+    Call(Call<'a>),
 
     /// Instantiates a function/closure
-    EFunc(Function<'a>),
+    Func(Function<'a>),
 
     /// Table constructor
-    ETable(TableCons<'a>),
+    Table(TableCons<'a>),
     /// Array constructor, takes a list of initial values
-    EArray(Vec<Expr<'a>>),
+    Array(Vec<Expr<'a>>),
     /// "..."; expands to var args. only valid if used inside varargs functions
-    EVarArgs,
+    VarArgs,
 }
 
-pub type Expr<'a> = Spanned<_Expr<'a>>;
+pub type Expr<'a> = Spanned<ExprKind<'a>>;

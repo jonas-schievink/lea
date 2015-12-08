@@ -10,7 +10,7 @@ use span::*;
 fn mknode<'a>(lhs: Expr<'a>, op: BinOp, rhs: Expr<'a>) -> Expr<'a> {
     let start = lhs.span.start;
     let end = rhs.span.start + rhs.span.len;
-    mkspanned(EBinOp(Box::new(lhs), op, Box::new(rhs)), start, end)
+    mkspanned(ExprKind::BinOp(Box::new(lhs), op, Box::new(rhs)), start, end)
 }
 
 /// Builds an expression tree out of a given `lhs` and operator-expr-pairs applied on the

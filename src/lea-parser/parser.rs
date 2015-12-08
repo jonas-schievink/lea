@@ -69,7 +69,7 @@ pub fn parse_expr_as_main(expr: &str) -> Result<Function, ParseError> {
     let block = Block {
         span: expr.span,
         stmts: vec![
-            Spanned::new(expr.span, SReturn(vec![expr])),
+            Spanned::new(expr.span, StmtKind::Return(vec![expr])),
         ],
     };
 
@@ -133,10 +133,10 @@ mod tests {
         assert_eq!(literal("[======[test]======]").unwrap().value, Const::Str("test".to_owned()));
 
         assert_eq!(literal("[=[test]]]=]").unwrap().value, Const::Str("test]]".to_owned()));
-        assert_eq!(expression("[=[test]=] + [=[bla]=]").unwrap().value, EBinOp(
-            Box::new(Spanned::default(ELit(Const::Str("test".to_owned())))),
+        assert_eq!(expression("[=[test]=] + [=[bla]=]").unwrap().value, ExprKind::BinOp(
+            Box::new(Spanned::default(ExprKind::Lit(Const::Str("test".to_owned())))),
             BinOp::Add,
-            Box::new(Spanned::default(ELit(Const::Str("bla".to_owned())))),
+            Box::new(Spanned::default(ExprKind::Lit(Const::Str("bla".to_owned())))),
         ));
     }
 
@@ -155,108 +155,108 @@ mod tests {
 
     #[test]
     fn expr() {
-        assert_eq!(expression("1+2+3").unwrap().value, EBinOp(
-            Box::new(Spanned::default(EBinOp(
-                Box::new(Spanned::default(ELit(Const::Number(1.into())))),
+        assert_eq!(expression("1+2+3").unwrap().value, ExprKind::BinOp(
+            Box::new(Spanned::default(ExprKind::BinOp(
+                Box::new(Spanned::default(ExprKind::Lit(Const::Number(1.into())))),
                 BinOp::Add,
-                Box::new(Spanned::default(ELit(Const::Number(2.into()))))
+                Box::new(Spanned::default(ExprKind::Lit(Const::Number(2.into()))))
             ))), BinOp::Add,
-                Box::new(Spanned::default(ELit(Const::Number(3.into()))))
+                Box::new(Spanned::default(ExprKind::Lit(Const::Number(3.into()))))
             )
         );
-        assert_eq!(expression("4+1*2").unwrap().value, EBinOp(
-            Box::new(Spanned::default(ELit(Const::Number(4.into())))),
+        assert_eq!(expression("4+1*2").unwrap().value, ExprKind::BinOp(
+            Box::new(Spanned::default(ExprKind::Lit(Const::Number(4.into())))),
             BinOp::Add,
-            Box::new(Spanned::default(EBinOp(
-                Box::new(Spanned::default(ELit(Const::Number(1.into())))),
+            Box::new(Spanned::default(ExprKind::BinOp(
+                Box::new(Spanned::default(ExprKind::Lit(Const::Number(1.into())))),
                 BinOp::Mul,
-                Box::new(Spanned::default(ELit(Const::Number(2.into()))))
+                Box::new(Spanned::default(ExprKind::Lit(Const::Number(2.into()))))
             ))
         )));
-        assert_eq!(expression("4*1+2").unwrap().value, EBinOp(
-            Box::new(Spanned::default(EBinOp(
-                Box::new(Spanned::default(ELit(Const::Number(4.into())))),
+        assert_eq!(expression("4*1+2").unwrap().value, ExprKind::BinOp(
+            Box::new(Spanned::default(ExprKind::BinOp(
+                Box::new(Spanned::default(ExprKind::Lit(Const::Number(4.into())))),
                 BinOp::Mul,
-                Box::new(Spanned::default(ELit(Const::Number(1.into()))))
+                Box::new(Spanned::default(ExprKind::Lit(Const::Number(1.into()))))
             ))),
             BinOp::Add,
-            Box::new(Spanned::default(ELit(Const::Number(2.into()))))
+            Box::new(Spanned::default(ExprKind::Lit(Const::Number(2.into()))))
         ));
 
-        assert_eq!(expression("-(5)").unwrap().value, EUnOp(
+        assert_eq!(expression("-(5)").unwrap().value, ExprKind::UnOp(
             UnOp::Negate,
-            Box::new(Spanned::default(EBraced(
-                Box::new(Spanned::default(ELit(Const::Number(5.into()))))
+            Box::new(Spanned::default(ExprKind::Braced(
+                Box::new(Spanned::default(ExprKind::Lit(Const::Number(5.into()))))
             )))
         ));
-        assert_eq!(expression("-(5+1)").unwrap().value, EUnOp(
+        assert_eq!(expression("-(5+1)").unwrap().value, ExprKind::UnOp(
             UnOp::Negate,
-            Box::new(Spanned::default(EBraced(Box::new(Spanned::default(EBinOp(
-                Box::new(Spanned::default(ELit(Const::Number(5.into())))),
+            Box::new(Spanned::default(ExprKind::Braced(Box::new(Spanned::default(ExprKind::BinOp(
+                Box::new(Spanned::default(ExprKind::Lit(Const::Number(5.into())))),
                 BinOp::Add,
-                Box::new(Spanned::default(ELit(Const::Number(1.into()))))
+                Box::new(Spanned::default(ExprKind::Lit(Const::Number(1.into()))))
             ))))))
         ));
-        assert_eq!(expression("(1+2)*3").unwrap().value, EBinOp(
-            Box::new(Spanned::default(EBraced(Box::new(Spanned::default(EBinOp(
-                Box::new(Spanned::default(ELit(Const::Number(1.into())))),
+        assert_eq!(expression("(1+2)*3").unwrap().value, ExprKind::BinOp(
+            Box::new(Spanned::default(ExprKind::Braced(Box::new(Spanned::default(ExprKind::BinOp(
+                Box::new(Spanned::default(ExprKind::Lit(Const::Number(1.into())))),
                 BinOp::Add,
-                Box::new(Spanned::default(ELit(Const::Number(2.into()))))
+                Box::new(Spanned::default(ExprKind::Lit(Const::Number(2.into()))))
             )))))),
             BinOp::Mul,
-            Box::new(Spanned::default(ELit(Const::Number(3.into()))))
+            Box::new(Spanned::default(ExprKind::Lit(Const::Number(3.into()))))
         ));
-        assert_eq!(expression("-!~(#5)").unwrap().value, EUnOp(
-            UnOp::Negate, Box::new(Spanned::default(EUnOp(
-                UnOp::LNot, Box::new(Spanned::default(EUnOp(
-                    UnOp::BNot, Box::new(Spanned::default(EBraced(Box::new(Spanned::default(EUnOp(
-                        UnOp::Len, Box::new(Spanned::default(ELit(Const::Number(5.into()))))
+        assert_eq!(expression("-!~(#5)").unwrap().value, ExprKind::UnOp(
+            UnOp::Negate, Box::new(Spanned::default(ExprKind::UnOp(
+                UnOp::LNot, Box::new(Spanned::default(ExprKind::UnOp(
+                    UnOp::BNot, Box::new(Spanned::default(ExprKind::Braced(Box::new(Spanned::default(ExprKind::UnOp(
+                        UnOp::Len, Box::new(Spanned::default(ExprKind::Lit(Const::Number(5.into()))))
                     ))))))
                 )))
             )))
         ));
 
         // right-associativity
-        assert_eq!(expression("1^2^3+4").unwrap().value, EBinOp(
-            Box::new(Spanned::default(EBinOp(
-                Box::new(Spanned::default(ELit(Const::Number(1.into())))),
+        assert_eq!(expression("1^2^3+4").unwrap().value, ExprKind::BinOp(
+            Box::new(Spanned::default(ExprKind::BinOp(
+                Box::new(Spanned::default(ExprKind::Lit(Const::Number(1.into())))),
                 BinOp::Pow,
-                Box::new(Spanned::default(EBinOp(
-                    Box::new(Spanned::default(ELit(Const::Number(2.into())))),
+                Box::new(Spanned::default(ExprKind::BinOp(
+                    Box::new(Spanned::default(ExprKind::Lit(Const::Number(2.into())))),
                     BinOp::Pow,
-                    Box::new(Spanned::default(ELit(Const::Number(3.into())))),
+                    Box::new(Spanned::default(ExprKind::Lit(Const::Number(3.into())))),
                 )))
             ))),
             BinOp::Add,
-            Box::new(Spanned::default(ELit(Const::Number(4.into())))),
+            Box::new(Spanned::default(ExprKind::Lit(Const::Number(4.into())))),
         ));
 
         // This requires reversing everything because of op. precedences
-        assert_eq!(expression("9||8==7&6~5|4>>3+2*1").unwrap().value, EBinOp(
-            Box::new(Spanned::default(ELit(Const::Number(9.into())))),
+        assert_eq!(expression("9||8==7&6~5|4>>3+2*1").unwrap().value, ExprKind::BinOp(
+            Box::new(Spanned::default(ExprKind::Lit(Const::Number(9.into())))),
             BinOp::LOr,
-            Box::new(Spanned::default(EBinOp(
-                Box::new(Spanned::default(ELit(Const::Number(8.into())))),
+            Box::new(Spanned::default(ExprKind::BinOp(
+                Box::new(Spanned::default(ExprKind::Lit(Const::Number(8.into())))),
                 BinOp::Eq,
-                Box::new(Spanned::default(EBinOp(
-                    Box::new(Spanned::default(ELit(Const::Number(7.into())))),
+                Box::new(Spanned::default(ExprKind::BinOp(
+                    Box::new(Spanned::default(ExprKind::Lit(Const::Number(7.into())))),
                     BinOp::BAnd,
-                    Box::new(Spanned::default(EBinOp(
-                        Box::new(Spanned::default(ELit(Const::Number(6.into())))),
+                    Box::new(Spanned::default(ExprKind::BinOp(
+                        Box::new(Spanned::default(ExprKind::Lit(Const::Number(6.into())))),
                         BinOp::BXor,
-                        Box::new(Spanned::default(EBinOp(
-                            Box::new(Spanned::default(ELit(Const::Number(5.into())))),
+                        Box::new(Spanned::default(ExprKind::BinOp(
+                            Box::new(Spanned::default(ExprKind::Lit(Const::Number(5.into())))),
                             BinOp::BOr,
-                            Box::new(Spanned::default(EBinOp(
-                                Box::new(Spanned::default(ELit(Const::Number(4.into())))),
+                            Box::new(Spanned::default(ExprKind::BinOp(
+                                Box::new(Spanned::default(ExprKind::Lit(Const::Number(4.into())))),
                                 BinOp::ShiftR,
-                                Box::new(Spanned::default(EBinOp(
-                                    Box::new(Spanned::default(ELit(Const::Number(3.into())))),
+                                Box::new(Spanned::default(ExprKind::BinOp(
+                                    Box::new(Spanned::default(ExprKind::Lit(Const::Number(3.into())))),
                                     BinOp::Add,
-                                    Box::new(Spanned::default(EBinOp(
-                                        Box::new(Spanned::default(ELit(Const::Number(2.into())))),
+                                    Box::new(Spanned::default(ExprKind::BinOp(
+                                        Box::new(Spanned::default(ExprKind::Lit(Const::Number(2.into())))),
                                         BinOp::Mul,
-                                        Box::new(Spanned::default(ELit(Const::Number(1.into()))))
+                                        Box::new(Spanned::default(ExprKind::Lit(Const::Number(1.into()))))
                                     )))
                                 )))
                             )))
@@ -270,12 +270,12 @@ mod tests {
     #[test]
     fn expr_idx() {
         assert_eq!(expression("t").unwrap().value,
-            EVar(Spanned::default(VNamed("t"))));
+            ExprKind::Var(Spanned::default(VarKind::Named("t"))));
         assert!(expression("t.i") != expression("t[\"i\"]"));
 
-        assert_eq!(expression("t.i.j").unwrap().value, EVar(Spanned::default(VIndex(
-            Box::new(Spanned::default(VIndex(
-                Box::new(Spanned::default(VNamed("t"))),
+        assert_eq!(expression("t.i.j").unwrap().value, ExprKind::Var(Spanned::default(VarKind::Indexed(
+            Box::new(Spanned::default(VarKind::Indexed(
+                Box::new(Spanned::default(VarKind::Named("t"))),
                 VarIndex::DotIndex(Spanned::default("i")),
             ))),
             VarIndex::DotIndex(Spanned::default("j"))
@@ -284,58 +284,58 @@ mod tests {
 
     #[test]
     fn expr_special() {
-        assert_eq!(expression("[]").unwrap().value, EArray(vec![]));
-        assert_eq!(expression("[1]").unwrap().value, EArray(vec![
-            Spanned::default(ELit(Const::Number(1.into()))),
+        assert_eq!(expression("[]").unwrap().value, ExprKind::Array(vec![]));
+        assert_eq!(expression("[1]").unwrap().value, ExprKind::Array(vec![
+            Spanned::default(ExprKind::Lit(Const::Number(1.into()))),
         ]));
-        assert_eq!(expression("[1,]").unwrap().value, EArray(vec![
-            Spanned::default(ELit(Const::Number(1.into()))),
+        assert_eq!(expression("[1,]").unwrap().value, ExprKind::Array(vec![
+            Spanned::default(ExprKind::Lit(Const::Number(1.into()))),
         ]));
-        assert_eq!(expression("[1,2]").unwrap().value, EArray(vec![
-            Spanned::default(ELit(Const::Number(1.into()))),
-            Spanned::default(ELit(Const::Number(2.into()))),
+        assert_eq!(expression("[1,2]").unwrap().value, ExprKind::Array(vec![
+            Spanned::default(ExprKind::Lit(Const::Number(1.into()))),
+            Spanned::default(ExprKind::Lit(Const::Number(2.into()))),
         ]));
-        assert_eq!(expression("[1,2,]").unwrap().value, EArray(vec![
-            Spanned::default(ELit(Const::Number(1.into()))),
-            Spanned::default(ELit(Const::Number(2.into()))),
+        assert_eq!(expression("[1,2,]").unwrap().value, ExprKind::Array(vec![
+            Spanned::default(ExprKind::Lit(Const::Number(1.into()))),
+            Spanned::default(ExprKind::Lit(Const::Number(2.into()))),
         ]));
 
-        assert_eq!(expression("{}").unwrap().value, ETable(vec![]));
-        assert_eq!(expression("[{k=[1,2,],}]").unwrap().value, EArray(vec![
-            Spanned::default(ETable(vec![
+        assert_eq!(expression("{}").unwrap().value, ExprKind::Table(vec![]));
+        assert_eq!(expression("[{k=[1,2,],}]").unwrap().value, ExprKind::Array(vec![
+            Spanned::default(ExprKind::Table(vec![
                 TableEntry::IdentPair(
                     Spanned::default("k"),
-                    Spanned::default(EArray(vec![
-                        Spanned::default(ELit(Const::Number(1.into()))),
-                        Spanned::default(ELit(Const::Number(2.into()))),
+                    Spanned::default(ExprKind::Array(vec![
+                        Spanned::default(ExprKind::Lit(Const::Number(1.into()))),
+                        Spanned::default(ExprKind::Lit(Const::Number(2.into()))),
                     ]))
                 ),
             ]))
         ]));
-        assert_eq!(expression("{ [9] = 0, [9] }").unwrap().value, ETable(vec![
+        assert_eq!(expression("{ [9] = 0, [9] }").unwrap().value, ExprKind::Table(vec![
             TableEntry::Pair(
-                Spanned::default(ELit(Const::Number(9.into()))),
-                Spanned::default(ELit(Const::Number(0.into()))),
+                Spanned::default(ExprKind::Lit(Const::Number(9.into()))),
+                Spanned::default(ExprKind::Lit(Const::Number(0.into()))),
             ),
-            TableEntry::Elem(Spanned::default(EArray(vec![
-                Spanned::default(ELit(Const::Number(9.into())))
+            TableEntry::Elem(Spanned::default(ExprKind::Array(vec![
+                Spanned::default(ExprKind::Lit(Const::Number(9.into())))
             ]))),
         ]));
 
         assert_eq!(expression("function()end").unwrap().value,
-            EFunc(Function {
+            ExprKind::Func(Function {
                 params: vec![],
                 varargs: false,
                 body: Default::default(),
             })
         );
         assert_eq!(expression("function(i, j, ...) break end").unwrap().value,
-            EFunc(Function {
+            ExprKind::Func(Function {
                 params: vec![Spanned::default("i"), Spanned::default("j")],
                 varargs: true,
                 body: Block {
                     stmts: vec![
-                        Spanned::default(SBreak),
+                        Spanned::default(StmtKind::Break),
                     ],
                     span: Default::default()
                 },
@@ -348,32 +348,32 @@ mod tests {
     fn call() {
         assert!(expression("f(1)").is_ok());
         assert_eq!(statement("f(1, 2)"), statement("f ( 1 , 2 )"));
-        assert_eq!(statement("f ( 1 , 2 )").unwrap().value, SCall(SimpleCall(
-            Box::new(Spanned::default(EVar(Spanned::default(VNamed("f"))))),
+        assert_eq!(statement("f ( 1 , 2 )").unwrap().value, StmtKind::Call(Call::Normal(
+            Box::new(Spanned::default(ExprKind::Var(Spanned::default(VarKind::Named("f"))))),
             CallArgs::Normal(vec![
-                Spanned::default(ELit(Const::Number(1.into()))),
-                Spanned::default(ELit(Const::Number(2.into()))),
+                Spanned::default(ExprKind::Lit(Const::Number(1.into()))),
+                Spanned::default(ExprKind::Lit(Const::Number(2.into()))),
             ]),
         )));
-        assert_eq!(expression("f()").unwrap().value, ECall(SimpleCall(
-            Box::new(Spanned::default(EVar(Spanned::default(VNamed("f"))))),
+        assert_eq!(expression("f()").unwrap().value, ExprKind::Call(Call::Normal(
+            Box::new(Spanned::default(ExprKind::Var(Spanned::default(VarKind::Named("f"))))),
             CallArgs::Normal(vec![]),
         )));
-        assert_eq!(expression("f()()").unwrap().value, ECall(SimpleCall(
-            Box::new(Spanned::default(ECall(SimpleCall(
-                Box::new(Spanned::default(EVar(Spanned::default(VNamed("f"))))),
+        assert_eq!(expression("f()()").unwrap().value, ExprKind::Call(Call::Normal(
+            Box::new(Spanned::default(ExprKind::Call(Call::Normal(
+                Box::new(Spanned::default(ExprKind::Var(Spanned::default(VarKind::Named("f"))))),
                 CallArgs::Normal(vec![]),
             )))),
             CallArgs::Normal(vec![]),
         )));
 
-        assert_eq!(expression("f ''").unwrap().value, ECall(SimpleCall(
-            Box::new(Spanned::default(EVar(Spanned::default(VNamed("f"))))),
+        assert_eq!(expression("f ''").unwrap().value, ExprKind::Call(Call::Normal(
+            Box::new(Spanned::default(ExprKind::Var(Spanned::default(VarKind::Named("f"))))),
             CallArgs::String("".to_owned()),
         )));
 
-        assert_eq!(expression("(function()end)()").unwrap().value, ECall(SimpleCall(
-            Box::new(Spanned::default(EBraced(Box::new(Spanned::default(EFunc(Function {
+        assert_eq!(expression("(function()end)()").unwrap().value, ExprKind::Call(Call::Normal(
+            Box::new(Spanned::default(ExprKind::Braced(Box::new(Spanned::default(ExprKind::Func(Function {
                 params: vec![],
                 varargs: false,
                 body: Default::default(),
@@ -387,36 +387,36 @@ mod tests {
 
     #[test]
     fn stmt() {
-        assert_eq!(statement("break").unwrap().value, SBreak);
-        assert_eq!(statement("do end").unwrap().value, SDo(Default::default()));
-        assert_eq!(statement("do break end").unwrap().value, SDo(
-            Block { stmts: vec![Spanned::default(SBreak)], span: Default::default() }
+        assert_eq!(statement("break").unwrap().value, StmtKind::Break);
+        assert_eq!(statement("do end").unwrap().value, StmtKind::Do(Default::default()));
+        assert_eq!(statement("do break end").unwrap().value, StmtKind::Do(
+            Block { stmts: vec![Spanned::default(StmtKind::Break)], span: Default::default() }
         ));
-        assert_eq!(statement("do do end break end").unwrap().value, SDo(
+        assert_eq!(statement("do do end break end").unwrap().value, StmtKind::Do(
             Block {
                 stmts: vec![
-                    Spanned::default(SDo(Default::default())),
-                    Spanned::default(SBreak),
+                    Spanned::default(StmtKind::Do(Default::default())),
+                    Spanned::default(StmtKind::Break),
                 ],
                 span: Default::default()
             }
         ));
 
-        assert_eq!(statement("i, j = k, l").unwrap().value, SAssign(vec![
-            Spanned::default(VNamed("i")), Spanned::default(VNamed("j")),
+        assert_eq!(statement("i, j = k, l").unwrap().value, StmtKind::Assign(vec![
+            Spanned::default(VarKind::Named("i")), Spanned::default(VarKind::Named("j")),
         ], vec![
-            Spanned::default(EVar(Spanned::default(VNamed("k")))),
-            Spanned::default(EVar(Spanned::default(VNamed("l")))),
+            Spanned::default(ExprKind::Var(Spanned::default(VarKind::Named("k")))),
+            Spanned::default(ExprKind::Var(Spanned::default(VarKind::Named("l")))),
         ]));
-        assert_eq!(statement("i, j = 1, 2, 3").unwrap().value, SAssign(vec![
-            Spanned::default(VNamed("i")), Spanned::default(VNamed("j")),
+        assert_eq!(statement("i, j = 1, 2, 3").unwrap().value, StmtKind::Assign(vec![
+            Spanned::default(VarKind::Named("i")), Spanned::default(VarKind::Named("j")),
         ], vec![
-            Spanned::default(ELit(Const::Number(1.into()))),
-            Spanned::default(ELit(Const::Number(2.into()))),
-            Spanned::default(ELit(Const::Number(3.into()))),
+            Spanned::default(ExprKind::Lit(Const::Number(1.into()))),
+            Spanned::default(ExprKind::Lit(Const::Number(2.into()))),
+            Spanned::default(ExprKind::Lit(Const::Number(3.into()))),
         ]));
 
-        assert_eq!(statement("local\nfunction\nt()\nend").unwrap().value, SLFunc(
+        assert_eq!(statement("local\nfunction\nt()\nend").unwrap().value, StmtKind::LocalFunc(
             Spanned::default("t"),
             Function {
                 params: vec![],
@@ -425,9 +425,9 @@ mod tests {
             }
         ));
 
-        assert_eq!(statement("function g.f(i,j) end").unwrap().value, SFunc(
-            Spanned::default(VIndex(
-                Box::new(Spanned::default(VNamed("g"))),
+        assert_eq!(statement("function g.f(i,j) end").unwrap().value, StmtKind::Func(
+            Spanned::default(VarKind::Indexed(
+                Box::new(Spanned::default(VarKind::Named("g"))),
                 VarIndex::DotIndex(Spanned::default("f")),
             )),
             Function {
@@ -437,9 +437,9 @@ mod tests {
             }
         ));
 
-        assert_eq!(statement("function g.f:j(i,j) end").unwrap().value, SMethod(
-            Spanned::default(VIndex(
-                Box::new(Spanned::default(VNamed("g"))),
+        assert_eq!(statement("function g.f:j(i,j) end").unwrap().value, StmtKind::Method(
+            Spanned::default(VarKind::Indexed(
+                Box::new(Spanned::default(VarKind::Named("g"))),
                 VarIndex::DotIndex(Spanned::default("f")),
             )),
             Spanned::default("j"),
@@ -454,89 +454,89 @@ mod tests {
         assert!(statement("function f(,i) end").is_err());
         assert!(statement("function f(i,,j) end").is_err());
 
-        assert_eq!(statement("local i").unwrap().value, SDecl(vec![Spanned::default("i")], vec![]));
-        assert_eq!(statement("local j,k").unwrap().value, SDecl(vec![Spanned::default("j"), Spanned::default("k")], vec![]));
-        assert_eq!(statement("local i = nil").unwrap().value, SDecl(vec![Spanned::default("i")], vec![
-            Spanned::default(ELit(Const::Nil))
+        assert_eq!(statement("local i").unwrap().value, StmtKind::Decl(vec![Spanned::default("i")], vec![]));
+        assert_eq!(statement("local j,k").unwrap().value, StmtKind::Decl(vec![Spanned::default("j"), Spanned::default("k")], vec![]));
+        assert_eq!(statement("local i = nil").unwrap().value, StmtKind::Decl(vec![Spanned::default("i")], vec![
+            Spanned::default(ExprKind::Lit(Const::Nil))
         ]));
-        assert_eq!(statement("local i,j = 0, 2").unwrap().value, SDecl(vec![
+        assert_eq!(statement("local i,j = 0, 2").unwrap().value, StmtKind::Decl(vec![
             Spanned::default("i"), Spanned::default("j"),
         ], vec![
-            Spanned::default(ELit(Const::Number(0.into()))),
-            Spanned::default(ELit(Const::Number(2.into()))),
+            Spanned::default(ExprKind::Lit(Const::Number(0.into()))),
+            Spanned::default(ExprKind::Lit(Const::Number(2.into()))),
         ]));
 
-        assert_eq!(statement("for i in j do end").unwrap().value, SForIn {
+        assert_eq!(statement("for i in j do end").unwrap().value, StmtKind::ForIn {
             vars: vec![Spanned::default("i")],
-            iter: vec![Spanned::default(EVar(Spanned::default(VNamed("j"))))],
+            iter: vec![Spanned::default(ExprKind::Var(Spanned::default(VarKind::Named("j"))))],
             body: Default::default(),
         });
-        assert_eq!(statement(" for  i,j, k , l in 1, 2,3 , 4 do break end").unwrap().value, SForIn {
+        assert_eq!(statement(" for  i,j, k , l in 1, 2,3 , 4 do break end").unwrap().value, StmtKind::ForIn {
             vars: vec![Spanned::default("i"), Spanned::default("j"), Spanned::default("k"), Spanned::default("l")],
             iter: vec![
-                Spanned::default(ELit(Const::Number(1.into()))),
-                Spanned::default(ELit(Const::Number(2.into()))),
-                Spanned::default(ELit(Const::Number(3.into()))),
-                Spanned::default(ELit(Const::Number(4.into()))),
+                Spanned::default(ExprKind::Lit(Const::Number(1.into()))),
+                Spanned::default(ExprKind::Lit(Const::Number(2.into()))),
+                Spanned::default(ExprKind::Lit(Const::Number(3.into()))),
+                Spanned::default(ExprKind::Lit(Const::Number(4.into()))),
             ],
             body: Block {
                 stmts: vec![
-                    Spanned::default(SBreak),
+                    Spanned::default(StmtKind::Break),
                 ],
                 span: Default::default()
             },
         });
 
-        assert_eq!(statement("for i = 1, #t do do end break end").unwrap().value, SFor {
+        assert_eq!(statement("for i = 1, #t do do end break end").unwrap().value, StmtKind::For {
             var: Spanned::default("i"),
-            start: Spanned::default(ELit(Const::Number(1.into()))),
-            end: Spanned::default(EUnOp(
+            start: Spanned::default(ExprKind::Lit(Const::Number(1.into()))),
+            end: Spanned::default(ExprKind::UnOp(
                 UnOp::Len,
-                Box::new(Spanned::default(EVar(Spanned::default(VNamed("t")))))
+                Box::new(Spanned::default(ExprKind::Var(Spanned::default(VarKind::Named("t")))))
             )),
             step: None,
             body: Block {
                 stmts: vec![
-                    Spanned::default(SDo(Default::default())),
-                    Spanned::default(SBreak),
+                    Spanned::default(StmtKind::Do(Default::default())),
+                    Spanned::default(StmtKind::Break),
                 ],
                 span: Default::default()
             },
         });
-        assert_eq!(statement("for i = 1,2,3 do do end break end").unwrap().value, SFor {
+        assert_eq!(statement("for i = 1,2,3 do do end break end").unwrap().value, StmtKind::For {
             var: Spanned::default("i"),
-            start: Spanned::default(ELit(Const::Number(1.into()))),
-            end: Spanned::default(ELit(Const::Number(2.into()))),
-            step: Some(Spanned::default(ELit(Const::Number(3.into())))),
+            start: Spanned::default(ExprKind::Lit(Const::Number(1.into()))),
+            end: Spanned::default(ExprKind::Lit(Const::Number(2.into()))),
+            step: Some(Spanned::default(ExprKind::Lit(Const::Number(3.into())))),
             body: Block {
                 stmts: vec![
-                    Spanned::default(SDo(Default::default())),
-                    Spanned::default(SBreak),
+                    Spanned::default(StmtKind::Do(Default::default())),
+                    Spanned::default(StmtKind::Break),
                 ],
                 span: Default::default()
             },
         });
 
-        assert_eq!(statement("repeat break until 1").unwrap().value, SRepeat {
-            abort_on: Spanned::default(ELit(Const::Number(1.into()))),
+        assert_eq!(statement("repeat break until 1").unwrap().value, StmtKind::Repeat {
+            abort_on: Spanned::default(ExprKind::Lit(Const::Number(1.into()))),
             body: Block {
-                stmts: vec![Spanned::default(SBreak)],
+                stmts: vec![Spanned::default(StmtKind::Break)],
                 span: Default::default(),
             }
         });
 
-        assert_eq!(statement("while 1 do break end").unwrap().value, SWhile {
-            cond: Spanned::default(ELit(Const::Number(1.into()))),
+        assert_eq!(statement("while 1 do break end").unwrap().value, StmtKind::While {
+            cond: Spanned::default(ExprKind::Lit(Const::Number(1.into()))),
             body: Block {
-                stmts: vec![Spanned::default(SBreak)],
+                stmts: vec![Spanned::default(StmtKind::Break)],
                 span: Default::default(),
             }
         });
         assert_eq!(statement("while 1 do end"), statement(" while   1  do  end  "));
         assert_eq!(statement("while 1 do break end"), statement(" while \n1\n do break\t\n end "));
 
-        assert_eq!(statement("if 5 then end").unwrap().value, SIf {
-            cond: Spanned::default(ELit(Const::Number(5.into()))),
+        assert_eq!(statement("if 5 then end").unwrap().value, StmtKind::If {
+            cond: Spanned::default(ExprKind::Lit(Const::Number(5.into()))),
             body: Default::default(),
             elifs: Vec::new(),
             el: None,
@@ -544,27 +544,27 @@ mod tests {
         assert_eq!(statement("if 5 then else end"), statement("if\t5\tthen\telse\tend"));
 
         assert_eq!(statement("if 1 then break elseif 2 then break break else break end").unwrap().value,
-        SIf {
-            cond: Spanned::default(ELit(Const::Number(1.into()))),
+        StmtKind::If {
+            cond: Spanned::default(ExprKind::Lit(Const::Number(1.into()))),
             body: Block {
-                stmts: vec![Spanned::default(SBreak)],
+                stmts: vec![Spanned::default(StmtKind::Break)],
                 span: Default::default(),
             },
             elifs: vec![
-                Spanned::default((Spanned::default(ELit(Const::Number(2.into()))), Block {
-                    stmts: vec![Spanned::default(SBreak), Spanned::default(SBreak)],
+                Spanned::default((Spanned::default(ExprKind::Lit(Const::Number(2.into()))), Block {
+                    stmts: vec![Spanned::default(StmtKind::Break), Spanned::default(StmtKind::Break)],
                     span: Default::default(),
                 })),
             ],
             el: Some(Block {
-                stmts: vec![Spanned::default(SBreak)],
+                stmts: vec![Spanned::default(StmtKind::Break)],
                 span: Default::default(),
             }),
         });
 
-        assert_eq!(statement("return").unwrap().value, SReturn(vec![]));
-        assert_eq!(statement("return 1").unwrap().value, SReturn(vec![
-            Spanned::default(ELit(Const::Number(1.into())))
+        assert_eq!(statement("return").unwrap().value, StmtKind::Return(vec![]));
+        assert_eq!(statement("return 1").unwrap().value, StmtKind::Return(vec![
+            Spanned::default(ExprKind::Lit(Const::Number(1.into())))
         ]));
         assert_eq!(statement("return 1, 2"), statement("return \t\n1 \n,  \t2"));
 
@@ -573,13 +573,13 @@ mod tests {
 
     #[test]
     fn comments() {
-        assert_eq!(statement("break -- test\\\\aaa").unwrap().value, SBreak);
-        assert_eq!(statement("break --").unwrap().value, SBreak);
-        assert_eq!(statement("break ------asdsa\n").unwrap().value, SBreak);
+        assert_eq!(statement("break -- test\\\\aaa").unwrap().value, StmtKind::Break);
+        assert_eq!(statement("break --").unwrap().value, StmtKind::Break);
+        assert_eq!(statement("break ------asdsa\n").unwrap().value, StmtKind::Break);
 
-        assert_eq!(statement("break --[[\ntest ]]").unwrap().value, SBreak);
-        assert_eq!(statement("break --[[  \r\n\t  ]]").unwrap().value, SBreak);
-        assert_eq!(statement("break --[===[\n--[===[]]]]-- ]===]").unwrap().value, SBreak);
+        assert_eq!(statement("break --[[\ntest ]]").unwrap().value, StmtKind::Break);
+        assert_eq!(statement("break --[[  \r\n\t  ]]").unwrap().value, StmtKind::Break);
+        assert_eq!(statement("break --[===[\n--[===[]]]]-- ]===]").unwrap().value, StmtKind::Break);
     }
 
     #[test]
@@ -591,20 +591,20 @@ mod tests {
     function f(g, ...) do end end
     "#).unwrap(), Block {
             stmts: vec![
-                Spanned::default(SAssign(
-                    vec![Spanned::default(VNamed("t"))],
-                    vec![Spanned::default(ELit(Const::Number(1.into())))]
+                Spanned::default(StmtKind::Assign(
+                    vec![Spanned::default(VarKind::Named("t"))],
+                    vec![Spanned::default(ExprKind::Lit(Const::Number(1.into())))]
                 )),
-                Spanned::default(SDecl(vec![Spanned::default("r"), Spanned::default("s")], vec![
-                    Spanned::default(ELit(Const::Number(4.into()))),
-                    Spanned::default(ELit(Const::Number(2.into()))),
-                    Spanned::default(ELit(Const::Number(1.into())))
+                Spanned::default(StmtKind::Decl(vec![Spanned::default("r"), Spanned::default("s")], vec![
+                    Spanned::default(ExprKind::Lit(Const::Number(4.into()))),
+                    Spanned::default(ExprKind::Lit(Const::Number(2.into()))),
+                    Spanned::default(ExprKind::Lit(Const::Number(1.into())))
                 ])),
-                Spanned::default(SFunc(Spanned::default(VNamed("f")), Function {
+                Spanned::default(StmtKind::Func(Spanned::default(VarKind::Named("f")), Function {
                     params: vec![Spanned::default("g")],
                     varargs: true,
                     body: Block {
-                        stmts: vec![Spanned::default(SDo(Default::default()))],
+                        stmts: vec![Spanned::default(StmtKind::Do(Default::default()))],
                         span: Default::default(),
                     },
                 })),
