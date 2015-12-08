@@ -13,7 +13,7 @@ use lea_core::Const;
 #[derive(Clone, Debug, Default)]
 pub struct Block<'a> {
     pub span: Span,
-    pub stmts: Vec<Stmt<'a>>,
+    pub stmts: Vec<&'a Stmt<'a>>,
 }
 
 impl<'a> PartialEq for Block<'a> {
@@ -25,7 +25,7 @@ impl<'a> PartialEq for Block<'a> {
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum CallArgs<'a> {
-    Normal(Vec<Expr<'a>>),
+    Normal(Vec<&'a Expr<'a>>),
     String(String),
     Table(TableCons<'a>),
 }
@@ -33,11 +33,11 @@ pub enum CallArgs<'a> {
 #[derive(Clone, PartialEq, Debug)]
 pub enum Call<'a> {
     /// Regular call: f(e1, e2, ..)
-    Normal(Box<Expr<'a>>, CallArgs<'a>),
+    Normal(&'a Expr<'a>, CallArgs<'a>),
 
     /// some.thing:name(...) - passes `some.thing` as the first argument, without evaluating it
     /// twice
-    Method(Box<Expr<'a>>, Spanned<&'a str>, CallArgs<'a>),
+    Method(&'a Expr<'a>, Spanned<&'a str>, CallArgs<'a>),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -64,7 +64,7 @@ pub enum VarIndex<'a> {
     /// `var.ident`
     DotIndex(Spanned<&'a str>),
     /// `var[expr]`
-    ExprIndex(Box<Expr<'a>>),
+    ExprIndex(&'a Expr<'a>),
 }
 
 /// Something that can be assigned a value
@@ -73,7 +73,7 @@ pub enum VarKind<'a> {
     /// References a named variable; later resolved to local, global or upvalue references
     Named(&'a str),
 
-    Indexed(Box<Variable<'a>>, VarIndex<'a>),
+    Indexed(&'a Variable<'a>, VarIndex<'a>),
 }
 
 pub type Variable<'a> = Spanned<VarKind<'a>>;
@@ -85,7 +85,7 @@ pub enum StmtKind<'a> {
     ///
     /// Initial values are optional and default to `nil` (the second vector can have less elements
     /// than the first).
-    Decl(Vec<Spanned<&'a str>>, Vec<Expr<'a>>),
+    Decl(Vec<Spanned<&'a str>>, Vec<&'a Expr<'a>>),
 
     /// Assigns a list of expressions to a list of variables.
     ///
@@ -94,7 +94,7 @@ pub enum StmtKind<'a> {
     ///
     /// Might contain less variables than expressions or less expressions than variables. In the
     /// latter case, the leftover variables are assigned to nil.
-    Assign(Vec<Variable<'a>>, Vec<Expr<'a>>),
+    Assign(Vec<&'a Variable<'a>>, Vec<&'a Expr<'a>>),
 
     /// Execute a block in a new scope
     Do(Block<'a>),
@@ -106,7 +106,7 @@ pub enum StmtKind<'a> {
     Semi,
 
     /// Return a possibly empty list of values to the caller
-    Return(Vec<Expr<'a>>),
+    Return(Vec<&'a Expr<'a>>),
 
     /// Function call as statement
     Call(Call<'a>),
@@ -122,7 +122,7 @@ pub enum StmtKind<'a> {
     /// ```lua
     /// XY = function(...) ... end
     /// ```
-    Func(Variable<'a>, Function<'a>),
+    Func(&'a Variable<'a>, Function<'a>),
 
     /// Method declaration.
     ///
@@ -135,7 +135,7 @@ pub enum StmtKind<'a> {
     /// ```lua
     /// some.thing.methodname = function(self, ...) ... end
     /// ```
-    Method(Variable<'a>, Spanned<&'a str>, Function<'a>),
+    Method(&'a Variable<'a>, Spanned<&'a str>, Function<'a>),
 
     /// Assign function to newly declared local.
     ///
@@ -150,33 +150,33 @@ pub enum StmtKind<'a> {
     /// ```
     LocalFunc(Spanned<&'a str>, Function<'a>),
 
-    /// Executes `body` if `cond` is true and the `elseif`s or `else` if not.
+    /// Executes `body` if `cond` is true and the `elifs` or `else` if not.
     If {
-        cond: Expr<'a>,
+        cond: &'a Expr<'a>,
         body: Block<'a>,
-        elifs: Vec<Spanned<(/* cond */ Expr<'a>, /* body */ Block<'a>)>>,
+        elifs: Vec<Spanned<(/* cond */ &'a Expr<'a>, /* body */ Block<'a>)>>,
         el: Option<Block<'a>>,
     },
 
     /// Loops a block while `cond` is true
     While {
-        cond: Expr<'a>,
+        cond: &'a Expr<'a>,
         body: Block<'a>,
     },
 
     /// Loops a block until `abort_on` is true. The body is executed at least once (`abort_on` is
     /// checked after the body has run).
     Repeat {
-        abort_on: Expr<'a>,
+        abort_on: &'a Expr<'a>,
         body: Block<'a>,
     },
 
     /// Numeric for loop
     For {
         var: Spanned<&'a str>,    // named local, newly declared
-        start: Expr<'a>,
-        step: Option<Expr<'a>>,
-        end: Expr<'a>,
+        start: &'a Expr<'a>,
+        step: Option<&'a Expr<'a>>,
+        end: &'a Expr<'a>,
         body: Block<'a>,
     },
 
@@ -185,7 +185,7 @@ pub enum StmtKind<'a> {
         /// The loop variables, returned by iterator
         vars: Vec<Spanned<&'a str>>,
         /// Expression list: Iterator function, state, start value, [ignored ...]
-        iter: Vec<Expr<'a>>,
+        iter: Vec<&'a Expr<'a>>,
         body: Block<'a>,
     },
 }
@@ -195,11 +195,11 @@ pub type Stmt<'a> = Spanned<StmtKind<'a>>;
 #[derive(Clone, PartialEq, Debug)]
 pub enum TableEntry<'a> {
     /// A key-value-pair where the key is an expression is square brackets (`[key] = value`)
-    Pair(Expr<'a>, Expr<'a>),
+    Pair(&'a Expr<'a>, &'a Expr<'a>),
     /// A key-value-pair where the key is specified as an identifier (`key = value`)
-    IdentPair(Spanned<&'a str>, Expr<'a>),
+    IdentPair(Spanned<&'a str>, &'a Expr<'a>),
     /// An element of the table's array part
-    Elem(Expr<'a>),
+    Elem(&'a Expr<'a>),
 }
 
 pub type TableCons<'a> = Vec<TableEntry<'a>>;
@@ -208,12 +208,12 @@ pub type TableCons<'a> = Vec<TableEntry<'a>>;
 #[derive(Clone, PartialEq, Debug)]
 pub enum ExprKind<'a> {
     Lit(Const),
-    BinOp(Box<Expr<'a>>, BinOp, Box<Expr<'a>>),
-    UnOp(UnOp, Box<Expr<'a>>),
-    Braced(Box<Expr<'a>>),
+    BinOp(&'a Expr<'a>, BinOp, &'a Expr<'a>),
+    UnOp(UnOp, &'a Expr<'a>),
+    Braced(&'a Expr<'a>),
 
     /// Variable used as expression
-    Var(Variable<'a>),
+    Var(&'a Variable<'a>),
     /// Calls a function, might return multiple results
     Call(Call<'a>),
 
@@ -223,7 +223,7 @@ pub enum ExprKind<'a> {
     /// Table constructor
     Table(TableCons<'a>),
     /// Array constructor, takes a list of initial values
-    Array(Vec<Expr<'a>>),
+    Array(Vec<&'a Expr<'a>>),
     /// "..."; expands to var args. only valid if used inside varargs functions
     VarArgs,
 }

@@ -12,4 +12,5 @@ path = "lib.rs"
 term = "0.2"
 unicode-segmentation = "0.1"
 peg = { git = "https://github.com/kevinmehall/rust-peg.git" }
+typed-arena = "1.0"
 lea-core = { path = "../lea-core" }

@@ -1,5 +1,6 @@
 //! Wrapper around rust-peg generated parser methods.
 
+use arenas::ParseTreeArenas;
 use parsetree::*;
 use span::*;
 
@@ -39,6 +40,22 @@ impl From<parse::ParseError> for ParseError {
     }
 }
 
+
+/// Parses an expression and places the resulting `Expr` in the given `ParseTreeArenas`. This allows
+/// the caller to keep ownership of the parse tree.
+pub fn expr_into_arena<'a>(input: &'a str, arenas: &ParseTreeArenas)
+-> Result<&'a mut Expr<'a>, ParseError> {
+    loop{}
+}
+
+/// Parses an expression and invokes a closure with the resulting parse tree.
+pub fn with_expr<F, T>(input: &str, f: F) -> Result<T, ParseError> where F: FnOnce(&mut Expr) -> T {
+    let arenas = ParseTreeArenas::new();
+    let res = try!(expr_into_arena(input, &arenas));
+    Ok(f(res))
+}
+
+/*
 /// Parses an expression
 pub fn expression(input: &str) -> Result<Expr, ParseError> {
     Ok(try!(parse::expression(input)))
@@ -75,6 +92,7 @@ pub fn parse_expr_as_main(expr: &str) -> Result<Function, ParseError> {
 
     Ok(Function::new(vec![], true, block))
 }
+*/
 
 #[cfg(test)]
 mod tests {
