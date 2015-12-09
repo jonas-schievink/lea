@@ -4,6 +4,7 @@
 extern crate lea_core;
 extern crate term;
 extern crate unicode_segmentation;
+#[macro_use] extern crate nom;
 
 mod expr_parser;
 
