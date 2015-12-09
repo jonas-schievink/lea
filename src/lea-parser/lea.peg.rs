@@ -119,10 +119,6 @@ stmt_if -> Stmt<'input>
 identlist -> Vec<Spanned<&'input str>>
     = ids:ident ++ listsep { ids }
 
-// Possibly empty identifier list
-eidentlist -> Vec<Spanned<&'input str>>
-    = ids:ident ** listsep { ids }
-
 varlist -> Vec<Variable<'input>>
     = vars:variable ++ listsep { vars }
 

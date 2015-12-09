@@ -9,11 +9,30 @@ use lea_core::Const;
 
 grammar["LALR(1)"];
 
+/// Utility macro that wraps a `T` in a `Spanned<T>`, attaches its span and parses all preceding
+/// comments.
 Spanned<T>: Spanned<T> = {
-    <start:@L> <t:T> <end:@R> => Spanned::new(Span::new(start, end), t)
+    <comment:Comment*> <start:@L> <t:T> <end:@R> => {
+        // FIXME Figure out comments, once and for all!
+        Spanned::new(Span::new(start, end), t)
+    }
 };
 
 pub Ident: Spanned<&'input str> = Spanned<r"[_a-zA-Z][_a-zA-Z0-9]*">;
+
+/// List of `T`s, seperated by `,`. No trailing `,` is allowed.
+Comma<T, Empty>: Vec<T> = {
+    <head:(<T> ",")*> <last:T> if Empty == "NonEmpty" => {
+        let mut head = head;
+        head.push(last);
+        head
+    },
+    <head:(<T> ",")*> <last:T?> if Empty == "MaybeEmpty" => {
+        let mut head = head;
+        if let Some(last) = last { head.push(last); }
+        head
+    },
+};
 
 /// Parses Lua's "long bracket" and returns the content. A long bracket is opened with '[',
 /// followed by any number of '=' (including 0), followed by '[' and is closed with ']', followed
@@ -72,4 +91,10 @@ pub UnOp: UnOp = {
     "not" => UnOp::LNotLua,
     "~" => UnOp::BNot,
     "#" => UnOp::Len,
+};
+
+pub Stmt: Stmt = {
+    "local" <Comma<Ident, "NonEmpty">> "=" <Comma<Expr, "NonEmpty">> => {
+        Stmt::
+    }
 };
