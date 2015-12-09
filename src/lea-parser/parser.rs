@@ -1,5 +1,6 @@
 //! Wrapper around rust-peg generated parser methods.
 
+use grammar::*;
 use parsetree::*;
 use span::*;
 
@@ -9,27 +10,23 @@ use std::convert::From;
 use std::io::{self, Write};
 
 
-peg_file! parse("lea.peg.rs");
-
-pub use self::parse::{ident, literal};
-
-
 /// Custom error type adding a dummy span and providing a `format` method.
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParseError {
-    err: parse::ParseError,
+    //err: parse::ParseError,
     span: Span,
 }
 
 impl ParseError {
     pub fn format<W: Write>(&self, code: &str, source_name: &str, t: &mut Terminal<Output=W>)
     -> io::Result<()> {
-        try!(self.span.print_with_err(code, source_name, &format!("{}", self.err), t));
+        try!(self.span.print_with_err(code, source_name, &format!("{}", "QUACK" /*self.err*/), t));
 
         Ok(())
     }
 }
 
+/*
 impl From<parse::ParseError> for ParseError {
     fn from(err: parse::ParseError) -> ParseError {
         ParseError {
@@ -38,33 +35,42 @@ impl From<parse::ParseError> for ParseError {
         }
     }
 }
+*/
 
 /// Parses an expression
 pub fn expression(input: &str) -> Result<Expr, ParseError> {
-    Ok(try!(parse::expression(input)))
+    unimplemented!();
+    //Ok(try!(parse::expression(input)))
 }
 
 /// Parses a statement
 pub fn statement(input: &str) -> Result<Stmt, ParseError> {
-    Ok(try!(parse::statement(input)))
+    unimplemented!();
+    //Ok(try!(parse::statement(input)))
 }
 
 /// Parses a block of statements
 pub fn block(input: &str) -> Result<Block, ParseError> {
-    Ok(try!(parse::block(input)))
+    unimplemented!();
+    //Ok(try!(parse::block(input)))
 }
 
 /// Parses a block of statements and builds a function wrapper that can be run as the main function
 /// around it.
 pub fn parse_main(input: &str) -> Result<Function, ParseError> {
+    unimplemented!();
+    /*
     let blk = try!(block(input));
 
     Ok(Function::new(vec![], true, blk))
+    */
 }
 
 /// Parses an expression and builds a `Function` node that will evalute and return the expression
 /// when executed.
 pub fn parse_expr_as_main(expr: &str) -> Result<Function, ParseError> {
+    unimplemented!();
+    /*
     let expr = try!(expression(expr));
     let block = Block {
         span: expr.span,
@@ -74,6 +80,7 @@ pub fn parse_expr_as_main(expr: &str) -> Result<Function, ParseError> {
     };
 
     Ok(Function::new(vec![], true, block))
+    */
 }
 
 #[cfg(test)]

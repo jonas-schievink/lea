@@ -1,2 +1,4 @@
 /target
 /Cargo.lock
+# generated via lalrpop, ignore
+/src/lea-parser/grammar.rs

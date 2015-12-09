@@ -1,1 +1,75 @@
-grammar;
+use std::mem;
+
+use expr_parser::build_tree;
+use span::{Span, Spanned, mkspanned};
+use op::*;
+use parsetree::*;
+
+use lea_core::Const;
+
+grammar["LALR(1)"];
+
+Spanned<T>: Spanned<T> = {
+    <start:@L> <t:T> <end:@R> => Spanned::new(Span::new(start, end), t)
+};
+
+pub Ident: Spanned<&'input str> = Spanned<r"[_a-zA-Z][_a-zA-Z0-9]*">;
+
+/// Parses Lua's "long bracket" and returns the content. A long bracket is opened with '[',
+/// followed by any number of '=' (including 0), followed by '[' and is closed with ']', followed
+/// by the same number of '=' used in the opening bracket, followed by ']'.
+LongBracket: &'input str = {
+    // TODO
+};
+
+Comment: &'input str = {
+    "--" <LongBracket>,
+    <c:r"--[^\n]*"> => &c[2..],     // Strip `--`. Hack to prevent ambiguity
+};
+
+/// String can be delimited by double or single quotes, or by "long brackets", which allow multiline
+/// strings with arbitrary content.
+String: &'input str = {
+    <r#""(\\.|[^\\"])*""#>,
+    <r#"'(\\.|[^\\'])*'"#>,
+    <LongBracket>,
+};
+
+Boolean: bool = {
+    "true" => true,
+    "false" => false,
+};
+
+pub BinOp: BinOp = {
+    "==" => BinOp::Eq,
+    "!=" => BinOp::NEq,
+    "~=" => BinOp::NEqLua,
+    ">=" => BinOp::GEq,
+    "<=" => BinOp::LEq,
+    ">>" => BinOp::ShiftR,
+    "<<" => BinOp::ShiftL,
+    "<" => BinOp::Less,
+    ">" => BinOp::Greater,
+    "&&" => BinOp::LAnd,
+    "and" => BinOp::LAndLua,
+    "||" => BinOp::LOr,
+    "or" => BinOp::LOrLua,
+    "&" => BinOp::BAnd,
+    "~" => BinOp::BXor,
+    "|" => BinOp::BOr,
+    "+" => BinOp::Add,
+    "-" => BinOp::Sub,
+    "*" => BinOp::Mul,
+    "/" => BinOp::Div,
+    "%" => BinOp::Mod,
+    "^" => BinOp::Pow,
+    ".." => BinOp::Concat,
+};
+
+pub UnOp: UnOp = {
+    "-" => UnOp::Negate,
+    "!" => UnOp::LNot,
+    "not" => UnOp::LNotLua,
+    "~" => UnOp::BNot,
+    "#" => UnOp::Len,
+};
