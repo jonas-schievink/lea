@@ -9,6 +9,53 @@ use lea_core::Const;
 
 grammar["LALR(1)"];
 
+// `remaining_input` is the remaining input string we want to
+// tokenize. The defined regexes will be applied to this string.
+//
+// The lexer can utilize grammar state. This shared state allows us to,
+// for example, add comments to a `Vec` when the lexer sees them, and
+// add them to crated AST nodes when the parser creates them.
+lexer(remaining_input: &'input str) {
+    // In here, we can define a list of regular expressions we want to match against. Just like
+    // we do now, ambiguous expressions are denied.
+
+    // This matches single-line comments and `continue`s lexing without yielding a token.
+    r"//[^\n]*" => continue,
+
+    // Return single tokens easily
+    r"0x[0-9a-fA-F]+" => Tok::HexInt(...),
+
+    // Return multiple tokens
+    r"two keywords" => [Tok::Two, Tok::Keywords],
+
+    // This matches a raw string/regex literal, or at least the opening part. Since
+    // the exact number of `#`s is important, we bind the matched string to `open`.
+    open = r#"r#*""# => {
+        // Rust action block
+
+        // Scan until we meet a closing string of the same length.
+        // FIXME `r""` Regex literals in rust source? Yay/Nay?
+        remaining_input.match_indices("\"").find(|(idx, s)| open.len() == close.len() + 1)
+
+        // Problem: Can't `impl Pattern` on stable Rust
+        // However, there's `impl<F> Pattern for F where F: FnMut(char) -> bool`, so I think we can
+        // make it work with regular expressions.
+    }
+
+    // The next line instructs lalrpop to generate its own rules based on the terminals
+    // appearing in the grammar below, even though we defined our own Lexer.
+    ...
+
+    // NB: There should probably be a lexer rule that
+    // skips whitespace instead of doing that implicitly (`\w+` when we have char classes).
+    // However, it shouldn't be added when the
+    // lexer already contains a rule that would match whitespace (or is this too much magic and we
+    // should just not add the whitespace rule when there's a lexer definition? or have a magic
+    // dont_drop_whitespace attribute or thingy for this? or only add the rule when `...` is
+    // specified?)
+}
+
+
 /// Utility macro that wraps a `T` in a `Spanned<T>`, attaches its span and parses all preceding
 /// comments.
 #[inline]
