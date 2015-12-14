@@ -4,6 +4,8 @@
 extern crate env_logger;
 extern crate rustc_serialize;
 extern crate term;
+extern crate rl_sys;
+
 extern crate lea_compiler as compiler;
 extern crate lea_parser as parser;
 extern crate lea_vm as vm;
@@ -14,7 +16,7 @@ use compiler::{CompileConfig, FnData};
 use vm::function::FunctionProto;
 use vm::{Value, VM};
 
-use std::io::{self, stdin, stderr, Write, BufRead};
+use std::io::{self, stderr};
 
 
 /// Opens a terminal that writes to stderr. If stderr couldn't be opened as a terminal, creates a
@@ -114,27 +116,19 @@ fn run_file(filename: &str, vm: &mut VM, env: Value) -> io::Result<bool> {
     run_code(&code, filename, vm, env)
 }
 
-fn print_prompt() -> io::Result<()> {
-    let mut stdout = io::stdout();
-    try!(write!(stdout, "> "));
-    try!(stdout.flush());
-
-    Ok(())
-}
-
 fn repl(vm: &mut VM, env: Value) -> io::Result<()> {
-    let stdin = io::stdin();
-    let stdin = io::BufReader::new(stdin);
-
-    try!(print_prompt());
-    for input in stdin.lines() {
-        let input = try!(input);
-        try!(run_code(&input, "<repl>", vm, env));
-
-        try!(print_prompt());
+    loop {
+        match rl_sys::readline("> ") {
+            Ok(Some(input)) => {
+                rl_sys::add_history(&input).unwrap();
+                try!(run_code(&input, "<repl>", vm, env));
+            }
+            Ok(None) => return Ok(()),  // EOF
+            Err(err) => {
+                return Err(io::Error::new(io::ErrorKind::Other, format!("{}", err)));
+            }
+        }
     }
-
-    Ok(())
 }
 
 fn main() {
