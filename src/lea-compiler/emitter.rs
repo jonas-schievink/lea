@@ -114,7 +114,8 @@ impl Emitter {
     /// Gets the slot the given local is allocated into. Panics if the local isn't reachable in
     /// the current scope.
     fn get_slot(&self, local_id: usize) -> u8 {
-        *self.alloc.get(&local_id).unwrap()
+        *self.alloc.get(&local_id)
+            .expect(&format!("cannot get_slot: local {} not in alloc map", local_id))
     }
 
     /// Allocates `count` stack slots. Returns the lowest one that was allocated (slots are
@@ -324,8 +325,6 @@ impl Emitter {
 
                 self.dealloc_slots(3);
             }
-
-            VarKind::Named(_) => panic!("VarKind::Named encountered by emitter, resolver is broken")
         }
     }
 
@@ -354,8 +353,6 @@ impl Emitter {
                 self.dealloc_slots(2);
                 hint_slot
             }
-
-            VarKind::Named(_) => panic!("VarKind::Named encountered by emitter, resolver is broken")
         }
     }
 
@@ -1069,8 +1066,10 @@ impl Emitter {
         self.stacksize = 0;
 
         if f.params.len() > u8::MAX as usize {
-            self.err_span("too many function parameters", Some(format!("function has {}, maximum is {}", f.params.len(), u8::MAX)), f.params[f.params.len() - 1].span);
-            return 0
+            self.err_span("too many function parameters",
+                Some(format!("function has {}, maximum is {}", f.params.len(), u8::MAX)),
+                f.params[f.params.len() - 1].span);
+            return 0;
         }
 
         self.funcs.push(FnData {
@@ -1084,6 +1083,14 @@ impl Emitter {
             source_name: self.source_name.clone(),
             child_protos: vec![],
         });
+
+        for param in &f.params {
+            let param = **param;
+            let id = *f.body.get_local(param)
+                .expect(&format!("fn param '{}' not registered as local in body", param));
+            let slot = self.alloc_slots(1);
+            self.alloc.insert(id, slot);
+        }
 
         self.visit_block(&f.body);
         self.emit(RETURN(0, 1));

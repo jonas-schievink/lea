@@ -1,7 +1,7 @@
 //! The `leac` compiler command line utility.
 
-#[macro_use]
-extern crate clap;
+#[macro_use] extern crate clap;
+extern crate env_logger;
 extern crate rustc_serialize;
 extern crate bincode;
 extern crate term;
@@ -108,6 +108,8 @@ fn read_file(filename: &str) -> io::Result<String> {
 }
 
 fn main() {
+    env_logger::init().unwrap();
+
     let matches = clap_app!(leac =>
         (version: lea::version_str())
         (about: "The Lea byte code compiler")

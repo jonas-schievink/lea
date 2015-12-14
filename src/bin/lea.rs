@@ -1,7 +1,7 @@
 //! Interpreter and minimal REPL
 
-#[macro_use]
-extern crate clap;
+#[macro_use] extern crate clap;
+extern crate env_logger;
 extern crate rustc_serialize;
 extern crate term;
 extern crate lea_compiler as compiler;
@@ -138,6 +138,8 @@ fn repl(vm: &mut VM, env: Value) -> io::Result<()> {
 }
 
 fn main() {
+    env_logger::init().unwrap();
+
     let args = clap_app!(lea =>
         (version: lea::version_str())
         (about: "Lea interpreter and interactive REPL")

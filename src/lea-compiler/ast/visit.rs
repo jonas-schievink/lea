@@ -304,7 +304,6 @@ pub fn walk_var<'a, V: Transform<'a>>(mut var: Variable<'a>, visitor: &mut V) ->
             idx = Box::new(visitor.visit_expr(*idx));
             VarKind::Indexed(var, idx)
         },
-        VarKind::Named(name) => VarKind::Named(name),
         VarKind::Local(id) => VarKind::Local(id),
         VarKind::Upval(id) => VarKind::Upval(id),
     };
@@ -318,7 +317,7 @@ pub fn walk_var_ref<'a, V: Visitor<'a>>(var: &'a Variable, visitor: &mut V) {
             visitor.visit_var(&**var);
             visitor.visit_expr(&**idx);
         },
-        VarKind::Named(_) | VarKind::Local(_) | VarKind::Upval(_) => {},
+        VarKind::Local(_) | VarKind::Upval(_) => {},
     }
 }
 
@@ -355,7 +354,7 @@ mod tests {
 
         let myblock = Block::new(vec![
             Spanned::default(StmtKind::Assign(
-                vec![Spanned::default(VarKind::Named("i"))],
+                vec![Spanned::default(VarKind::Local(0))],
                 vec![Spanned::default(ExprKind::Lit(Const::Number(0.into())))],
             )),
         ], Span::new(0, 0));

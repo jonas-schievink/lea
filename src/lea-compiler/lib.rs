@@ -89,7 +89,6 @@ mod errors;
 mod check;
 mod ast;
 mod emitter;
-mod resolve;
 pub mod transform;
 
 pub use errors::*;
@@ -175,9 +174,7 @@ pub fn parse_and_check(code: &str) -> CompileResult<Function> {
 /// Parses, checks and resolves the given source code (stops after compilation step 3). Returns the
 /// resolved main function on success.
 pub fn parse_and_resolve(code: &str) -> CompileResult<Function> {
-    let mut main = try!(parse_and_check(code));
-    main = resolve::resolve_func(main);
-
+    let main = try!(parse_and_check(code));
     Ok(main)
 }
 
@@ -240,7 +237,6 @@ pub fn compile_expr<'a>(expr: &'a str, source_name: &str, conf: &CompileConfig) 
     let main = try!(parser::parse_expr_as_main(expr));
     let main = main.into();
     try!(check::check_func(&main));
-    let main = resolve::resolve_func(main);
     let (main, tr_res) = apply_transforms(main, &conf);
     let warnings = try!(tr_res);
     let emit_res = emit_func(&main, source_name);

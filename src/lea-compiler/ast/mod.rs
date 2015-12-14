@@ -32,24 +32,11 @@ impl<'a> Block<'a> {
         Block {
             span: span,
             stmts: stmts,
-            localmap: Default::default(),
+            localmap: HashMap::new(),
         }
     }
 
-    /// Creates a new block and assigns a map of locals declared inside this block.
-    ///
-    /// Note that this does not check if the local map is valid. This would require access to the
-    /// enclosing Function.
-    #[cfg(test)]    // TODO remove
-    pub fn with_locals(stmts: Vec<Stmt<'a>>, span: Span, localmap: HashMap<&'a str, usize>)
-    -> Block<'a> {
-        Block {
-            span: span,
-            stmts: stmts,
-            localmap: localmap,
-        }
-    }
-
+    /// Gets the ID of a named local that was declared in this block
     pub fn get_local(&self, name: &str) -> Option<&usize> {
         self.localmap.get(name)
     }
@@ -64,10 +51,10 @@ impl<'a> PartialEq for Block<'a> {
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Call<'a> {
-    /// Regular call: f(e1, e2, ..)
+    /// Regular call: `f(e1, e2, ..)`
     Normal(Box<Expr<'a>>, Vec<Expr<'a>>),
 
-    /// some.thing:name(...) - passes `some.thing` as the first argument, without evaluating it
+    /// `some.thing:name(...)` - passes `some.thing` as the first argument, without evaluating it
     /// twice
     Method(Box<Expr<'a>>, Spanned<&'a str>, Vec<Expr<'a>>),
 }
@@ -89,9 +76,6 @@ pub struct Function<'a> {
 /// Something that can be set to a value
 #[derive(Clone, PartialEq, Debug)]
 pub enum VarKind<'a> {
-    /// References a named variable; later resolved to local, global or upvalue references
-    Named(&'a str),
-
     /// References the local variable with the given ID.
     ///
     /// Note that the resolver has to ensure that the ID is valid, since not all locals can be
