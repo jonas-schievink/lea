@@ -134,6 +134,8 @@ fn repl(vm: &mut VM, env: Value) -> io::Result<()> {
         try!(print_prompt());
     }
 
+    // EOF: Print newline so that the shell's prompt appears on the next line
+    println!("");
     Ok(())
 }
 
