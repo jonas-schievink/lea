@@ -117,7 +117,7 @@ impl BinOp {
 
     pub fn get_assoc(&self) -> Assoc {
         match *self {
-            Pow => Assoc::Right,
+            Pow | Concat => Assoc::Right,
             _ => Assoc::Left,
         }
     }
