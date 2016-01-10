@@ -10,6 +10,7 @@ use lea_core::fndata::UpvalDesc;
 use lea_core::Const;
 
 use std::collections::HashMap;
+use std::iter;
 use std::vec;
 use std::mem;
 
@@ -251,14 +252,24 @@ impl<'a> AstConv<'a> {
     fn conv_stmt(&mut self, stmt: parsetree::Stmt<'a>) -> ConvResult<Stmt<'a>> {
         match stmt.value {
             parsetree::StmtKind::Decl(names, exprs) => {
-                for name in &names {
-                    self.declare_local(*name);
-                }
+                // Split `local i, j = a, b` into `local i, j` and `i, j = a, b`
+                let decls: Vec<_> = names.iter()
+                    .map(|spanned_name| {
+                        Spanned::new(spanned_name.span, self.declare_local(*spanned_name))
+                    }).collect();
+                let assign_targets = decls.iter().map(|spanned_id| {
+                    Spanned::new(spanned_id.span, VarKind::Local(spanned_id.value))
+                }).collect();
 
-                ConvResult::One(StmtKind::Decl(
-                    names,
-                    exprs.into_iter().map(|e| self.conv_expr(e)).collect()
-                ))
+                ConvResult::Two(
+                    StmtKind::Decl(decls),
+                    StmtKind::Assign(assign_targets,
+                        exprs.into_iter()
+                            .map(|e| self.conv_expr(e))
+                            .chain(iter::repeat(Spanned::default(ExprKind::Lit(Const::Nil))))
+                            .take(names.len())
+                            .collect())
+                )
             }
             parsetree::StmtKind::Assign(vars, exprs) => {
                 ConvResult::One(StmtKind::Assign(
@@ -311,11 +322,11 @@ impl<'a> AstConv<'a> {
             }
             parsetree::StmtKind::LocalFunc(local, func) => {
                 // local function f...  =>  local f; f = function...
-                let local_id = self.declare_local(local);
+                let local_id = Spanned::new(local.span, self.declare_local(local));
                 ConvResult::Two(
-                    StmtKind::Decl(vec![local], vec![]),
+                    StmtKind::Decl(vec![local_id]),
                     StmtKind::Assign(
-                        vec![Spanned::new(local.span, VarKind::Local(local_id))],
+                        vec![Spanned::new(local.span, VarKind::Local(*local_id))],
                         vec![Spanned::new(func.body.span, ExprKind::Func(self.conv_func(func)))]
                     )
                 )
@@ -329,7 +340,7 @@ impl<'a> AstConv<'a> {
                     let (cond, body) = elif.value;
 
                     Some(Block {
-                        localmap: Default::default(),
+                        localmap: HashMap::new(),
                         span: elif.span,
                         stmts: vec![
                             Spanned::new(elif.span, StmtKind::If {
@@ -452,7 +463,7 @@ impl<'a> AstConv<'a> {
                 exprs.into_iter().map(|e| self.conv_expr(e)).collect()
             }
             parsetree::CallArgs::String(s) => {
-                // TODO use real span
+                // FIXME use real span
                 vec![Spanned::default(ExprKind::Lit(Const::Str(s)))]
             }
             parsetree::CallArgs::Table(cons) => {

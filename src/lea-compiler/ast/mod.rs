@@ -94,11 +94,11 @@ pub type Variable<'a> = Spanned<VarKind<'a>>;
 /// Statement nodes
 #[derive(Clone, Debug, PartialEq)]
 pub enum StmtKind<'a> {
-    /// Declare a list of locals and assign initial values.
+    /// Declare a list of locals.
     ///
-    /// Initial values are optional and default to `nil` (the second vector can have less elements
-    /// than the first).
-    Decl(Vec<Spanned<&'a str>>, Vec<Expr<'a>>),
+    /// Contains a list of `Spanned<usize>`, where the `usize` is the ID of the declared local. All
+    /// `Decl` statements inside the same block declare different sets of locals.
+    Decl(Vec<Spanned<usize>>),
 
     /// Assigns a list of expressions to a list of variables.
     ///
@@ -205,6 +205,8 @@ impl<'a> ExprKind<'a> {
                 VarKind::Local(_) | VarKind::Upval(_) => false,
                 _ => true,  // might cause a table index, which can error
             },
+            // Array creation is side-effect free if all expressions evaluate without side effects.
+            // (technically, the allocation could fail, but we don't model that)
             ExprKind::Array(ref elems) => {
                 elems.iter().any(|elem| elem.has_side_effects())
             }

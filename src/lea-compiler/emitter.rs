@@ -17,6 +17,12 @@ use std::collections::HashMap;
 use std::cmp;
 use std::io::{self, Write};
 use std::mem;
+use std::ops::Range;
+
+/// Returns `true` if the half-open `Range<T>` contains `val`.
+fn range_contains<T: PartialOrd>(r: Range<T>, val: T) -> bool {
+    r.start <= val && r.end > val
+}
 
 // TODO: fn build_jump_to(&mut self, target: usize) { ... }
 
@@ -233,21 +239,34 @@ impl Emitter {
             /// Applies various simple peephole optimizations. Returns the opcode to replace `last`
             /// with, or `None` if `new` should be added to the opcode list.
             fn peephole_opt(last: Opcode, new: Opcode) -> Option<Opcode> {
-                match last {
-                    LOADNIL(a, b) => if let LOADNIL(c, d) = new {
-                        if c == a + b + 1 {
-                            Some(LOADNIL(a, b + d + 1))
-                        } else {
-                            None
-                        }
-                    } else { None },
-                    LOADK(a, _) => match new {
-                        LOADK(b, _) if a == b => Some(new),  // overwrites just-loaded constant
-                        LOADNIL(start, dist) if start <= a && a <= start + dist => {
-                            // `a` is in the LOADNIL range and will be overwritten
-                            Some(new)
-                        },
-                        _ => None,
+                match (last, new) {
+                    (LOADNIL(a, b), LOADNIL(c, d)) if c == a + b + 1 => { // c < a
+                        // The first LOADNIL can be extended upwards to include the second
+                        Some(LOADNIL(a, b + d + 1))
+                    }
+                    (LOADNIL(a, b), LOADNIL(c, d)) if a == c + d + 1 => { // a < c
+                        // The first LOADNIL can be extended downwards to include the second
+                        Some(LOADNIL(c, b + d + 1))
+                    }
+                    (LOADNIL(a, b), MOV(to, from)) if to == a + b + 1
+                                                      && a <= from
+                                                      && from <= a + b => {
+                        // Move from NILed slot to the next slot after the NILed range can be folded
+                        Some(LOADNIL(a, b + 1))
+                    }
+                    (LOADNIL(a, b), MOV(to, from)) if to as i16 == a as i16 - 1
+                                                      && range_contains(a as i16..a as i16 + b as i16)
+                                                      && a <= from
+                                                      && from <= a + b => {
+                        // Move from NILed slot to the slot before the NILed range can be folded
+                        Some(LOADNIL(a - 1, b + 1))
+                    }
+                    (LOADK(a, _), LOADK(b, _)) if a == b => {
+                        Some(new)  // overwrites just-loaded constant
+                    }
+                    (LOADK(a, _), LOADNIL(start, dist)) if start <= a && a <= start + dist => {
+                        // `a` is in the LOADNIL range and will be overwritten
+                        Some(new)
                     },
                     _ => None,
                 }
@@ -710,26 +729,19 @@ impl Emitter {
         }
     }
 
-    fn emit_stmt(&mut self, s: &Stmt, block: &Block) {
+    fn emit_stmt(&mut self, s: &Stmt) {
         match s.value {
-            StmtKind::Decl(ref names, ref exprs) => {
+            StmtKind::Decl(ref local_ids) => {
                 // allocate stack slots for locals
                 let mut locals = Vec::<Variable>::new();
-                for name in names {
-                    let id = *block.get_local(name).unwrap();
+                for id in local_ids {
                     let slot = self.alloc_slots(1);
-                    self.alloc.insert(id, slot);
-                    locals.push(Spanned::default(VarKind::Local(id)));
+                    self.alloc.insert(id.value, slot);
+                    locals.push(Spanned::default(VarKind::Local(id.value)));
 
-                    debug!("alloc: {} (id {}) -> slot {}", name.value, id, slot);
+                    // FIXME Print the local's name (needs access to the current `Function`)
+                    debug!("alloc: {} -> slot {}", id.value, slot);
                 }
-
-                // build fake assignment node and use generic assigment code to emit code
-                let mut vals = exprs.clone();
-                vals.push(Spanned::default(ExprKind::Lit(Const::Nil)));
-
-                let assign = StmtKind::Assign(locals, vals);
-                self.emit_stmt(&Spanned::new(s.span, assign), block);
             }
             StmtKind::Assign(ref vars, ref vals) => {
                 // We need `min(varcount-1, valcount-1)` temps (= `tmpcount`). Eval first
@@ -753,6 +765,13 @@ impl Emitter {
                 // Lastly, emit all leftover values (there may be none, of course) into /dev/null,
                 // aka dispose their values (this applies their side effects, which is crucial).
                 // TODO implement a lint that warns about assignments with more values than targets
+
+                // FIXME We don't always need temporary slots. They are only needed if an expression
+                // on the right side uses the value of a variable assigned to before.
+
+                // You can't usually create an assignment node with 0 targets or expressions
+                debug_assert!(vars.len() >= 1);
+                debug_assert!(vals.len() >= 1);
 
                 let varcount = vars.len();
                 let valcount = vals.len();
@@ -1170,7 +1189,7 @@ impl<'a> Visitor<'a> for Emitter {
         self.needs_close = false;
 
         for stmt in &b.stmts {
-            self.emit_stmt(stmt, b);
+            self.emit_stmt(stmt);
         }
 
         if self.needs_close {

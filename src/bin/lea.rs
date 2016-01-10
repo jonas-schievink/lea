@@ -14,7 +14,7 @@ use compiler::{CompileConfig, FnData};
 use vm::function::FunctionProto;
 use vm::{Value, VM};
 
-use std::io::{self, stdin, stderr, Write, BufRead};
+use std::io::{self, stdin, Write, BufRead};
 
 
 /// Opens a terminal that writes to stderr. If stderr couldn't be opened as a terminal, creates a

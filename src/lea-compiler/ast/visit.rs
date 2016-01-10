@@ -81,63 +81,63 @@ pub fn walk_func<'a, V: Transform<'a>>(mut f: Function<'a>, visitor: &mut V) -> 
 
 pub fn walk_stmt<'a, V: Transform<'a>>(mut stmt: Stmt<'a>, visitor: &mut V) -> Stmt<'a> {
     stmt.value = match stmt.value {
-        StmtKind::Decl(names, mut vals) => {
-            vals = vals.map_in_place(|val| visitor.visit_expr(val));
-            StmtKind::Decl(names, vals)
-        },
+        StmtKind::Decl(names) => {
+            StmtKind::Decl(names)
+        }
         StmtKind::Assign(mut vars, mut vals) => {
             vars = vars.map_in_place(|var| visitor.visit_var(var));
             vals = vals.map_in_place(|val| visitor.visit_expr(val));
             StmtKind::Assign(vars, vals)
-        },
+        }
         StmtKind::Do(mut block) => {
             block = visitor.visit_block(block);
             StmtKind::Do(block)
-        },
+        }
         StmtKind::Return(mut vals) => {
             vals = vals.map_in_place(|val| visitor.visit_expr(val));
             StmtKind::Return(vals)
-        },
+        }
         StmtKind::Call(Call::Normal(mut callee, mut argv)) => {
             callee = Box::new(visitor.visit_expr(*callee));
             argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
             StmtKind::Call(Call::Normal(callee, argv))
-        },
+        }
         StmtKind::Call(Call::Method(mut callee, name, mut argv)) => {
             callee = Box::new(visitor.visit_expr(*callee));
             argv = argv.map_in_place(|arg| visitor.visit_expr(arg));
             StmtKind::Call(Call::Method(callee, name, argv))
-        },
+        }
         StmtKind::If {mut cond, mut body, mut el} => {
             cond = visitor.visit_expr(cond);
             body = visitor.visit_block(body);
             el = el.map(|el| visitor.visit_block(el));
             StmtKind::If {cond: cond, body: body, el: el}
-        },
+        }
         StmtKind::While {mut cond, mut body} => {
             cond = visitor.visit_expr(cond);
             body = visitor.visit_block(body);
             StmtKind::While {cond: cond, body: body}
-        },
+        }
         StmtKind::Repeat {mut abort_on, mut body} => {
             abort_on = visitor.visit_expr(abort_on);
             body = visitor.visit_block(body);
             StmtKind::Repeat {abort_on: abort_on, body: body}
-        },
+        }
         StmtKind::For {mut start, mut step, mut end, mut body, var} => {
             start = visitor.visit_expr(start);
             step = step.map(|s| visitor.visit_expr(s));
             end = visitor.visit_expr(end);
             body = visitor.visit_block(body);
             StmtKind::For {start: start, step: step, end: end, body: body, var: var}
-        },
+        }
         StmtKind::ForIn {iter: mut iter_exprs, mut body, vars} => {
             iter_exprs = iter_exprs.map_in_place(|e| visitor.visit_expr(e));
             body = visitor.visit_block(body);
             StmtKind::ForIn {iter: iter_exprs, body: body, vars: vars}
-        },
-
-        StmtKind::Break => StmtKind::Break,
+        }
+        StmtKind::Break => {
+            StmtKind::Break
+        }
     };
 
     stmt
@@ -146,11 +146,8 @@ pub fn walk_stmt<'a, V: Transform<'a>>(mut stmt: Stmt<'a>, visitor: &mut V) -> S
 
 pub fn walk_stmt_ref<'a, V: Visitor<'a>>(stmt: &'a Stmt, visitor: &mut V) {
     match stmt.value {
-        StmtKind::Decl(_, ref vals) => {
-            for e in vals {
-                visitor.visit_expr(e);
-            }
-        },
+        // We don't walk the declared locals
+        StmtKind::Decl(_) => {},
         StmtKind::Assign(ref vars, ref vals) => {
             for var in vars {
                 visitor.visit_var(var);
