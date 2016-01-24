@@ -1,8 +1,8 @@
 [package]
-
 name = "lea-vm"
 version = "0.0.1"
 authors = ["Jonas Schievink <jonas@schievink.net>"]
+license = "Apache-2.0/MIT"
 
 [lib]
 name = "lea_vm"
