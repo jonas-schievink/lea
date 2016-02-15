@@ -9,7 +9,7 @@ addons:
       - libdw-dev
 before_script:
   - |
-      cargo install cargo-local-pkgs --vers 0.1 &&
+      cargo install cargo-local-pkgs --vers 0.2 &&
       export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH
 script:
   - |
