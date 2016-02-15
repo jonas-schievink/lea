@@ -5,6 +5,9 @@
 # NOTE: kcov requires the following apt packages: libcurl4-openssl-dev libelf-dev libdw-dev
 # These need to be installed before running this script.
 
+# FIXME: Rust now has `-Clink-dead-code`, so this can be enabled again!
+# (but use travis-cargo for this!)
+
 set -e
 
 if [ -z "$TRAVIS_JOB_ID" ]; then

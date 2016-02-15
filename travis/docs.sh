@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# FIXME Try using travis-cargo instead
+
 # `after_success` hook to generate documentation using `cargo doc` and push it to the `gh-pages`
 # branch. Works without root.
 

@@ -7,7 +7,15 @@ addons:
       - libcurl4-openssl-dev
       - libelf-dev
       - libdw-dev
-script: time travis/test.sh && travis/docs.sh
+before_script:
+  - |
+      cargo install cargo-local-pkgs &&
+      export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH
+script:
+  - |
+      cargo generate-lockfile &&
+      cargo local-pkgs test &&
+      travis/docs.sh
 env:
   global:
     # GH_SECRET for pushing the docs to the gh-pages branch automatically
