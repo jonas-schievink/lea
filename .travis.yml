@@ -1,6 +1,8 @@
 language: rust
 rust: nightly
 sudo: false
+git:
+  depth: 1
 addons:
   apt:
     packages:
@@ -9,14 +11,19 @@ addons:
       - libdw-dev
 before_script:
   - |
+      pip install 'travis-cargo<0.2' --user &&
       cargo install cargo-local-pkgs --vers 0.2 &&
       export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH
 script:
   - |
       cargo generate-lockfile &&
-      cargo local-pkgs test &&
-      travis/docs.sh
+      cargo local-pkgs test
+after_success:
+  - |
+      travis-cargo --only nightly doc &&
+      travis-cargo --only nightly doc-upload
 env:
   global:
     # GH_SECRET for pushing the docs to the gh-pages branch automatically
     - secure: denTXvhagGLyEn84shlKbWKwOIjlRprVm0cgw1BwSHhihDHEomytvOGoMPBmqcSYb8Q6oG26WN9qd0Mdha/ue3eQ9MOugrz3fZ+oQPzWbJJ9zJWDngk3WBpY7A68jZmp3RJeI7xxBykIBojcN1lJQlPRkt1uWyYJAB0GYybWAfI=
+    - TRAVIS_CARGO_NIGHTLY_FEATURE=""
