@@ -9,13 +9,17 @@ addons:
       - libdw-dev
 before_script:
   - |
+      pip install 'travis-cargo<0.2' --user &&
       cargo install cargo-local-pkgs --vers 0.2 &&
       export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH
 script:
   - |
       cargo generate-lockfile &&
-      cargo local-pkgs test &&
-      travis/docs.sh
+      cargo local-pkgs test
+after_success:
+  - |
+      travis-cargo --only stable doc &&
+      travis-cargo --only stable doc-upload
 env:
   global:
     # GH_SECRET for pushing the docs to the gh-pages branch automatically
