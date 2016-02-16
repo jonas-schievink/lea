@@ -1,6 +1,8 @@
 language: rust
 rust: nightly
 sudo: false
+git:
+  depth: 1
 addons:
   apt:
     packages:
@@ -18,8 +20,8 @@ script:
       cargo local-pkgs test
 after_success:
   - |
-      travis-cargo --only stable doc &&
-      travis-cargo --only stable doc-upload
+      travis-cargo --only nightly doc &&
+      travis-cargo --only nightly doc-upload
 env:
   global:
     # GH_SECRET for pushing the docs to the gh-pages branch automatically
