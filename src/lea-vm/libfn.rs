@@ -227,7 +227,7 @@ macro_rules! lea_build_ty_pat {
     ( [$($p:tt)*] $name:ident : * $($rest:tt)* ) =>
         { lea_build_ty_pat!([$($p)* $name] $($rest)*) };
     ( [$($p:tt)*] $name:ident : ... $($rest:tt)* ) =>
-        { lea_build_ty_pat!([$($p)* $name ..] $($rest)*) };
+        { lea_build_ty_pat!([$($p)* ref $name ..] $($rest)*) };
     ( [$($p:tt)*] ) =>
         { lea_to_pat!([$($p)*]) };
 }
@@ -298,7 +298,7 @@ macro_rules! lea_libfn_single {
                 match &$vm.stack[arg_start..arg_start+arg_count as usize] {
                     $(
                         // The `if true` at the end disables "unreachable pattern" errors
-                        lea_build_ty_pat!([] $( $pname : $pty ),*) if true => {
+                        &lea_build_ty_pat!([] $( $pname : $pty ),*) if true => {
                             lea_process_body!([_push_ret; $vm] [] $($body)*);
                             return Ok(());
                         }
