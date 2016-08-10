@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `StmtKind` enum in crate `lea_parser`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, StmtKind">
+
+    <title>lea_parser::parsetree::StmtKind - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='../index.html'>lea_parser</a>::<wbr><a href='index.html'>parsetree</a></p><script>window.sidebarCurrent = {name: 'StmtKind', ty: 'enum', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content enum">
+<h1 class='fqn'><span class='in-band'>Enum <a href='../index.html'>lea_parser</a>::<wbr><a href='index.html'>parsetree</a>::<wbr><a class='enum' href=''>StmtKind</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-1004' class='srclink' href='../../src/lea_parser/src/lea-parser/parsetree.rs.html#83-191' title='goto source code'>[src]</a></span></h1>
+<pre class='rust enum'>pub enum StmtKind&lt;'a&gt; {
+    Decl(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='struct' href='../../lea_parser/span/struct.Spanned.html' title='lea_parser::span::Spanned'>Spanned</a>&lt;&amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;&gt;,&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;&gt;),
+    Assign(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='type' href='../../lea_parser/parsetree/type.Variable.html' title='lea_parser::parsetree::Variable'>Variable</a>&lt;'a&gt;&gt;,&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;&gt;),
+    Do(<a class='struct' href='../../lea_parser/parsetree/struct.Block.html' title='lea_parser::parsetree::Block'>Block</a>&lt;'a&gt;),
+    Break,
+    Semi,
+    Return(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;&gt;),
+    Call(<a class='enum' href='../../lea_parser/parsetree/enum.Call.html' title='lea_parser::parsetree::Call'>Call</a>&lt;'a&gt;),
+    Func(<a class='type' href='../../lea_parser/parsetree/type.Variable.html' title='lea_parser::parsetree::Variable'>Variable</a>&lt;'a&gt;,&nbsp;<a class='struct' href='../../lea_parser/parsetree/struct.Function.html' title='lea_parser::parsetree::Function'>Function</a>&lt;'a&gt;),
+    Method(<a class='type' href='../../lea_parser/parsetree/type.Variable.html' title='lea_parser::parsetree::Variable'>Variable</a>&lt;'a&gt;,&nbsp;<a class='struct' href='../../lea_parser/span/struct.Spanned.html' title='lea_parser::span::Spanned'>Spanned</a>&lt;&amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;,&nbsp;<a class='struct' href='../../lea_parser/parsetree/struct.Function.html' title='lea_parser::parsetree::Function'>Function</a>&lt;'a&gt;),
+    LocalFunc(<a class='struct' href='../../lea_parser/span/struct.Spanned.html' title='lea_parser::span::Spanned'>Spanned</a>&lt;&amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;,&nbsp;<a class='struct' href='../../lea_parser/parsetree/struct.Function.html' title='lea_parser::parsetree::Function'>Function</a>&lt;'a&gt;),
+    If {
+        cond: <a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;,
+        body: <a class='struct' href='../../lea_parser/parsetree/struct.Block.html' title='lea_parser::parsetree::Block'>Block</a>&lt;'a&gt;,
+        elifs: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='struct' href='../../lea_parser/span/struct.Spanned.html' title='lea_parser::span::Spanned'>Spanned</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>(</a><a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;, <a class='struct' href='../../lea_parser/parsetree/struct.Block.html' title='lea_parser::parsetree::Block'>Block</a>&lt;'a&gt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>)</a>&gt;&gt;,
+        el: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='struct' href='../../lea_parser/parsetree/struct.Block.html' title='lea_parser::parsetree::Block'>Block</a>&lt;'a&gt;&gt;,
+    },
+    While {
+        cond: <a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;,
+        body: <a class='struct' href='../../lea_parser/parsetree/struct.Block.html' title='lea_parser::parsetree::Block'>Block</a>&lt;'a&gt;,
+    },
+    Repeat {
+        abort_on: <a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;,
+        body: <a class='struct' href='../../lea_parser/parsetree/struct.Block.html' title='lea_parser::parsetree::Block'>Block</a>&lt;'a&gt;,
+    },
+    For {
+        var: <a class='struct' href='../../lea_parser/span/struct.Spanned.html' title='lea_parser::span::Spanned'>Spanned</a>&lt;&amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;,
+        start: <a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;,
+        step: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;&gt;,
+        end: <a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;,
+        body: <a class='struct' href='../../lea_parser/parsetree/struct.Block.html' title='lea_parser::parsetree::Block'>Block</a>&lt;'a&gt;,
+    },
+    ForIn {
+        vars: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='struct' href='../../lea_parser/span/struct.Spanned.html' title='lea_parser::span::Spanned'>Spanned</a>&lt;&amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;&gt;,
+        iter: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;&gt;,
+        body: <a class='struct' href='../../lea_parser/parsetree/struct.Block.html' title='lea_parser::parsetree::Block'>Block</a>&lt;'a&gt;,
+    },
+}</pre><div class='docblock'><p>Statement nodes</p>
+</div><h2 class='variants'>Variants</h2>
+<span id='variant.Decl' class='variant'><code>Decl(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='struct' href='../../lea_parser/span/struct.Spanned.html' title='lea_parser::span::Spanned'>Spanned</a>&lt;&amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;&gt;,&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;&gt;)</code></span><div class='docblock'><p>Declare a list of locals and assign initial values.</p>
+
+<p>Initial values are optional and default to <code>nil</code> (the second vector can have less elements
+than the first).</p>
+</div><span id='variant.Assign' class='variant'><code>Assign(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='type' href='../../lea_parser/parsetree/type.Variable.html' title='lea_parser::parsetree::Variable'>Variable</a>&lt;'a&gt;&gt;,&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;&gt;)</code></span><div class='docblock'><p>Assigns a list of expressions to a list of variables.</p>
+
+<p>Contains at least one pair. If the last expression is a function or varargs, all return
+values are considered for assignment to the leftover variables.</p>
+
+<p>Might contain less variables than expressions or less expressions than variables. In the
+latter case, the leftover variables are assigned to nil.</p>
+</div><span id='variant.Do' class='variant'><code>Do(<a class='struct' href='../../lea_parser/parsetree/struct.Block.html' title='lea_parser::parsetree::Block'>Block</a>&lt;'a&gt;)</code></span><div class='docblock'><p>Execute a block in a new scope</p>
+</div><span id='variant.Break' class='variant'><code>Break</code></span><div class='docblock'><p>Abort the current loop</p>
+</div><span id='variant.Semi' class='variant'><code>Semi</code></span><div class='docblock'><p>No-op semicolon statement</p>
+</div><span id='variant.Return' class='variant'><code>Return(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;&gt;)</code></span><div class='docblock'><p>Return a possibly empty list of values to the caller</p>
+</div><span id='variant.Call' class='variant'><code>Call(<a class='enum' href='../../lea_parser/parsetree/enum.Call.html' title='lea_parser::parsetree::Call'>Call</a>&lt;'a&gt;)</code></span><div class='docblock'><p>Function call as statement</p>
+</div><span id='variant.Func' class='variant'><code>Func(<a class='type' href='../../lea_parser/parsetree/type.Variable.html' title='lea_parser::parsetree::Variable'>Variable</a>&lt;'a&gt;,&nbsp;<a class='struct' href='../../lea_parser/parsetree/struct.Function.html' title='lea_parser::parsetree::Function'>Function</a>&lt;'a&gt;)</code></span><div class='docblock'><p>Assign function to named variable.</p>
+
+<pre><code class="language-lua">function XY(...) ... end
+</code></pre>
+
+<p>is equivalent to</p>
+
+<pre><code class="language-lua">XY = function(...) ... end
+</code></pre>
+</div><span id='variant.Method' class='variant'><code>Method(<a class='type' href='../../lea_parser/parsetree/type.Variable.html' title='lea_parser::parsetree::Variable'>Variable</a>&lt;'a&gt;,&nbsp;<a class='struct' href='../../lea_parser/span/struct.Spanned.html' title='lea_parser::span::Spanned'>Spanned</a>&lt;&amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;,&nbsp;<a class='struct' href='../../lea_parser/parsetree/struct.Function.html' title='lea_parser::parsetree::Function'>Function</a>&lt;'a&gt;)</code></span><div class='docblock'><p>Method declaration.</p>
+
+<pre><code class="language-lua">function some.thing:methodname(...) ... end
+</code></pre>
+
+<p>is equivalent to</p>
+
+<pre><code class="language-lua">some.thing.methodname = function(self, ...) ... end
+</code></pre>
+</div><span id='variant.LocalFunc' class='variant'><code>LocalFunc(<a class='struct' href='../../lea_parser/span/struct.Spanned.html' title='lea_parser::span::Spanned'>Spanned</a>&lt;&amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;,&nbsp;<a class='struct' href='../../lea_parser/parsetree/struct.Function.html' title='lea_parser::parsetree::Function'>Function</a>&lt;'a&gt;)</code></span><div class='docblock'><p>Assign function to newly declared local.</p>
+
+<pre><code class="language-lua">local function XY(...) ... end
+</code></pre>
+
+<p>is equivalent to</p>
+
+<pre><code class="language-lua">local XY; XY = function(...) ... end
+</code></pre>
+</div><span id='variant.If' class='variant'><code>If</code></span><div class='docblock'><p>Executes <code>body</code> if <code>cond</code> is true and the <code>elseif</code>s or <code>else</code> if not.</p>
+</div><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.If.field.cond'><code>cond:&nbsp;<a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;</code></td><td></td></tr><tr><td id='variant.If.field.body'><code>body:&nbsp;<a class='struct' href='../../lea_parser/parsetree/struct.Block.html' title='lea_parser::parsetree::Block'>Block</a>&lt;'a&gt;</code></td><td></td></tr><tr><td id='variant.If.field.elifs'><code>elifs:&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='struct' href='../../lea_parser/span/struct.Spanned.html' title='lea_parser::span::Spanned'>Spanned</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>(</a><a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;, <a class='struct' href='../../lea_parser/parsetree/struct.Block.html' title='lea_parser::parsetree::Block'>Block</a>&lt;'a&gt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>)</a>&gt;&gt;</code></td><td></td></tr><tr><td id='variant.If.field.el'><code>el:&nbsp;<a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='struct' href='../../lea_parser/parsetree/struct.Block.html' title='lea_parser::parsetree::Block'>Block</a>&lt;'a&gt;&gt;</code></td><td></td></tr></table><span id='variant.While' class='variant'><code>While</code></span><div class='docblock'><p>Loops a block while <code>cond</code> is true</p>
+</div><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.While.field.cond'><code>cond:&nbsp;<a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;</code></td><td></td></tr><tr><td id='variant.While.field.body'><code>body:&nbsp;<a class='struct' href='../../lea_parser/parsetree/struct.Block.html' title='lea_parser::parsetree::Block'>Block</a>&lt;'a&gt;</code></td><td></td></tr></table><span id='variant.Repeat' class='variant'><code>Repeat</code></span><div class='docblock'><p>Loops a block until <code>abort_on</code> is true. The body is executed at least once (<code>abort_on</code> is
+checked after the body has run).</p>
+</div><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.Repeat.field.abort_on'><code>abort_on:&nbsp;<a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;</code></td><td></td></tr><tr><td id='variant.Repeat.field.body'><code>body:&nbsp;<a class='struct' href='../../lea_parser/parsetree/struct.Block.html' title='lea_parser::parsetree::Block'>Block</a>&lt;'a&gt;</code></td><td></td></tr></table><span id='variant.For' class='variant'><code>For</code></span><div class='docblock'><p>Numeric for loop</p>
+</div><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.For.field.var'><code>var:&nbsp;<a class='struct' href='../../lea_parser/span/struct.Spanned.html' title='lea_parser::span::Spanned'>Spanned</a>&lt;&amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;</code></td><td></td></tr><tr><td id='variant.For.field.start'><code>start:&nbsp;<a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;</code></td><td></td></tr><tr><td id='variant.For.field.step'><code>step:&nbsp;<a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;&gt;</code></td><td></td></tr><tr><td id='variant.For.field.end'><code>end:&nbsp;<a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;</code></td><td></td></tr><tr><td id='variant.For.field.body'><code>body:&nbsp;<a class='struct' href='../../lea_parser/parsetree/struct.Block.html' title='lea_parser::parsetree::Block'>Block</a>&lt;'a&gt;</code></td><td></td></tr></table><span id='variant.ForIn' class='variant'><code>ForIn</code></span><div class='docblock'><p>Generic for loop</p>
+</div><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.ForIn.field.vars'><code>vars:&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='struct' href='../../lea_parser/span/struct.Spanned.html' title='lea_parser::span::Spanned'>Spanned</a>&lt;&amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;&gt;</code></td><td><div class='docblock'><p>The loop variables, returned by iterator</p>
+</div></td></tr><tr><td id='variant.ForIn.field.iter'><code>iter:&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='type' href='../../lea_parser/parsetree/type.Expr.html' title='lea_parser::parsetree::Expr'>Expr</a>&lt;'a&gt;&gt;</code></td><td><div class='docblock'><p>Expression list: Iterator function, state, start value, [ignored ...]</p>
+</div></td></tr><tr><td id='variant.ForIn.field.body'><code>body:&nbsp;<a class='struct' href='../../lea_parser/parsetree/struct.Block.html' title='lea_parser::parsetree::Block'>Block</a>&lt;'a&gt;</code></td><td></td></tr></table><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html' title='core::cmp::PartialEq'>PartialEq</a> for <a class='enum' href='../../lea_parser/parsetree/enum.StmtKind.html' title='lea_parser::parsetree::StmtKind'>StmtKind</a>&lt;'a&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-788' class='srclink' href='../../src/lea_parser/src/lea-parser/parsetree.rs.html#82' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.eq' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#tymethod.eq' class='fnname'>eq</a>(&amp;self, __arg_0: &amp;<a class='enum' href='../../lea_parser/parsetree/enum.StmtKind.html' title='lea_parser::parsetree::StmtKind'>StmtKind</a>&lt;'a&gt;) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<div class='docblock'><p>This method tests for <code>self</code> and <code>other</code> values to be equal, and is used by <code>==</code>. <a href="https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#tymethod.eq">Read more</a></p>
+</div><h4 id='method.ne' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#method.ne' class='fnname'>ne</a>(&amp;self, __arg_0: &amp;<a class='enum' href='../../lea_parser/parsetree/enum.StmtKind.html' title='lea_parser::parsetree::StmtKind'>StmtKind</a>&lt;'a&gt;) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<div class='docblock'><p>This method tests for <code>!=</code>.</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html' title='core::fmt::Debug'>Debug</a> for <a class='enum' href='../../lea_parser/parsetree/enum.StmtKind.html' title='lea_parser::parsetree::StmtKind'>StmtKind</a>&lt;'a&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-920' class='srclink' href='../../src/lea_parser/src/lea-parser/parsetree.rs.html#82' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.fmt' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#tymethod.fmt' class='fnname'>fmt</a>(&amp;self, __arg_0: &amp;mut <a class='struct' href='https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html' title='core::fmt::Formatter'>Formatter</a>) -&gt; <a class='type' href='https://doc.rust-lang.org/nightly/core/fmt/type.Result.html' title='core::fmt::Result'>Result</a></code></h4>
+<div class='docblock'><p>Formats the value using the given formatter.</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a> for <a class='enum' href='../../lea_parser/parsetree/enum.StmtKind.html' title='lea_parser::parsetree::StmtKind'>StmtKind</a>&lt;'a&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-970' class='srclink' href='../../src/lea_parser/src/lea-parser/parsetree.rs.html#82' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.clone' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone' class='fnname'>clone</a>(&amp;self) -&gt; <a class='enum' href='../../lea_parser/parsetree/enum.StmtKind.html' title='lea_parser::parsetree::StmtKind'>StmtKind</a>&lt;'a&gt;</code></h4>
+<div class='docblock'><p>Returns a copy of the value. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone">Read more</a></p>
+</div><h4 id='method.clone_from' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from' class='fnname'>clone_from</a>(&amp;mut self, source: &amp;Self)</code><div class='since' title='Stable since Rust version 1.0.0'>1.0.0</div></h4>
+<div class='docblock'><p>Performs copy-assignment from <code>source</code>. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from">Read more</a></p>
+</div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "lea_parser";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../jquery.js"></script>
+    <script src="../../main.js"></script>
+    
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

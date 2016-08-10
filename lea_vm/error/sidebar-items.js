@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["VmError",""]],"type":[["VmResult","The result of an executed program. The program's main function can return any number of values."]]});

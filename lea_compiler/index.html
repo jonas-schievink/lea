@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `lea_compiler` crate.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, lea_compiler">
+
+    <title>lea_compiler - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'></p><script>window.sidebarCurrent = {name: 'lea_compiler', ty: 'mod', relpath: '../'};</script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content mod">
+<h1 class='fqn'><span class='in-band'>Crate <a class='mod' href=''>lea_compiler</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-0' class='srclink' href='../src/lea_compiler/src/lea-compiler/lib.rs.html#1-252' title='goto source code'>[src]</a></span></h1>
+<div class='docblock'><p>This module contains the compiler. The compiler parses source code and generates byte code
+suitable for execution by the VM.</p>
+
+<p>The complation process can be divided into the following phases:</p>
+
+<ol>
+<li>Parsing</li>
+<li>Checking</li>
+<li>Resolving</li>
+<li>Linting / Optimizing</li>
+<li>Emitting</li>
+</ol>
+
+<p>This module provides several helper methods that will either wrap up the whole compilation
+process or stop after a step, to enable more advanced uses of the compiler.</p>
+
+<p>Below is a brief description of what each phase does.</p>
+
+<h2 id='parsing' class='section-header'><a href='#parsing'>Parsing</a></h2>
+<p>This phase runs the generated Lea parser. It is generated at compile-time from the Parsing
+Expression Grammar (PEG) in <code>lea.rustpeg</code> with help of the <code>rust-peg</code> crate.</p>
+
+<h2 id='checking' class='section-header'><a href='#checking'>Checking</a></h2>
+<p>In <code>check.rs</code>, a <code>Checker</code> visitor is implemented, which runs over an AST and verifies that all
+statements and expressions are used in a valid context. Since the PEG parser has no state, it
+cannot do this (and it is better - though slower - to do it this way, since it separates
+syntax error and context-dependent errors).</p>
+
+<p>For example, the checker will deny a <code>break</code> statement used outside of a loop and the varargs
+expression <code>...</code> outside of a varargs function.</p>
+
+<h2 id='resolving' class='section-header'><a href='#resolving'>Resolving</a></h2>
+<p>The resolver implemented in <code>resolve.rs</code> transforms any named variable (<code>VNamed</code> in the AST) to
+a local, upvalue, or global reference. This makes it easy to see which identifier refers to
+which variable (might be useful for code highlighting in IDEs) and makes the emitter a bit
+simpler, since it doesn&#39;t have to figure out what an identifier means if it encounters it.</p>
+
+<h2 id='linting--optimizing' class='section-header'><a href='#linting--optimizing'>Linting / Optimizing</a></h2>
+<p>In this step, all configured Lints and Optimizers are run on the resolved AST. Internally, we
+make no distinction between a Lint and an Optimizer: Both take a <code>Function</code> node, do
+something to it, and return a transformed <code>Function</code> along with a list of warnings to be
+issued.</p>
+
+<p>Most Lints will just return the unmodified function and generate some warnings, while most
+optimizers will modify the AST, but return no warnings. Of course, there might be exceptions.</p>
+
+<p>Lints and Optimizers are implemented in the files inside the &quot;transform&quot; directory:</p>
+
+<ul>
+<li><p><code>fold.rs</code> implements a constant folding optimization that looks for operators that are
+applied to literals, applies them at compile-time, and replaces the node with the result.
+This is a basic optimization performed by most compilers (Lua does this too).</p></li>
+<li><p><code>globalwrite.rs</code> implements a Lint that will warn for all assignments to globals. Global
+variables are generally meant to hold the standard library functions, and not much more. User
+code should always prefer locals, and modules are meant to return the module when loaded,
+which should be assigned to a local by the code that <code>require</code>d the module. If you still need
+to access a global (for example, when setting up a sandbox), you can do so explicitly by
+indexing <code>_ENV</code>.</p></li>
+<li><p><code>deprecated_ops.rs</code> is a Lint that emits a warning whenever a Lua operator is used that has
+an equivalent replacement in Lea.</p></li>
+</ul>
+
+<h2 id='emitting' class='section-header'><a href='#emitting'>Emitting</a></h2>
+<p>The byte code emitter takes a resolved AST and emits byte code for each function that can be
+executed by the VM.</p>
+</div><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class='mod' href='transform/index.html'
+                                  title='lea_compiler::transform'>transform</a></td>
+                           <td class='docblock short'>
+                                <p>Contains AST transformers such as Linters and Optimizers that can be run on an AST and report
+warnings or mutate it.</p>
+                           </td>
+                       </tr></table><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class='struct' href='struct.CompileConfig.html'
+                                  title='lea_compiler::CompileConfig'>CompileConfig</a></td>
+                           <td class='docblock short'>
+                                <p>Defines options that can be used to tweak the compilation process (optimizations, lints, ...)</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='struct' href='struct.CompileOutput.html'
+                                  title='lea_compiler::CompileOutput'>CompileOutput</a></td>
+                           <td class='docblock short'>
+                                <p>Output of a successful compilation.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='struct' href='struct.FnData.html'
+                                  title='lea_compiler::FnData'>FnData</a></td>
+                           <td class='docblock short'>
+                                <p>Function representation output by the compiler. Later converted to a <code>FunctionProto</code>. This owns
+all child functions (as <code>FnData</code>) and can be serialized.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='struct' href='struct.Warning.html'
+                                  title='lea_compiler::Warning'>Warning</a></td>
+                           <td class='docblock short'>
+                                
+                           </td>
+                       </tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class='enum' href='enum.CompileError.html'
+                                  title='lea_compiler::CompileError'>CompileError</a></td>
+                           <td class='docblock short'>
+                                <p>Kinds of errors that can occur when compiling code</p>
+                           </td>
+                       </tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class='fn' href='fn.apply_transforms.html'
+                                  title='lea_compiler::apply_transforms'>apply_transforms</a></td>
+                           <td class='docblock short'>
+                                <p>Applies all transforms in the given <code>CompileConfig</code> to a <code>main</code> function. Returns all warnings
+generated by the transforms. <code>main</code> must be resolved beforehand.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='fn' href='fn.compile_expr.html'
+                                  title='lea_compiler::compile_expr'>compile_expr</a></td>
+                           <td class='docblock short'>
+                                <p>Compiles an expression into an <code>FnData</code> object that will return the result(s) of the expression
+to the caller.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='fn' href='fn.compile_str.html'
+                                  title='lea_compiler::compile_str'>compile_str</a></td>
+                           <td class='docblock short'>
+                                <p>Compiles source code into an <code>FnData</code> instance. This executes the whole compilation process and
+emits byte code.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='fn' href='fn.parse_and_check.html'
+                                  title='lea_compiler::parse_and_check'>parse_and_check</a></td>
+                           <td class='docblock short'>
+                                <p>Parses and checks the given source code (stops after compilation step 2). Returns a valid
+<code>Function</code> node on success.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='fn' href='fn.parse_and_resolve.html'
+                                  title='lea_compiler::parse_and_resolve'>parse_and_resolve</a></td>
+                           <td class='docblock short'>
+                                <p>Parses, checks and resolves the given source code (stops after compilation step 3). Returns the
+resolved main function on success.</p>
+                           </td>
+                       </tr></table><h2 id='types' class='section-header'><a href="#types">Type Definitions</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class='type' href='type.CompileResult.html'
+                                  title='lea_compiler::CompileResult'>CompileResult</a></td>
+                           <td class='docblock short'>
+                                
+                           </td>
+                       </tr></table></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "lea_compiler";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script defer src="../search-index.js"></script>
+</body>
+</html>

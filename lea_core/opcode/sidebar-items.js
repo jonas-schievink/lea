@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Opcode","An opcode that can be executed by the VM. This enum is always 32 bits large."]],"struct":[["Opcodes","Newtype for `Vec<Opcode>` that overrides `Debug` to use at most one line per printed opcode (when the `{:#?}` format specifier is used)."]]});

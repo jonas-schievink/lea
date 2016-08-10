@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["build_stdlib","Initializes the current version of the standard library. Returns the global environment that contains the library."],["version_str","Returns a version string for the main Lea crate (this crate)."]]});

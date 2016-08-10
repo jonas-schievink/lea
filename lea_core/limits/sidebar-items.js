@@ -1,0 +1,1 @@
+initSidebarItems({"constant":[["CONST_LIMIT","Global limit of constants used by a single function."],["OP_LIMIT","Maximal number of opcodes defined for a single function"],["PARAM_LIMIT","Max. number of function parameters (minus varargs)"],["STACK_LIMIT","The global limit on the stack size of a single function. This limit depends on the implementation."]]});

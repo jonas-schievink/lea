@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Opcode` enum in crate `lea_core`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Opcode">
+
+    <title>lea_core::opcode::Opcode - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='../index.html'>lea_core</a>::<wbr><a href='index.html'>opcode</a></p><script>window.sidebarCurrent = {name: 'Opcode', ty: 'enum', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content enum">
+<h1 class='fqn'><span class='in-band'>Enum <a href='../index.html'>lea_core</a>::<wbr><a href='index.html'>opcode</a>::<wbr><a class='enum' href=''>Opcode</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-1740' class='srclink' href='../../src/lea_core/src/lea-core/opcode.rs.html#22-191' title='goto source code'>[src]</a></span></h1>
+<pre class='rust enum'>pub enum Opcode {
+    MOV(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    LOADK(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u16.html'>u16</a>),
+    LOADNIL(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    LOADBOOL(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a>),
+    TABLE(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    ARRAY(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    FUNC(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u16.html'>u16</a>),
+    CALL(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    RETURN(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    CLOSE(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    VARARGS(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    JMP(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i16.html'>i16</a>),
+    IF(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i16.html'>i16</a>),
+    IFNOT(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i16.html'>i16</a>),
+    FORCHECK(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u16.html'>u16</a>),
+    GETUPVAL(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    SETUPVAL(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    GETIDX(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    SETIDX(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    ADD(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    SUB(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    MUL(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    DIV(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    MOD(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    POW(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    EQ(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    NEQ(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    LEQ(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    GEQ(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    LESS(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    GREATER(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    BAND(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    BOR(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    BXOR(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    SHIFTL(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    SHIFTR(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    CONCAT(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    NEG(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    INV(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    LEN(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    NOT(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+    INVALID,
+    DEBUG(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>),
+}</pre><div class='docblock'><p>An opcode that can be executed by the VM. This enum is always 32 bits large.</p>
+
+<p>Documentation syntax:</p>
+
+<ul>
+<li><code>R[n]</code> is the value stored in register (stack slot) <code>n</code></li>
+<li><code>U[n]</code> is the current value of the upvalue with the index <code>n</code></li>
+<li><code>C[n]</code> is the constant at index <code>n</code> (looked up in the current function&#39;s constant table)</li>
+<li><code>PROTO[n]</code> is function prototype number <code>n</code></li>
+<li><code>A</code>, <code>B</code>, <code>C</code> are the values of the first, second and third <code>u8</code> parameters (resp.)</li>
+<li><code>Xu</code> is the value of the operand of type <code>u16</code> (eXtended unsigned)</li>
+<li><code>Xs</code> is the value of the operand of type <code>i16</code> (eXtended signed)</li>
+<li><code>PC</code> is the program counter, which holds the number of the next opcode by default</li>
+</ul>
+</div><h2 class='variants'>Variants</h2>
+<span id='variant.MOV' class='variant'><code>MOV(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B]</code></strong></p>
+</div><span id='variant.LOADK' class='variant'><code>LOADK(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u16.html'>u16</a>)</code></span><div class='docblock'><p><strong><code>R[A] := C[Xu]</code></strong></p>
+
+<p>Loads the constant with index <code>Xu</code> into <code>R[A]</code>.</p>
+</div><span id='variant.LOADNIL' class='variant'><code>LOADNIL(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := nil, R[A+1] := nil, ..., R[A+B] := nil</code></strong></p>
+
+<p>Assigns <code>nil</code> to the B+1 registers starting at A. If B is 0, assigns <code>nil</code> only to <code>R[A]</code>.</p>
+</div><span id='variant.LOADBOOL' class='variant'><code>LOADBOOL(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a>)</code></span><div class='docblock'><p><strong><code>R[A], R[A+1], ..., R[A+B] := C</code></strong></p>
+
+<p>Assigns a boolean to B+1 registers from <code>R[A]</code> to <code>R[A+B]</code>. If C is <code>false</code>, assign <code>false</code>
+to the registers, otherwise assign <code>true</code>.</p>
+</div><span id='variant.TABLE' class='variant'><code>TABLE(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := {}</code></strong></p>
+
+<p>Creates a new table and assigns it to <code>R[A]</code>.</p>
+</div><span id='variant.ARRAY' class='variant'><code>ARRAY(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := []</code></strong></p>
+
+<p>Creates a new array and assigns it to <code>R[A]</code>.</p>
+</div><span id='variant.FUNC' class='variant'><code>FUNC(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u16.html'>u16</a>)</code></span><div class='docblock'><p><strong><code>R[A] := closure of PROTO[Xu]</code></strong></p>
+
+<p>Instantiates function prototype number <code>Xu</code> and stores a reference to the created closure
+in <code>R[A]</code></p>
+</div><span id='variant.CALL' class='variant'><code>CALL(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A], R[A+1], ..., R[A+C-2] := R\[A](R[A+1], ..., R[A+B-1])</code></strong></p>
+
+<p>Calls <code>R[A]</code> with B-1 arguments stored in <code>R[A+1]</code> through <code>R[A+B-1]</code>. If B is 1, no
+arguments are passed. If B is 0, passes all arguments from A+1 to the top of the stack
+(this is used if the last argument is a function call, which may return an unknown number
+of values).</p>
+
+<p>Stores C-1 return values in <code>R[A]</code> through <code>R[A+C-2]</code>. If C is 1, no return values are
+stored. If C is 0, stores all return values in <code>R[A]</code>, <code>R[A+1]</code>, ... (if necessary,
+expanding the stack to fit all return values in).</p>
+
+<p>If the callee returns less than C-1 results, the rest is set to <code>nil</code>, except when C is 0,
+in which case 0 results may be returned (the top of the stack is set to A in that case).</p>
+
+<p>This might invoke a metamethod if <code>R[A]</code> has a metatable with a <code>__call</code> field.</p>
+</div><span id='variant.RETURN' class='variant'><code>RETURN(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>return R[A], R[A+1], ..., R[A+B-2]</code></strong></p>
+
+<p>Returns B-1 values stored in <code>R[A]</code> through <code>R[A+B-2]</code> to the caller. If B is 1, returns no
+values and just leaves the current function, returning control to the caller. If B is 0,
+returns all values from A to the top of the stack.</p>
+
+<p>If the program&#39;s main function executes this opcode, the VM will pass the return values to
+the code that started the VM.</p>
+</div><span id='variant.CLOSE' class='variant'><code>CLOSE(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>close_upval(R[A], R[A+1], ...)</code></strong></p>
+
+<p>Closes all open upvalues in registers <code>A</code> and higher.</p>
+</div><span id='variant.VARARGS' class='variant'><code>VARARGS(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A], R[A+1], ..., R[A+B-1] := varargs</code></strong></p>
+
+<p>Stores B arguments passed as variable arguments (in <code>...</code>) in <code>R[A]</code> through <code>R[A+B-1]</code>.
+If B is 0, stores all varargs in <code>R[A]</code>, <code>R[A+1]</code>, ... (expanding the stack if necessary).</p>
+</div><span id='variant.JMP' class='variant'><code>JMP(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i16.html'>i16</a>)</code></span><div class='docblock'><p><strong><code>PC += Xs</code></strong></p>
+
+<p>Unconditional jump. Offsets <code>PC</code> by <code>Xs</code>, which may be negative.</p>
+
+<p>All jumps share the same property: If <code>Xs</code> is 0, PC will not be changed (the jump acts
+like a no-op). If <code>Xs</code> is -1, an endless loop is created.</p>
+</div><span id='variant.IF' class='variant'><code>IF(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i16.html'>i16</a>)</code></span><div class='docblock'><p><strong><code>if R[A]: PC += Xs</code></strong></p>
+
+<p>Conditional jump. If the value in <code>R[A]</code> is &quot;truthy&quot; (not <code>false</code> or <code>nil</code>), offsets <code>PC</code>
+by <code>Xs</code>.</p>
+</div><span id='variant.IFNOT' class='variant'><code>IFNOT(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i16.html'>i16</a>)</code></span><div class='docblock'><p><strong><code>if not R[A]: PC += Xs</code></strong></p>
+
+<p>If the value in <code>R[A]</code> is <code>false</code> or <code>nil</code>, offsets <code>PC</code> by <code>Xs</code>.</p>
+</div><span id='variant.FORCHECK' class='variant'><code>FORCHECK(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u16.html'>u16</a>)</code></span><div class='docblock'><p><strong><code>assert: R[A], R[A+1], R[A+2] are numeric</code></strong></p>
+
+<p><strong><code>if (R[A+1] &gt;= 0 &amp;&amp; R[A] &gt; R[A+2]) || (R[A+1] &lt; 0 &amp;&amp; R[A] &lt; R[A+2]): PC += Xu</code></strong></p>
+
+<p>Jumps out of a for-loop if the loop variable in <code>R[A]</code> is outside the range of the loop:
+If the loop step in <code>R[A+1]</code> is non-negative, this occurs exactly when the value is larger
+than the loop limit in <code>R[A+2]</code>. If the step is negative, this occurs when the value is
+smaller than the limit, since the loop runs backwards.</p>
+</div><span id='variant.GETUPVAL' class='variant'><code>GETUPVAL(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := U[B]</code></strong></p>
+</div><span id='variant.SETUPVAL' class='variant'><code>SETUPVAL(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>U[A] := R[B]</code></strong></p>
+</div><span id='variant.GETIDX' class='variant'><code>GETIDX(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B][R[C]]</code></strong></p>
+
+<p>Indexes <code>R[B]</code> with the value in <code>R[C]</code> and stores the result in <code>R[A]</code>.</p>
+</div><span id='variant.SETIDX' class='variant'><code>SETIDX(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A][R[B]] := R[C]</code></strong></p>
+
+<p>Stores <code>R[C]</code> in <code>R[A]</code> at index <code>R[B]</code>.</p>
+</div><span id='variant.ADD' class='variant'><code>ADD(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] + R[C]</code></strong></p>
+
+<p>All operator opcodes can call a metamethod, depending on the values in <code>R[B]</code> and <code>R[C]</code> and
+the specific operation.</p>
+</div><span id='variant.SUB' class='variant'><code>SUB(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] - R[C]</code></strong></p>
+</div><span id='variant.MUL' class='variant'><code>MUL(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] * R[C]</code></strong></p>
+</div><span id='variant.DIV' class='variant'><code>DIV(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] / R[C]</code></strong></p>
+</div><span id='variant.MOD' class='variant'><code>MOD(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] % R[C]</code></strong></p>
+</div><span id='variant.POW' class='variant'><code>POW(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] ^ R[C]</code></strong></p>
+</div><span id='variant.EQ' class='variant'><code>EQ(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] == R[C]</code></strong></p>
+</div><span id='variant.NEQ' class='variant'><code>NEQ(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] != R[C]</code></strong></p>
+</div><span id='variant.LEQ' class='variant'><code>LEQ(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] &lt;= R[C]</code></strong></p>
+</div><span id='variant.GEQ' class='variant'><code>GEQ(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] &gt;= R[C]</code></strong></p>
+</div><span id='variant.LESS' class='variant'><code>LESS(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] &lt; R[C]</code></strong></p>
+</div><span id='variant.GREATER' class='variant'><code>GREATER(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] &gt; R[C]</code></strong></p>
+</div><span id='variant.BAND' class='variant'><code>BAND(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] &amp; R[C]</code></strong></p>
+
+<p>Bitwise and. Logical <code>and</code> / <code>or</code> (<code>&amp;&amp;</code> / <code>||</code>) can shortcut and is implemented via
+test-and-jump. <code>&amp;&amp;</code> / <code>||</code> can also not be overridden via a metamethod.</p>
+</div><span id='variant.BOR' class='variant'><code>BOR(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] | R[C]</code></strong></p>
+</div><span id='variant.BXOR' class='variant'><code>BXOR(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] ~ R[C]</code></strong></p>
+</div><span id='variant.SHIFTL' class='variant'><code>SHIFTL(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] &lt;&lt; R[C]</code></strong></p>
+</div><span id='variant.SHIFTR' class='variant'><code>SHIFTR(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] &gt;&gt; R[C]</code></strong></p>
+</div><span id='variant.CONCAT' class='variant'><code>CONCAT(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := R[B] .. R[C]</code></strong></p>
+
+<p>Concatenates the value in <code>R[B]</code> with the value in <code>R[C]</code>. Numbers are coerced to strings.
+If one of the values is neither a string nor a number, the <code>__concat</code> metamethod is called
+to convert the value.</p>
+</div><span id='variant.NEG' class='variant'><code>NEG(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := -R[B]</code></strong></p>
+</div><span id='variant.INV' class='variant'><code>INV(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := ~R[B]</code></strong></p>
+</div><span id='variant.LEN' class='variant'><code>LEN(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := #R[B]</code></strong></p>
+</div><span id='variant.NOT' class='variant'><code>NOT(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p><strong><code>R[A] := !R[B]</code></strong></p>
+
+<p>The values <code>false</code> and <code>nil</code> will be converted to <code>true</code>, any other value will be
+converted to <code>false</code>. This does not call a metamethod.</p>
+</div><span id='variant.INVALID' class='variant'><code>INVALID</code></span><div class='docblock'><p>Causes a VM panic. Used by the emitter for opcodes that will be replaced later in the
+compilation (such as forward jumps).</p>
+</div><span id='variant.DEBUG' class='variant'><code>DEBUG(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span><div class='docblock'><p>Testing and debugging opcode that will print the <code>Value</code> stored in the given stack slot.</p>
+</div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='../../rustc_serialize/serialize/trait.Decodable.html' title='rustc_serialize::serialize::Decodable'>Decodable</a> for <a class='enum' href='../../lea_core/opcode/enum.Opcode.html' title='lea_core::opcode::Opcode'>Opcode</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-10' class='srclink' href='../../src/lea_core/src/lea-core/opcode.rs.html#20' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.decode' class='method'><code>fn <a href='../../rustc_serialize/serialize/trait.Decodable.html#tymethod.decode' class='fnname'>decode</a>&lt;__D:&nbsp;<a class='trait' href='../../rustc_serialize/serialize/trait.Decoder.html' title='rustc_serialize::serialize::Decoder'>Decoder</a>&gt;(__arg_0: &amp;mut __D) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a class='enum' href='../../lea_core/opcode/enum.Opcode.html' title='lea_core::opcode::Opcode'>Opcode</a>,&nbsp;__D::Error&gt;</code></h4>
+</div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='../../rustc_serialize/serialize/trait.Encodable.html' title='rustc_serialize::serialize::Encodable'>Encodable</a> for <a class='enum' href='../../lea_core/opcode/enum.Opcode.html' title='lea_core::opcode::Opcode'>Opcode</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-221' class='srclink' href='../../src/lea_core/src/lea-core/opcode.rs.html#20' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.encode' class='method'><code>fn <a href='../../rustc_serialize/serialize/trait.Encodable.html#tymethod.encode' class='fnname'>encode</a>&lt;__S:&nbsp;<a class='trait' href='../../rustc_serialize/serialize/trait.Encoder.html' title='rustc_serialize::serialize::Encoder'>Encoder</a>&gt;(&amp;self, __arg_0: &amp;mut __S) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>,&nbsp;__S::Error&gt;</code></h4>
+</div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/hash/trait.Hash.html' title='core::hash::Hash'>Hash</a> for <a class='enum' href='../../lea_core/opcode/enum.Opcode.html' title='lea_core::opcode::Opcode'>Opcode</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-862' class='srclink' href='../../src/lea_core/src/lea-core/opcode.rs.html#20' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.hash' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/hash/trait.Hash.html#tymethod.hash' class='fnname'>hash</a>&lt;__H:&nbsp;<a class='trait' href='https://doc.rust-lang.org/nightly/core/hash/trait.Hasher.html' title='core::hash::Hasher'>Hasher</a>&gt;(&amp;self, __arg_0: &amp;mut __H)</code></h4>
+<div class='docblock'><p>Feeds this value into the state given, updating the hasher as necessary.</p>
+</div><h4 id='method.hash_slice' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/hash/trait.Hash.html#method.hash_slice' class='fnname'>hash_slice</a>&lt;H&gt;(data: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[Self]</a>, state: &amp;mut H) <span class='where'>where H: <a class='trait' href='https://doc.rust-lang.org/nightly/core/hash/trait.Hasher.html' title='core::hash::Hasher'>Hasher</a></span></code><div class='since' title='Stable since Rust version 1.3.0'>1.3.0</div></h4>
+<div class='docblock'><p>Feeds a slice of this type into the state provided.</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html' title='core::fmt::Debug'>Debug</a> for <a class='enum' href='../../lea_core/opcode/enum.Opcode.html' title='lea_core::opcode::Opcode'>Opcode</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-968' class='srclink' href='../../src/lea_core/src/lea-core/opcode.rs.html#20' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.fmt' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#tymethod.fmt' class='fnname'>fmt</a>(&amp;self, __arg_0: &amp;mut <a class='struct' href='https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html' title='core::fmt::Formatter'>Formatter</a>) -&gt; <a class='type' href='https://doc.rust-lang.org/nightly/core/fmt/type.Result.html' title='core::fmt::Result'>Result</a></code></h4>
+<div class='docblock'><p>Formats the value using the given formatter.</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html' title='core::cmp::Eq'>Eq</a> for <a class='enum' href='../../lea_core/opcode/enum.Opcode.html' title='lea_core::opcode::Opcode'>Opcode</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-1116' class='srclink' href='../../src/lea_core/src/lea-core/opcode.rs.html#20' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html' title='core::cmp::PartialEq'>PartialEq</a> for <a class='enum' href='../../lea_core/opcode/enum.Opcode.html' title='lea_core::opcode::Opcode'>Opcode</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-1220' class='srclink' href='../../src/lea_core/src/lea-core/opcode.rs.html#20' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.eq' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#tymethod.eq' class='fnname'>eq</a>(&amp;self, __arg_0: &amp;<a class='enum' href='../../lea_core/opcode/enum.Opcode.html' title='lea_core::opcode::Opcode'>Opcode</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<div class='docblock'><p>This method tests for <code>self</code> and <code>other</code> values to be equal, and is used by <code>==</code>. <a href="https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#tymethod.eq">Read more</a></p>
+</div><h4 id='method.ne' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#method.ne' class='fnname'>ne</a>(&amp;self, __arg_0: &amp;<a class='enum' href='../../lea_core/opcode/enum.Opcode.html' title='lea_core::opcode::Opcode'>Opcode</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<div class='docblock'><p>This method tests for <code>!=</code>.</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a> for <a class='enum' href='../../lea_core/opcode/enum.Opcode.html' title='lea_core::opcode::Opcode'>Opcode</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-1635' class='srclink' href='../../src/lea_core/src/lea-core/opcode.rs.html#20' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.clone' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone' class='fnname'>clone</a>(&amp;self) -&gt; <a class='enum' href='../../lea_core/opcode/enum.Opcode.html' title='lea_core::opcode::Opcode'>Opcode</a></code></h4>
+<div class='docblock'><p>Returns a copy of the value. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone">Read more</a></p>
+</div><h4 id='method.clone_from' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from' class='fnname'>clone_from</a>(&amp;mut self, source: &amp;Self)</code><div class='since' title='Stable since Rust version 1.0.0'>1.0.0</div></h4>
+<div class='docblock'><p>Performs copy-assignment from <code>source</code>. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from">Read more</a></p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html' title='core::marker::Copy'>Copy</a> for <a class='enum' href='../../lea_core/opcode/enum.Opcode.html' title='lea_core::opcode::Opcode'>Opcode</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-1739' class='srclink' href='../../src/lea_core/src/lea-core/opcode.rs.html#20' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "lea_core";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../jquery.js"></script>
+    <script src="../../main.js"></script>
+    
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

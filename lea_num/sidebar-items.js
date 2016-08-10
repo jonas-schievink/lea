@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Number","Either an integer or a float. Converted as necessary."]],"type":[["LeaFloat","The floating point type to use for `Number::Float`"],["LeaInt","The integer type to use for `Number::Int`"]]});

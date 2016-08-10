@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["UpvalDesc","Describes how an Upvalue is referenced"]],"struct":[["FnData","Function representation output by the compiler. Later converted to a `FunctionProto`. This owns all child functions (as `FnData`) and can be serialized."]]});

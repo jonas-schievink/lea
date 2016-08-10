@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["mkspanned","Helper method that creates a Spanned<T> that extends from `start` until the character before `end` (unlike `Span::new`). Used by the PEG parser."]],"struct":[["DummyTerm","Wraps a `Write` and implements `Terminal`"],["Span","A span is a range of input characters in the source code."],["Spanned","Wraps a T and a Span."]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["ArenaGc","Arena-based GC"]]});

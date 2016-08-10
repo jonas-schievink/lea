@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Number","Either an integer or a float. Converted as necessary."]],"type":[["LeaFloat",""],["LeaInt",""]]});

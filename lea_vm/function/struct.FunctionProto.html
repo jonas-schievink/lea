@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `FunctionProto` struct in crate `lea_vm`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, FunctionProto">
+
+    <title>lea_vm::function::FunctionProto - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='../index.html'>lea_vm</a>::<wbr><a href='index.html'>function</a></p><script>window.sidebarCurrent = {name: 'FunctionProto', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>lea_vm</a>::<wbr><a href='index.html'>function</a>::<wbr><a class='struct' href=''>FunctionProto</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-171' class='srclink' href='../../src/lea_vm/src/lea-vm/function.rs.html#15-37' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct FunctionProto {
+    pub source_name: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>,
+    pub stacksize: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,
+    pub params: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,
+    pub varargs: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a>,
+    pub opcodes: <a class='struct' href='../../lea_core/opcode/struct.Opcodes.html' title='lea_core::opcode::Opcodes'>Opcodes</a>,
+    pub consts: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='enum' href='../../lea_vm/enum.Value.html' title='lea_vm::Value'>Value</a>&gt;,
+    pub upvalues: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='enum' href='../../lea_core/fndata/enum.UpvalDesc.html' title='lea_core::fndata::UpvalDesc'>UpvalDesc</a>&gt;,
+    pub upval_names: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>&gt;,
+    pub lines: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>&gt;,
+    pub child_protos: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='struct' href='../../lea_vm/mem/struct.TracedRef.html' title='lea_vm::mem::TracedRef'>TracedRef</a>&lt;<a class='struct' href='../../lea_vm/function/struct.FunctionProto.html' title='lea_vm::function::FunctionProto'>FunctionProto</a>&gt;&gt;,
+}</pre><div class='docblock'><p>A compiled function. When instantiated by the VM, becomes a <code>Function</code>.</p>
+</div><h2 class='fields'>Fields</h2><span id='structfield.source_name' class='structfield'><code>source_name: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a></code>
+                           </span><span class='stab '></span><div class='docblock'><p>The name of the source from which this function was compiled</p>
+</div><span id='structfield.stacksize' class='structfield'><code>stacksize: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a></code>
+                           </span><span class='stab '></span><div class='docblock'><p>The number of stack slots required by this function (might be dynamically increased)</p>
+</div><span id='structfield.params' class='structfield'><code>params: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a></code>
+                           </span><span class='stab '></span><div class='docblock'><p>Number of parameters accepted (ignoring varargs)</p>
+</div><span id='structfield.varargs' class='structfield'><code>varargs: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code>
+                           </span><span class='stab '></span><div class='docblock'><p>True if declared as a varargs function</p>
+</div><span id='structfield.opcodes' class='structfield'><code>opcodes: <a class='struct' href='../../lea_core/opcode/struct.Opcodes.html' title='lea_core::opcode::Opcodes'>Opcodes</a></code>
+                           </span><span class='stab '></span><div class='docblock'><p>The opcodes emitted for the code in the function bodyt.mark_traceable(r),</p>
+</div><span id='structfield.consts' class='structfield'><code>consts: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='enum' href='../../lea_vm/enum.Value.html' title='lea_vm::Value'>Value</a>&gt;</code>
+                           </span><span class='stab '></span><div class='docblock'><p>Constants used by this function.</p>
+</div><span id='structfield.upvalues' class='structfield'><code>upvalues: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='enum' href='../../lea_core/fndata/enum.UpvalDesc.html' title='lea_core::fndata::UpvalDesc'>UpvalDesc</a>&gt;</code>
+                           </span><span class='stab '></span><div class='docblock'><p>List of Upvalue reference descriptions</p>
+</div><span id='structfield.upval_names' class='structfield'><code>upval_names: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>&gt;</code>
+                           </span><span class='stab '></span><div class='docblock'><p>Names of Upvalues (names may not be defined)</p>
+</div><span id='structfield.lines' class='structfield'><code>lines: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>&gt;</code>
+                           </span><span class='stab '></span><div class='docblock'><p>Contains the last opcode number emitted for a given line</p>
+</div><span id='structfield.child_protos' class='structfield'><code>child_protos: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='struct' href='../../lea_vm/mem/struct.TracedRef.html' title='lea_vm::mem::TracedRef'>TracedRef</a>&lt;<a class='struct' href='../../lea_vm/function/struct.FunctionProto.html' title='lea_vm::function::FunctionProto'>FunctionProto</a>&gt;&gt;</code>
+                           </span><span class='stab '></span><div class='docblock'><p>References to the prototypes of all function declared within the body of this function.
+When dynamically compiling code, this allows the GC to collect prototypes that are unused.</p>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../../lea_vm/function/struct.FunctionProto.html' title='lea_vm::function::FunctionProto'>FunctionProto</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-182' class='srclink' href='../../src/lea_vm/src/lea-vm/function.rs.html#39-57' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.from_fndata' class='method'><code>fn <a href='#method.from_fndata' class='fnname'>from_fndata</a>&lt;G:&nbsp;<a class='trait' href='../../lea_vm/mem/trait.GcStrategy.html' title='lea_vm::mem::GcStrategy'>GcStrategy</a>&gt;(fndata: <a class='struct' href='../../lea_core/fndata/struct.FnData.html' title='lea_core::fndata::FnData'>FnData</a>, gc: &amp;mut G) -&gt; <a class='struct' href='../../lea_vm/mem/struct.TracedRef.html' title='lea_vm::mem::TracedRef'>TracedRef</a>&lt;<a class='struct' href='../../lea_vm/function/struct.FunctionProto.html' title='lea_vm::function::FunctionProto'>FunctionProto</a>&gt;</code></h4>
+</div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html' title='core::fmt::Debug'>Debug</a> for <a class='struct' href='../../lea_vm/function/struct.FunctionProto.html' title='lea_vm::function::FunctionProto'>FunctionProto</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-143' class='srclink' href='../../src/lea_vm/src/lea-vm/function.rs.html#14' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.fmt' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#tymethod.fmt' class='fnname'>fmt</a>(&amp;self, __arg_0: &amp;mut <a class='struct' href='https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html' title='core::fmt::Formatter'>Formatter</a>) -&gt; <a class='type' href='https://doc.rust-lang.org/nightly/core/fmt/type.Result.html' title='core::fmt::Result'>Result</a></code></h4>
+<div class='docblock'><p>Formats the value using the given formatter.</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a> for <a class='struct' href='../../lea_vm/function/struct.FunctionProto.html' title='lea_vm::function::FunctionProto'>FunctionProto</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-158' class='srclink' href='../../src/lea_vm/src/lea-vm/function.rs.html#14' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.clone' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone' class='fnname'>clone</a>(&amp;self) -&gt; <a class='struct' href='../../lea_vm/function/struct.FunctionProto.html' title='lea_vm::function::FunctionProto'>FunctionProto</a></code></h4>
+<div class='docblock'><p>Returns a copy of the value. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone">Read more</a></p>
+</div><h4 id='method.clone_from' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from' class='fnname'>clone_from</a>(&amp;mut self, source: &amp;Self)</code><div class='since' title='Stable since Rust version 1.0.0'>1.0.0</div></h4>
+<div class='docblock'><p>Performs copy-assignment from <code>source</code>. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from">Read more</a></p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='../../lea_vm/mem/trait.Traceable.html' title='lea_vm::mem::Traceable'>Traceable</a> for <a class='struct' href='../../lea_vm/function/struct.FunctionProto.html' title='lea_vm::function::FunctionProto'>FunctionProto</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-192' class='srclink' href='../../src/lea_vm/src/lea-vm/function.rs.html#59-65' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.trace' class='method'><code>fn <a href='../../lea_vm/mem/trait.Traceable.html#tymethod.trace' class='fnname'>trace</a>&lt;T:&nbsp;<a class='trait' href='../../lea_vm/mem/trait.Tracer.html' title='lea_vm::mem::Tracer'>Tracer</a>&gt;(&amp;self, t: &amp;mut T)</code></h4>
+</div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "lea_vm";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../jquery.js"></script>
+    <script src="../../main.js"></script>
+    
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

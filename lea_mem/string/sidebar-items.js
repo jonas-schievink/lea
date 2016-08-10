@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Str","`Str` is an immutable `String`."]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Upval","An active Upvalue"]],"struct":[["Function","Instantiated function"],["FunctionProto","A compiled function. When instantiated by the VM, becomes a `Function`."]]});
